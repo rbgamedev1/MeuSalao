@@ -1,0 +1,354 @@
+import { useState } from 'react';
+import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard, Edit, Trash2 } from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+const Financeiro = () => {
+  const [periodo, setPeriodo] = useState('mes');
+  const [tipoTransacao, setTipoTransacao] = useState('todas');
+
+  const [transacoes] = useState([
+    {
+      id: 1,
+      tipo: 'receita',
+      descricao: 'Serviço - Corte + Escova',
+      categoria: 'Serviços',
+      valor: 120.00,
+      formaPagamento: 'Cartão de Crédito',
+      data: '2025-11-01',
+      cliente: 'Maria Silva',
+      status: 'confirmado'
+    },
+    {
+      id: 2,
+      tipo: 'receita',
+      descricao: 'Produto - Shampoo',
+      categoria: 'Produtos',
+      valor: 89.90,
+      formaPagamento: 'Pix',
+      data: '2025-11-01',
+      cliente: 'João Santos',
+      status: 'confirmado'
+    },
+    {
+      id: 3,
+      tipo: 'despesa',
+      descricao: 'Compra de Produtos',
+      categoria: 'Estoque',
+      valor: 450.00,
+      formaPagamento: 'Boleto',
+      data: '2025-10-30',
+      fornecedor: 'Distribuidora Beauty',
+      status: 'pago'
+    },
+    {
+      id: 4,
+      tipo: 'despesa',
+      descricao: 'Aluguel do Salão',
+      categoria: 'Fixas',
+      valor: 2500.00,
+      formaPagamento: 'Transferência',
+      data: '2025-10-05',
+      fornecedor: 'Imobiliária Central',
+      status: 'pago'
+    },
+    {
+      id: 5,
+      tipo: 'receita',
+      descricao: 'Serviço - Coloração',
+      categoria: 'Serviços',
+      valor: 250.00,
+      formaPagamento: 'Dinheiro',
+      data: '2025-10-31',
+      cliente: 'Paula Souza',
+      status: 'confirmado'
+    },
+    {
+      id: 6,
+      tipo: 'despesa',
+      descricao: 'Energia Elétrica',
+      categoria: 'Fixas',
+      valor: 380.00,
+      formaPagamento: 'Débito Automático',
+      data: '2025-10-10',
+      fornecedor: 'Companhia de Energia',
+      status: 'pago'
+    }
+  ]);
+
+  // Dados para gráficos
+  const fluxoCaixaData = [
+    { mes: 'Jun', receita: 18500, despesa: 8200 },
+    { mes: 'Jul', receita: 21300, despesa: 9100 },
+    { mes: 'Ago', receita: 19800, despesa: 8800 },
+    { mes: 'Set', receita: 24500, despesa: 9500 },
+    { mes: 'Out', receita: 28900, despesa: 10200 },
+    { mes: 'Nov', receita: 32450, despesa: 11800 },
+  ];
+
+  const categoriasDespesas = [
+    { name: 'Estoque', value: 35, color: '#8B5CF6' },
+    { name: 'Fixas', value: 30, color: '#EC4899' },
+    { name: 'Salários', value: 25, color: '#F59E0B' },
+    { name: 'Marketing', value: 10, color: '#10B981' },
+  ];
+
+  const totalReceitas = transacoes
+    .filter(t => t.tipo === 'receita')
+    .reduce((acc, t) => acc + t.valor, 0);
+
+  const totalDespesas = transacoes
+    .filter(t => t.tipo === 'despesa')
+    .reduce((acc, t) => acc + t.valor, 0);
+
+  const saldo = totalReceitas - totalDespesas;
+
+  const filteredTransacoes = transacoes.filter(t => {
+    if (tipoTransacao === 'todas') return true;
+    return t.tipo === tipoTransacao;
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800">Financeiro</h1>
+          <p className="text-gray-600 mt-1">Controle suas finanças</p>
+        </div>
+        <div className="flex items-center space-x-3">
+          <select 
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="dia">Hoje</option>
+            <option value="semana">Esta Semana</option>
+            <option value="mes">Este Mês</option>
+            <option value="ano">Este Ano</option>
+          </select>
+          <button className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg">
+            <Plus size={20} />
+            <span>Nova Transação</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Cards de Resumo */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Receitas</p>
+              <p className="text-2xl font-bold text-green-600 mt-1">
+                R$ {totalReceitas.toFixed(2)}
+              </p>
+              <p className="text-xs text-green-600 mt-1">+12% vs mês anterior</p>
+            </div>
+            <div className="bg-green-100 p-3 rounded-lg">
+              <TrendingUp className="text-green-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Despesas</p>
+              <p className="text-2xl font-bold text-red-600 mt-1">
+                R$ {totalDespesas.toFixed(2)}
+              </p>
+              <p className="text-xs text-red-600 mt-1">+5% vs mês anterior</p>
+            </div>
+            <div className="bg-red-100 p-3 rounded-lg">
+              <TrendingDown className="text-red-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Saldo</p>
+              <p className={`text-2xl font-bold mt-1 ${saldo >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
+                R$ {Math.abs(saldo).toFixed(2)}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">{saldo >= 0 ? 'Positivo' : 'Negativo'}</p>
+            </div>
+            <div className="bg-purple-100 p-3 rounded-lg">
+              <DollarSign className="text-purple-600" size={24} />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-gray-600">Ticket Médio</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">R$ 153,30</p>
+              <p className="text-xs text-blue-600 mt-1">+8% vs mês anterior</p>
+            </div>
+            <div className="bg-blue-100 p-3 rounded-lg">
+              <CreditCard className="text-blue-600" size={24} />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Fluxo de Caixa */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Fluxo de Caixa</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={fluxoCaixaData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="mes" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Bar dataKey="receita" fill="#10B981" name="Receitas" />
+              <Bar dataKey="despesa" fill="#EF4444" name="Despesas" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Despesas por Categoria */}
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Despesas por Categoria</h3>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={categoriasDespesas}
+                cx="50%"
+                cy="50%"
+                labelLine={false}
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+              >
+                {categoriasDespesas.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Filtros */}
+      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => setTipoTransacao('todas')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              tipoTransacao === 'todas'
+                ? 'bg-purple-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Todas
+          </button>
+          <button
+            onClick={() => setTipoTransacao('receita')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              tipoTransacao === 'receita'
+                ? 'bg-green-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Receitas
+          </button>
+          <button
+            onClick={() => setTipoTransacao('despesa')}
+            className={`px-4 py-2 rounded-lg transition-colors ${
+              tipoTransacao === 'despesa'
+                ? 'bg-red-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Despesas
+          </button>
+        </div>
+      </div>
+
+      {/* Lista de Transações */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Descrição
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Categoria
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Data
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Forma Pagamento
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Valor
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ações
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {filteredTransacoes.map((transacao) => (
+                <tr key={transacao.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-medium text-gray-800">{transacao.descricao}</p>
+                      <p className="text-sm text-gray-500">
+                        {transacao.cliente || transacao.fornecedor}
+                      </p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                      {transacao.categoria}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2">
+                      <Calendar size={16} className="text-gray-400" />
+                      <span className="text-gray-700">{transacao.data}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-700">
+                    {transacao.formaPagamento}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`font-bold ${
+                      transacao.tipo === 'receita' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {transacao.tipo === 'receita' ? '+' : '-'} R$ {transacao.valor.toFixed(2)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center space-x-2">
+                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <Edit size={18} />
+                      </button>
+                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Financeiro;
