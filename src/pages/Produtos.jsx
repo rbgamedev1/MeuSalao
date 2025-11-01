@@ -1,12 +1,26 @@
 import { useState } from 'react';
 import { Plus, Search, Package, AlertTriangle, TrendingUp, Edit, Trash2, DollarSign } from 'lucide-react';
+import Modal from '../components/Modal';
 
 const Produtos = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [categoriaFiltro, setCategoriaFiltro] = useState('Todos');
+  const [editingId, setEditingId] = useState(null);
 
-  const [produtos] = useState([
+  const [formData, setFormData] = useState({
+    nome: '',
+    categoria: '',
+    marca: '',
+    estoque: '',
+    estoqueMinimo: '',
+    valorCusto: '',
+    valorVenda: '',
+    fornecedor: '',
+    codigo: ''
+  });
+
+  const [produtos, setProdutos] = useState([
     {
       id: 1,
       nome: 'Shampoo Profissional 1L',
@@ -83,6 +97,98 @@ const Produtos = () => {
 
   const categorias = ['Todos', 'Cabelo', 'Coloração', 'Unhas', 'Tratamento'];
 
+  const handleOpenModal = (produto = null) => {
+    if (produto) {
+      setEditingId(produto.id);
+      setFormData({
+        nome: produto.nome,
+        categoria: produto.categoria,
+        marca: produto.marca,
+        estoque: produto.estoque.toString(),
+        estoqueMinimo: produto.estoqueMinimo.toString(),
+        valorCusto: produto.valorCusto.toString(),
+        valorVenda: produto.valorVenda.toString(),
+        fornecedor: produto.fornecedor,
+        codigo: produto.codigo
+      });
+    } else {
+      setEditingId(null);
+      setFormData({
+        nome: '',
+        categoria: '',
+        marca: '',
+        estoque: '',
+        estoqueMinimo: '',
+        valorCusto: '',
+        valorVenda: '',
+        fornecedor: '',
+        codigo: ''
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setFormData({
+      nome: '',
+      categoria: '',
+      marca: '',
+      estoque: '',
+      estoqueMinimo: '',
+      valorCusto: '',
+      valorVenda: '',
+      fornecedor: '',
+      codigo: ''
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (editingId) {
+      setProdutos(produtos.map(p => 
+        p.id === editingId 
+          ? { 
+              ...formData, 
+              id: editingId,
+              estoque: parseInt(formData.estoque),
+              estoqueMinimo: parseInt(formData.estoqueMinimo),
+              valorCusto: parseFloat(formData.valorCusto),
+              valorVenda: parseFloat(formData.valorVenda)
+            } 
+          : p
+      ));
+    } else {
+      const newProduto = {
+        ...formData,
+        id: Math.max(...produtos.map(p => p.id), 0) + 1,
+        estoque: parseInt(formData.estoque),
+        estoqueMinimo: parseInt(formData.estoqueMinimo),
+        valorCusto: parseFloat(formData.valorCusto),
+        valorVenda: parseFloat(formData.valorVenda)
+      };
+      setProdutos([...produtos, newProduto]);
+    }
+    
+    handleCloseModal();
+  };
+
+  const handleDelete = (id) => {
+    if (confirm('Tem certeza que deseja excluir este produto?')) {
+      setProdutos(produtos.filter(p => p.id !== id));
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const filteredProdutos = produtos.filter(produto => {
     const matchSearch = produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        produto.marca.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -105,7 +211,7 @@ const Produtos = () => {
           <p className="text-gray-600 mt-1">Gerencie seu estoque de produtos</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => handleOpenModal()}
           className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
         >
           <Plus size={20} />
@@ -276,10 +382,16 @@ const Produtos = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleOpenModal(produto)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
                           <Edit size={18} />
                         </button>
-                        <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleDelete(produto.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
                           <Trash2 size={18} />
                         </button>
                       </div>
@@ -291,6 +403,185 @@ const Produtos = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal de Cadastro/Edição */}
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingId ? 'Editar Produto' : 'Novo Produto'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Nome do Produto *
+              </label>
+              <input
+                type="text"
+                name="nome"
+                value={formData.nome}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Ex: Shampoo Profissional"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Código *
+              </label>
+              <input
+                type="text"
+                name="codigo"
+                value={formData.codigo}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Ex: SHMP001"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Categoria *
+              </label>
+              <select
+                name="categoria"
+                value={formData.categoria}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Selecione uma categoria</option>
+                <option value="Cabelo">Cabelo</option>
+                <option value="Coloração">Coloração</option>
+                <option value="Unhas">Unhas</option>
+                <option value="Tratamento">Tratamento</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Marca *
+              </label>
+              <input
+                type="text"
+                name="marca"
+                value={formData.marca}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Ex: L'Oréal"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estoque Atual *
+              </label>
+              <input
+                type="number"
+                name="estoque"
+                value={formData.estoque}
+                onChange={handleChange}
+                required
+                min="0"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="0"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Estoque Mínimo *
+              </label>
+              <input
+                type="number"
+                name="estoqueMinimo"
+                value={formData.estoqueMinimo}
+                onChange={handleChange}
+                required
+                min="0"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="0"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valor de Custo (R$) *
+              </label>
+              <input
+                type="number"
+                name="valorCusto"
+                value={formData.valorCusto}
+                onChange={handleChange}
+                required
+                step="0.01"
+                min="0"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Valor de Venda (R$) *
+              </label>
+              <input
+                type="number"
+                name="valorVenda"
+                value={formData.valorVenda}
+                onChange={handleChange}
+                required
+                step="0.01"
+                min="0"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Fornecedor *
+            </label>
+            <input
+              type="text"
+              name="fornecedor"
+              value={formData.fornecedor}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Ex: Distribuidora Beauty"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+            >
+              {editingId ? 'Salvar Alterações' : 'Cadastrar Produto'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

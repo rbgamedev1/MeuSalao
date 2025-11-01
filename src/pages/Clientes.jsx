@@ -1,11 +1,21 @@
 import { useState } from 'react';
 import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye } from 'lucide-react';
+import Modal from '../components/Modal';
 
 const Clientes = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
-  const [clientes] = useState([
+  const [formData, setFormData] = useState({
+    nome: '',
+    telefone: '',
+    email: '',
+    dataNascimento: '',
+    status: 'ativo'
+  });
+
+  const [clientes, setClientes] = useState([
     {
       id: 1,
       nome: 'Maria Silva',
@@ -52,6 +62,81 @@ const Clientes = () => {
     }
   ]);
 
+  const handleOpenModal = (cliente = null) => {
+    if (cliente) {
+      setEditingId(cliente.id);
+      setFormData({
+        nome: cliente.nome,
+        telefone: cliente.telefone,
+        email: cliente.email,
+        dataNascimento: cliente.dataNascimento,
+        status: cliente.status
+      });
+    } else {
+      setEditingId(null);
+      setFormData({
+        nome: '',
+        telefone: '',
+        email: '',
+        dataNascimento: '',
+        status: 'ativo'
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingId(null);
+    setFormData({
+      nome: '',
+      telefone: '',
+      email: '',
+      dataNascimento: '',
+      status: 'ativo'
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (editingId) {
+      setClientes(clientes.map(c => 
+        c.id === editingId 
+          ? { 
+              ...c, 
+              ...formData
+            } 
+          : c
+      ));
+    } else {
+      const newCliente = {
+        ...formData,
+        id: Math.max(...clientes.map(c => c.id), 0) + 1,
+        ultimaVisita: new Date().toLocaleDateString('pt-BR'),
+        totalGasto: 'R$ 0,00',
+        visitas: 0
+      };
+      setClientes([...clientes, newCliente]);
+    }
+    
+    handleCloseModal();
+  };
+
+  const handleDelete = (id) => {
+    if (confirm('Tem certeza que deseja excluir este cliente?')) {
+      setClientes(clientes.filter(c => c.id !== id));
+    }
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   const filteredClientes = clientes.filter(cliente =>
     cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cliente.telefone.includes(searchTerm) ||
@@ -67,7 +152,7 @@ const Clientes = () => {
           <p className="text-gray-600 mt-1">Gerencie seus clientes</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => handleOpenModal()}
           className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
         >
           <Plus size={20} />
@@ -231,10 +316,16 @@ const Clientes = () => {
                       <button className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
                         <Eye size={18} />
                       </button>
-                      <button className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleOpenModal(cliente)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      >
                         <Edit size={18} />
                       </button>
-                      <button className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <button 
+                        onClick={() => handleDelete(cliente.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      >
                         <Trash2 size={18} />
                       </button>
                     </div>
@@ -245,6 +336,110 @@ const Clientes = () => {
           </table>
         </div>
       </div>
+
+      {/* Modal de Cadastro/Edição */}
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingId ? 'Editar Cliente' : 'Novo Cliente'}
+        size="md"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nome Completo *
+            </label>
+            <input
+              type="text"
+              name="nome"
+              value={formData.nome}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Digite o nome completo"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Telefone *
+              </label>
+              <input
+                type="tel"
+                name="telefone"
+                value={formData.telefone}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="(11) 98765-4321"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Data de Nascimento *
+              </label>
+              <input
+                type="text"
+                name="dataNascimento"
+                value={formData.dataNascimento}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="DD/MM/AAAA"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Email *
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="email@exemplo.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status *
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+            >
+              {editingId ? 'Salvar Alterações' : 'Cadastrar Cliente'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };
