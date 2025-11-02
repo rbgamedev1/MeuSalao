@@ -7,6 +7,7 @@ import {
   Package, 
   DollarSign, 
   BarChart3,
+  Settings,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -22,6 +23,7 @@ const Sidebar = ({ expanded, setExpanded }) => {
     { icon: Package, label: 'Produtos', path: '/produtos' },
     { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
     { icon: BarChart3, label: 'Relatórios', path: '/relatorios' },
+    { icon: Settings, label: 'Configurações', path: '/configuracoes' },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -83,8 +85,8 @@ const Sidebar = ({ expanded, setExpanded }) => {
           </div>
           {expanded && (
             <div className="ml-3">
-              <p className="text-sm font-medium">Bruna Silva</p>
-              <p className="text-xs text-white/70">Administrador</p>
+              <p className="text-sm font-medium">Bruna Vidal</p>
+              <p className="text-xs text-white/70">Administradora</p>
             </div>
           )}
         </div>

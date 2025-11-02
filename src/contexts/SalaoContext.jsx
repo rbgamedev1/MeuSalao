@@ -1,29 +1,51 @@
-import { createContext, useState } from 'react';
+import { createContext, useState, useEffect } from 'react';
 
 export const SalaoContext = createContext();
 
+// Função auxiliar para carregar dados do localStorage
+const loadFromStorage = (key, defaultValue) => {
+  try {
+    const saved = localStorage.getItem(key);
+    return saved ? JSON.parse(saved) : defaultValue;
+  } catch (error) {
+    console.error(`Erro ao carregar ${key}:`, error);
+    return defaultValue;
+  }
+};
+
+// Função auxiliar para salvar dados no localStorage
+const saveToStorage = (key, value) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (error) {
+    console.error(`Erro ao salvar ${key}:`, error);
+  }
+};
+
 export const SalaoProvider = ({ children }) => {
-  const [saloes] = useState([
+  // Dados iniciais padrão
+  const defaultSaloes = [
     {
       id: 1,
       nome: 'Salão Beleza Total',
       endereco: 'Rua das Flores, 123 - Centro',
       telefone: '(11) 98765-4321',
-      email: 'contato@belezatotal.com.br'
+      email: 'contato@belezatotal.com.br',
+      logo: null,
+      plano: 'profissional'
     },
     {
       id: 2,
       nome: 'Estilo & Charme',
       endereco: 'Av. Principal, 456 - Jardins',
       telefone: '(11) 91234-5678',
-      email: 'contato@estilocharme.com.br'
+      email: 'contato@estilocharme.com.br',
+      logo: null,
+      plano: 'plus'
     }
-  ]);
+  ];
 
-  const [salaoAtual, setSalaoAtual] = useState(saloes[0]);
-
-  // Clientes
-  const [clientes, setClientes] = useState([
+  const defaultClientes = [
     {
       id: 1,
       nome: 'Maria Silva',
@@ -57,10 +79,9 @@ export const SalaoProvider = ({ children }) => {
       visitas: 24,
       status: 'ativo'
     }
-  ]);
+  ];
 
-  // Profissionais
-  const [profissionais, setProfissionais] = useState([
+  const defaultProfissionais = [
     { 
       id: 1, 
       nome: 'Ana Costa', 
@@ -89,19 +110,11 @@ export const SalaoProvider = ({ children }) => {
       telefone: '(11) 94444-4444',
       email: 'diego@salao.com'
     }
-  ]);
+  ];
 
-  // Categorias de Serviços
-  const [categorias, setCategorias] = useState([
-    'Cabelo',
-    'Coloração',
-    'Unhas',
-    'Tratamento',
-    'Barbearia'
-  ]);
+  const defaultCategorias = ['Cabelo', 'Coloração', 'Unhas', 'Tratamento', 'Barbearia'];
 
-  // Serviços
-  const [servicos, setServicos] = useState([
+  const defaultServicos = [
     {
       id: 1,
       nome: 'Corte Feminino',
@@ -179,10 +192,9 @@ export const SalaoProvider = ({ children }) => {
       profissionaisHabilitados: [2],
       ativo: true
     }
-  ]);
+  ];
 
-  // Fornecedores
-  const [fornecedores, setFornecedores] = useState([
+  const defaultFornecedores = [
     { 
       id: 1, 
       nome: 'Distribuidora Beauty', 
@@ -207,13 +219,84 @@ export const SalaoProvider = ({ children }) => {
       cnpj: '11.222.333/0001-44',
       endereco: 'Rua das Indústrias, 300'
     }
-  ]);
+  ];
+
+  // Estados com carregamento do localStorage
+  const [saloes, setSaloes] = useState(() => loadFromStorage('saloes', defaultSaloes));
+  const [salaoAtual, setSalaoAtual] = useState(() => {
+    const saved = loadFromStorage('salaoAtual', null);
+    return saved || saloes[0];
+  });
+  const [clientes, setClientes] = useState(() => loadFromStorage('clientes', defaultClientes));
+  const [profissionais, setProfissionais] = useState(() => loadFromStorage('profissionais', defaultProfissionais));
+  const [categorias, setCategorias] = useState(() => loadFromStorage('categorias', defaultCategorias));
+  const [servicos, setServicos] = useState(() => loadFromStorage('servicos', defaultServicos));
+  const [fornecedores, setFornecedores] = useState(() => loadFromStorage('fornecedores', defaultFornecedores));
+
+  // Salvar no localStorage sempre que os dados mudarem
+  useEffect(() => {
+    saveToStorage('saloes', saloes);
+  }, [saloes]);
+
+  useEffect(() => {
+    saveToStorage('salaoAtual', salaoAtual);
+  }, [salaoAtual]);
+
+  useEffect(() => {
+    saveToStorage('clientes', clientes);
+  }, [clientes]);
+
+  useEffect(() => {
+    saveToStorage('profissionais', profissionais);
+  }, [profissionais]);
+
+  useEffect(() => {
+    saveToStorage('categorias', categorias);
+  }, [categorias]);
+
+  useEffect(() => {
+    saveToStorage('servicos', servicos);
+  }, [servicos]);
+
+  useEffect(() => {
+    saveToStorage('fornecedores', fornecedores);
+  }, [fornecedores]);
+
+  // Função para atualizar informações do salão
+  const atualizarSalao = (salaoId, dadosAtualizados) => {
+    // Atualizar na lista de salões
+    const saloesAtualizados = saloes.map(s => 
+      s.id === salaoId ? { ...s, ...dadosAtualizados } : s
+    );
+    setSaloes(saloesAtualizados);
+    
+    // Atualizar salão atual se for o que está sendo editado
+    if (salaoAtual.id === salaoId) {
+      setSalaoAtual({ ...salaoAtual, ...dadosAtualizados });
+    }
+  };
+
+  // Função para resetar todos os dados (útil para desenvolvimento/testes)
+  const resetarDados = () => {
+    if (confirm('Tem certeza que deseja resetar todos os dados? Esta ação não pode ser desfeita!')) {
+      localStorage.clear();
+      setSaloes(defaultSaloes);
+      setSalaoAtual(defaultSaloes[0]);
+      setClientes(defaultClientes);
+      setProfissionais(defaultProfissionais);
+      setCategorias(defaultCategorias);
+      setServicos(defaultServicos);
+      setFornecedores(defaultFornecedores);
+      alert('Dados resetados com sucesso!');
+    }
+  };
 
   return (
     <SalaoContext.Provider value={{
       saloes,
       salaoAtual,
       setSalaoAtual,
+      atualizarSalao,
       clientes,
       setClientes,
       profissionais,
@@ -223,7 +306,8 @@ export const SalaoProvider = ({ children }) => {
       servicos,
       setServicos,
       fornecedores,
-      setFornecedores
+      setFornecedores,
+      resetarDados
     }}>
       {children}
     </SalaoContext.Provider>

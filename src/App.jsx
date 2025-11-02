@@ -9,6 +9,7 @@ import Servicos from './pages/Servicos';
 import Produtos from './pages/Produtos';
 import Financeiro from './pages/Financeiro';
 import Relatorios from './pages/Relatorios';
+import Configuracoes from './pages/Configuracoes';
 import { SalaoProvider } from './contexts/SalaoContext';
 
 function App() {
@@ -36,6 +37,7 @@ function App() {
                 <Route path="/produtos" element={<Produtos />} />
                 <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/relatorios" element={<Relatorios />} />
+                <Route path="/configuracoes" element={<Configuracoes />} />
               </Routes>
             </main>
           </div>
