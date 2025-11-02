@@ -230,6 +230,50 @@ export const SalaoProvider = ({ children }) => {
     }
   ];
 
+  const defaultProdutos = [
+    {
+      id: 1,
+      nome: 'Shampoo Profissional 1L',
+      categoria: 'Cabelo',
+      marca: 'L\'Oréal',
+      estoque: 15,
+      estoqueMinimo: 10,
+      valorCusto: 45.00,
+      valorVenda: 89.90,
+      fornecedorId: 1,
+      codigo: 'SHMP001',
+      salaoId: 1
+    }
+  ];
+
+  const defaultAgendamentos = [
+    {
+      id: 1,
+      clienteId: 1,
+      servicoId: 1,
+      profissionalId: 1,
+      data: '01/11/2025',
+      horario: '14:00',
+      status: 'confirmado',
+      salaoId: 1
+    }
+  ];
+
+  const defaultTransacoes = [
+    {
+      id: 1,
+      tipo: 'receita',
+      descricao: 'Serviço - Corte + Escova',
+      categoria: 'Serviços',
+      valor: 120.00,
+      formaPagamento: 'Cartão de Crédito',
+      data: '2025-11-01',
+      cliente: 'Maria Silva',
+      status: 'confirmado',
+      salaoId: 1
+    }
+  ];
+
   // Estados com carregamento do localStorage
   const [saloes, setSaloes] = useState(() => loadFromStorage('saloes', defaultSaloes));
   const [salaoAtual, setSalaoAtual] = useState(() => {
@@ -241,6 +285,9 @@ export const SalaoProvider = ({ children }) => {
   const [categorias, setCategorias] = useState(() => loadFromStorage('categorias', defaultCategorias));
   const [servicos, setServicos] = useState(() => loadFromStorage('servicos', defaultServicos));
   const [fornecedores, setFornecedores] = useState(() => loadFromStorage('fornecedores', defaultFornecedores));
+  const [produtos, setProdutos] = useState(() => loadFromStorage('produtos', defaultProdutos));
+  const [agendamentos, setAgendamentos] = useState(() => loadFromStorage('agendamentos', defaultAgendamentos));
+  const [transacoes, setTransacoes] = useState(() => loadFromStorage('transacoes', defaultTransacoes));
 
   // Salvar no localStorage sempre que os dados mudarem
   useEffect(() => {
@@ -270,6 +317,18 @@ export const SalaoProvider = ({ children }) => {
   useEffect(() => {
     saveToStorage('fornecedores', fornecedores);
   }, [fornecedores]);
+
+  useEffect(() => {
+    saveToStorage('produtos', produtos);
+  }, [produtos]);
+
+  useEffect(() => {
+    saveToStorage('agendamentos', agendamentos);
+  }, [agendamentos]);
+
+  useEffect(() => {
+    saveToStorage('transacoes', transacoes);
+  }, [transacoes]);
 
   // Função para adicionar novo salão
   const adicionarSalao = (dadosSalao) => {
@@ -305,6 +364,9 @@ export const SalaoProvider = ({ children }) => {
     setProfissionais(profissionais.filter(p => p.salaoId !== salaoId));
     setServicos(servicos.filter(s => s.salaoId !== salaoId));
     setFornecedores(fornecedores.filter(f => f.salaoId !== salaoId));
+    setProdutos(produtos.filter(p => p.salaoId !== salaoId));
+    setAgendamentos(agendamentos.filter(a => a.salaoId !== salaoId));
+    setTransacoes(transacoes.filter(t => t.salaoId !== salaoId));
     
     const novosSaloes = saloes.filter(s => s.id !== salaoId);
     setSaloes(novosSaloes);
@@ -325,6 +387,9 @@ export const SalaoProvider = ({ children }) => {
       setProfissionais(profissionais.filter(p => p.salaoId !== salaoAtual.id));
       setServicos(servicos.filter(s => s.salaoId !== salaoAtual.id));
       setFornecedores(fornecedores.filter(f => f.salaoId !== salaoAtual.id));
+      setProdutos(produtos.filter(p => p.salaoId !== salaoAtual.id));
+      setAgendamentos(agendamentos.filter(a => a.salaoId !== salaoAtual.id));
+      setTransacoes(transacoes.filter(t => t.salaoId !== salaoAtual.id));
       
       alert('Dados do salão resetados com sucesso!');
     }
@@ -341,6 +406,9 @@ export const SalaoProvider = ({ children }) => {
       setCategorias(defaultCategorias);
       setServicos(defaultServicos);
       setFornecedores(defaultFornecedores);
+      setProdutos(defaultProdutos);
+      setAgendamentos(defaultAgendamentos);
+      setTransacoes(defaultTransacoes);
       alert('Sistema resetado com sucesso!');
     }
   };
@@ -350,6 +418,9 @@ export const SalaoProvider = ({ children }) => {
   const getProfissionaisPorSalao = () => profissionais.filter(p => p.salaoId === salaoAtual.id);
   const getServicosPorSalao = () => servicos.filter(s => s.salaoId === salaoAtual.id);
   const getFornecedoresPorSalao = () => fornecedores.filter(f => f.salaoId === salaoAtual.id);
+  const getProdutosPorSalao = () => produtos.filter(p => p.salaoId === salaoAtual.id);
+  const getAgendamentosPorSalao = () => agendamentos.filter(a => a.salaoId === salaoAtual.id);
+  const getTransacoesPorSalao = () => transacoes.filter(t => t.salaoId === salaoAtual.id);
 
   return (
     <SalaoContext.Provider value={{
@@ -369,12 +440,21 @@ export const SalaoProvider = ({ children }) => {
       setServicos,
       fornecedores,
       setFornecedores,
+      produtos,
+      setProdutos,
+      agendamentos,
+      setAgendamentos,
+      transacoes,
+      setTransacoes,
       resetarDadosSalao,
       resetarTodosSistema,
       getClientesPorSalao,
       getProfissionaisPorSalao,
       getServicosPorSalao,
-      getFornecedoresPorSalao
+      getFornecedoresPorSalao,
+      getProdutosPorSalao,
+      getAgendamentosPorSalao,
+      getTransacoesPorSalao
     }}>
       {children}
     </SalaoContext.Provider>

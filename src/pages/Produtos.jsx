@@ -10,7 +10,15 @@ import ProdutoModal from '../components/produtos/ProdutoModal';
 import FornecedorModal from '../components/produtos/FornecedorModal';
 
 const Produtos = () => {
-  const { salaoAtual, fornecedores, setFornecedores, getFornecedoresPorSalao } = useContext(SalaoContext);
+  const { 
+    salaoAtual, 
+    fornecedores, 
+    setFornecedores, 
+    produtos,
+    setProdutos,
+    getFornecedoresPorSalao,
+    getProdutosPorSalao 
+  } = useContext(SalaoContext);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -41,76 +49,8 @@ const Produtos = () => {
     salaoId: salaoAtual.id
   });
 
-  const [produtos, setProdutos] = useState([
-    {
-      id: 1,
-      nome: 'Shampoo Profissional 1L',
-      categoria: 'Cabelo',
-      marca: 'L\'Oréal',
-      estoque: 15,
-      estoqueMinimo: 10,
-      valorCusto: 45.00,
-      valorVenda: 89.90,
-      fornecedorId: 1,
-      codigo: 'SHMP001',
-      salaoId: 1
-    },
-    {
-      id: 2,
-      nome: 'Condicionador Hidratante 1L',
-      categoria: 'Cabelo',
-      marca: 'L\'Oréal',
-      estoque: 8,
-      estoqueMinimo: 10,
-      valorCusto: 48.00,
-      valorVenda: 94.90,
-      fornecedorId: 1,
-      codigo: 'COND001',
-      salaoId: 1
-    },
-    {
-      id: 3,
-      nome: 'Coloração Permanente',
-      categoria: 'Coloração',
-      marca: 'Wella',
-      estoque: 25,
-      estoqueMinimo: 15,
-      valorCusto: 28.00,
-      valorVenda: 55.90,
-      fornecedorId: 2,
-      codigo: 'COLOR001',
-      salaoId: 1
-    },
-    {
-      id: 4,
-      nome: 'Esmalte Premium',
-      categoria: 'Unhas',
-      marca: 'Risqué',
-      estoque: 45,
-      estoqueMinimo: 20,
-      valorCusto: 4.50,
-      valorVenda: 12.90,
-      fornecedorId: 3,
-      codigo: 'ESM001',
-      salaoId: 1
-    },
-    {
-      id: 5,
-      nome: 'Máscara de Tratamento 500g',
-      categoria: 'Tratamento',
-      marca: 'Kerastase',
-      estoque: 5,
-      estoqueMinimo: 8,
-      valorCusto: 85.00,
-      valorVenda: 165.00,
-      fornecedorId: 1,
-      codigo: 'MASK001',
-      salaoId: 1
-    }
-  ]);
-
   const categorias = ['Todos', 'Cabelo', 'Coloração', 'Unhas', 'Tratamento'];
-  const produtosSalao = produtos.filter(p => p.salaoId === salaoAtual.id);
+  const produtosSalao = getProdutosPorSalao();
   const fornecedoresSalao = getFornecedoresPorSalao();
 
   useEffect(() => {

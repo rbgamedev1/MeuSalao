@@ -6,7 +6,14 @@ import Modal from '../components/Modal';
 import { SalaoContext } from '../contexts/SalaoContext';
 
 const Financeiro = () => {
-  const { salaoAtual, getClientesPorSalao, getFornecedoresPorSalao } = useContext(SalaoContext);
+  const { 
+    salaoAtual, 
+    transacoes,
+    setTransacoes,
+    getClientesPorSalao, 
+    getFornecedoresPorSalao,
+    getTransacoesPorSalao
+  } = useContext(SalaoContext);
   
   const [periodo, setPeriodo] = useState('mes');
   const [tipoTransacao, setTipoTransacao] = useState('todas');
@@ -29,85 +36,7 @@ const Financeiro = () => {
   // Obter dados filtrados por salão
   const clientesSalao = getClientesPorSalao();
   const fornecedoresSalao = getFornecedoresPorSalao();
-
-  // Estado inicial das transações com salaoId
-  const [transacoes, setTransacoes] = useState([
-    {
-      id: 1,
-      tipo: 'receita',
-      descricao: 'Serviço - Corte + Escova',
-      categoria: 'Serviços',
-      valor: 120.00,
-      formaPagamento: 'Cartão de Crédito',
-      data: '2025-11-01',
-      cliente: 'Maria Silva',
-      status: 'confirmado',
-      salaoId: 1
-    },
-    {
-      id: 2,
-      tipo: 'receita',
-      descricao: 'Produto - Shampoo',
-      categoria: 'Produtos',
-      valor: 89.90,
-      formaPagamento: 'Pix',
-      data: '2025-11-01',
-      cliente: 'João Santos',
-      status: 'confirmado',
-      salaoId: 1
-    },
-    {
-      id: 3,
-      tipo: 'despesa',
-      descricao: 'Compra de Produtos',
-      categoria: 'Estoque',
-      valor: 450.00,
-      formaPagamento: 'Boleto',
-      data: '2025-10-30',
-      fornecedor: 'Distribuidora Beauty',
-      status: 'pago',
-      salaoId: 1
-    },
-    {
-      id: 4,
-      tipo: 'despesa',
-      descricao: 'Aluguel do Salão',
-      categoria: 'Fixas',
-      valor: 2500.00,
-      formaPagamento: 'Transferência',
-      data: '2025-10-05',
-      fornecedor: 'Imobiliária Central',
-      status: 'pago',
-      salaoId: 1
-    },
-    {
-      id: 5,
-      tipo: 'receita',
-      descricao: 'Serviço - Coloração',
-      categoria: 'Serviços',
-      valor: 250.00,
-      formaPagamento: 'Dinheiro',
-      data: '2025-10-31',
-      cliente: 'Paula Souza',
-      status: 'confirmado',
-      salaoId: 1
-    },
-    {
-      id: 6,
-      tipo: 'despesa',
-      descricao: 'Energia Elétrica',
-      categoria: 'Fixas',
-      valor: 380.00,
-      formaPagamento: 'Débito Automático',
-      data: '2025-10-10',
-      fornecedor: 'Companhia de Energia',
-      status: 'pago',
-      salaoId: 1
-    }
-  ]);
-
-  // Filtrar transações por salão
-  const transacoesSalao = transacoes.filter(t => t.salaoId === salaoAtual.id);
+  const transacoesSalao = getTransacoesPorSalao();
 
   // Atualizar salaoId quando mudar de salão
   useEffect(() => {
