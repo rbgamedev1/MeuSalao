@@ -1,9 +1,13 @@
-import { useState } from 'react';
+// src/pages/Financeiro.jsx
+import { useState, useContext, useEffect } from 'react';
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard, Edit, Trash2 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Modal from '../components/Modal';
+import { SalaoContext } from '../contexts/SalaoContext';
 
 const Financeiro = () => {
+  const { salaoAtual, getClientesPorSalao, getFornecedoresPorSalao } = useContext(SalaoContext);
+  
   const [periodo, setPeriodo] = useState('mes');
   const [tipoTransacao, setTipoTransacao] = useState('todas');
   const [showModal, setShowModal] = useState(false);
@@ -18,9 +22,15 @@ const Financeiro = () => {
     data: '',
     cliente: '',
     fornecedor: '',
-    status: 'confirmado'
+    status: 'confirmado',
+    salaoId: salaoAtual.id
   });
 
+  // Obter dados filtrados por salão
+  const clientesSalao = getClientesPorSalao();
+  const fornecedoresSalao = getFornecedoresPorSalao();
+
+  // Estado inicial das transações com salaoId
   const [transacoes, setTransacoes] = useState([
     {
       id: 1,
@@ -31,7 +41,8 @@ const Financeiro = () => {
       formaPagamento: 'Cartão de Crédito',
       data: '2025-11-01',
       cliente: 'Maria Silva',
-      status: 'confirmado'
+      status: 'confirmado',
+      salaoId: 1
     },
     {
       id: 2,
@@ -42,7 +53,8 @@ const Financeiro = () => {
       formaPagamento: 'Pix',
       data: '2025-11-01',
       cliente: 'João Santos',
-      status: 'confirmado'
+      status: 'confirmado',
+      salaoId: 1
     },
     {
       id: 3,
@@ -53,7 +65,8 @@ const Financeiro = () => {
       formaPagamento: 'Boleto',
       data: '2025-10-30',
       fornecedor: 'Distribuidora Beauty',
-      status: 'pago'
+      status: 'pago',
+      salaoId: 1
     },
     {
       id: 4,
@@ -64,7 +77,8 @@ const Financeiro = () => {
       formaPagamento: 'Transferência',
       data: '2025-10-05',
       fornecedor: 'Imobiliária Central',
-      status: 'pago'
+      status: 'pago',
+      salaoId: 1
     },
     {
       id: 5,
@@ -75,7 +89,8 @@ const Financeiro = () => {
       formaPagamento: 'Dinheiro',
       data: '2025-10-31',
       cliente: 'Paula Souza',
-      status: 'confirmado'
+      status: 'confirmado',
+      salaoId: 1
     },
     {
       id: 6,
@@ -86,9 +101,21 @@ const Financeiro = () => {
       formaPagamento: 'Débito Automático',
       data: '2025-10-10',
       fornecedor: 'Companhia de Energia',
-      status: 'pago'
+      status: 'pago',
+      salaoId: 1
     }
   ]);
+
+  // Filtrar transações por salão
+  const transacoesSalao = transacoes.filter(t => t.salaoId === salaoAtual.id);
+
+  // Atualizar salaoId quando mudar de salão
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      salaoId: salaoAtual.id
+    }));
+  }, [salaoAtual.id]);
 
   const fluxoCaixaData = [
     { mes: 'Jun', receita: 18500, despesa: 8200 },
@@ -118,7 +145,8 @@ const Financeiro = () => {
         data: transacao.data,
         cliente: transacao.cliente || '',
         fornecedor: transacao.fornecedor || '',
-        status: transacao.status
+        status: transacao.status,
+        salaoId: transacao.salaoId
       });
     } else {
       setEditingId(null);
@@ -131,7 +159,8 @@ const Financeiro = () => {
         data: '',
         cliente: '',
         fornecedor: '',
-        status: 'confirmado'
+        status: 'confirmado',
+        salaoId: salaoAtual.id
       });
     }
     setShowModal(true);
@@ -149,7 +178,8 @@ const Financeiro = () => {
       data: '',
       cliente: '',
       fornecedor: '',
-      status: 'confirmado'
+      status: 'confirmado',
+      salaoId: salaoAtual.id
     });
   };
 
@@ -192,17 +222,17 @@ const Financeiro = () => {
     }));
   };
 
-  const totalReceitas = transacoes
+  const totalReceitas = transacoesSalao
     .filter(t => t.tipo === 'receita')
     .reduce((acc, t) => acc + t.valor, 0);
 
-  const totalDespesas = transacoes
+  const totalDespesas = transacoesSalao
     .filter(t => t.tipo === 'despesa')
     .reduce((acc, t) => acc + t.valor, 0);
 
   const saldo = totalReceitas - totalDespesas;
 
-  const filteredTransacoes = transacoes.filter(t => {
+  const filteredTransacoes = transacoesSalao.filter(t => {
     if (tipoTransacao === 'todas') return true;
     return t.tipo === tipoTransacao;
   });
@@ -213,7 +243,7 @@ const Financeiro = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Financeiro</h1>
-          <p className="text-gray-600 mt-1">Controle suas finanças</p>
+          <p className="text-gray-600 mt-1">Controle suas finanças - {salaoAtual.nome}</p>
         </div>
         <div className="flex items-center space-x-3">
           <select 
@@ -376,83 +406,91 @@ const Financeiro = () => {
 
       {/* Lista de Transações */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Descrição
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Categoria
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Forma Pagamento
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Valor
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {filteredTransacoes.map((transacao) => (
-                <tr key={transacao.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-medium text-gray-800">{transacao.descricao}</p>
-                      <p className="text-sm text-gray-500">
-                        {transacao.cliente || transacao.fornecedor}
-                      </p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                      {transacao.categoria}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <Calendar size={16} className="text-gray-400" />
-                      <span className="text-gray-700">{transacao.data}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-700">
-                    {transacao.formaPagamento}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`font-bold ${
-                      transacao.tipo === 'receita' ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {transacao.tipo === 'receita' ? '+' : '-'} R$ {transacao.valor.toFixed(2)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
-                      <button 
-                        onClick={() => handleOpenModal(transacao)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button 
-                        onClick={() => handleDelete(transacao.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                      >
-                        <Trash2 size={18} />
-                      </button>
-                    </div>
-                  </td>
+        {filteredTransacoes.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Descrição
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Categoria
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Data
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Forma Pagamento
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Valor
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Ações
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filteredTransacoes.map((transacao) => (
+                  <tr key={transacao.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-medium text-gray-800">{transacao.descricao}</p>
+                        <p className="text-sm text-gray-500">
+                          {transacao.cliente || transacao.fornecedor}
+                        </p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                        {transacao.categoria}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <Calendar size={16} className="text-gray-400" />
+                        <span className="text-gray-700">{transacao.data}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-700">
+                      {transacao.formaPagamento}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`font-bold ${
+                        transacao.tipo === 'receita' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transacao.tipo === 'receita' ? '+' : '-'} R$ {transacao.valor.toFixed(2)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center space-x-2">
+                        <button 
+                          onClick={() => handleOpenModal(transacao)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        >
+                          <Edit size={18} />
+                        </button>
+                        <button 
+                          onClick={() => handleDelete(transacao.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
+            <p>Nenhuma transação encontrada para este salão.</p>
+            <p className="text-sm mt-2">Clique em "Nova Transação" para adicionar a primeira transação.</p>
+          </div>
+        )}
       </div>
 
       {/* Modal de Cadastro/Edição */}
@@ -577,14 +615,19 @@ const Financeiro = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Cliente
               </label>
-              <input
-                type="text"
+              <select
                 name="cliente"
                 value={formData.cliente}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Nome do cliente"
-              />
+              >
+                <option value="">Selecione um cliente (opcional)</option>
+                {clientesSalao.map(cliente => (
+                  <option key={cliente.id} value={cliente.nome}>
+                    {cliente.nome}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -593,14 +636,19 @@ const Financeiro = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Fornecedor
               </label>
-              <input
-                type="text"
+              <select
                 name="fornecedor"
                 value={formData.fornecedor}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Nome do fornecedor"
-              />
+              >
+                <option value="">Selecione um fornecedor (opcional)</option>
+                {fornecedoresSalao.map(fornecedor => (
+                  <option key={fornecedor.id} value={fornecedor.nome}>
+                    {fornecedor.nome}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 

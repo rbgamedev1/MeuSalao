@@ -1,9 +1,24 @@
+// src/pages/Dashboard.jsx
+import { useContext, useMemo } from 'react';
 import { Calendar, Users, DollarSign, TrendingUp, Clock } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { SalaoContext } from '../contexts/SalaoContext';
 
 const Dashboard = () => {
-  // Dados mockados para exemplo
-  const stats = [
+  const { 
+    salaoAtual,
+    getClientesPorSalao,
+    getProfissionaisPorSalao,
+    getServicosPorSalao
+  } = useContext(SalaoContext);
+
+  // Obter dados filtrados por salão
+  const clientesSalao = getClientesPorSalao();
+  const profissionaisSalao = getProfissionaisPorSalao();
+  const servicosSalao = getServicosPorSalao();
+
+  // Dados mockados para exemplo - em produção viriam de agendamentos e transações filtrados por salaoId
+  const stats = useMemo(() => [
     {
       icon: Calendar,
       label: 'Agendamentos Hoje',
@@ -14,8 +29,8 @@ const Dashboard = () => {
     {
       icon: Users,
       label: 'Clientes Ativos',
-      value: '248',
-      change: '+15 este mês',
+      value: clientesSalao.filter(c => c.status === 'ativo').length.toString(),
+      change: `${clientesSalao.length} total`,
       color: 'bg-green-500'
     },
     {
@@ -32,7 +47,7 @@ const Dashboard = () => {
       change: '+12% vs mês anterior',
       color: 'bg-pink-500'
     }
-  ];
+  ], [clientesSalao]);
 
   const revenueData = [
     { name: 'Seg', valor: 850 },
@@ -44,13 +59,21 @@ const Dashboard = () => {
     { name: 'Dom', valor: 900 },
   ];
 
-  const servicesData = [
-    { name: 'Corte', qtd: 45 },
-    { name: 'Coloração', qtd: 28 },
-    { name: 'Escova', qtd: 35 },
-    { name: 'Hidratação', qtd: 22 },
-    { name: 'Manicure', qtd: 38 },
-  ];
+  const servicesData = useMemo(() => {
+    // Agrupar serviços por categoria
+    const categorias = {};
+    servicosSalao.forEach(servico => {
+      if (!categorias[servico.categoria]) {
+        categorias[servico.categoria] = 0;
+      }
+      categorias[servico.categoria]++;
+    });
+
+    return Object.entries(categorias).map(([name, qtd]) => ({
+      name,
+      qtd
+    })).slice(0, 5);
+  }, [servicosSalao]);
 
   const proximosAgendamentos = [
     { id: 1, cliente: 'Maria Silva', servico: 'Corte + Escova', horario: '14:00', profissional: 'Ana Costa' },
@@ -64,7 +87,7 @@ const Dashboard = () => {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-800">Dashboard</h1>
-        <p className="text-gray-600 mt-1">Visão geral do seu salão</p>
+        <p className="text-gray-600 mt-1">Visão geral do {salaoAtual.nome}</p>
       </div>
 
       {/* Stats Cards */}
@@ -88,6 +111,25 @@ const Dashboard = () => {
         })}
       </div>
 
+      {/* Resumo do Salão */}
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-6 text-white">
+        <h3 className="text-xl font-semibold mb-4">Resumo do Salão</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <p className="text-purple-100 text-sm">Profissionais</p>
+            <p className="text-3xl font-bold mt-1">{profissionaisSalao.length}</p>
+          </div>
+          <div>
+            <p className="text-purple-100 text-sm">Serviços Cadastrados</p>
+            <p className="text-3xl font-bold mt-1">{servicosSalao.length}</p>
+          </div>
+          <div>
+            <p className="text-purple-100 text-sm">Clientes Cadastrados</p>
+            <p className="text-3xl font-bold mt-1">{clientesSalao.length}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Faturamento da Semana */}
@@ -104,18 +146,27 @@ const Dashboard = () => {
           </ResponsiveContainer>
         </div>
 
-        {/* Serviços Mais Realizados */}
+        {/* Serviços por Categoria */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Serviços Mais Realizados</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={servicesData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="qtd" fill="#EC4899" />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Serviços por Categoria</h3>
+          {servicesData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={servicesData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="qtd" fill="#EC4899" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <p>Nenhum serviço cadastrado</p>
+                <p className="text-sm mt-2">Cadastre serviços para visualizar estatísticas</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -142,6 +193,23 @@ const Dashboard = () => {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Informações do Plano */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start space-x-3">
+          <div className="bg-blue-100 p-2 rounded-lg">
+            <TrendingUp className="text-blue-600" size={20} />
+          </div>
+          <div>
+            <p className="font-semibold text-blue-900">Plano Atual: {salaoAtual.plano}</p>
+            <p className="text-sm text-blue-700 mt-1">
+              {salaoAtual.plano === 'inicial' 
+                ? 'Plano gratuito com recursos básicos. Faça upgrade para desbloquear mais funcionalidades!'
+                : 'Aproveite todos os recursos do seu plano para maximizar seus resultados!'}
+            </p>
+          </div>
         </div>
       </div>
     </div>
