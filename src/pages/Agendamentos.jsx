@@ -1,3 +1,4 @@
+// src/pages/Agendamentos.jsx
 import { useState, useContext, useEffect } from 'react';
 import { Calendar, Plus, Search, Clock, User, Edit, Trash2, ChevronLeft, ChevronRight, List, CalendarDays } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -6,7 +7,16 @@ import { SalaoContext } from '../contexts/SalaoContext';
 import { dateToISO, dateFromISO, generateTimeOptions } from '../utils/masks';
 
 const Agendamentos = () => {
-  const { clientes, profissionais, servicos } = useContext(SalaoContext);
+  const { 
+    salaoAtual,
+    clientes, 
+    profissionais, 
+    servicos,
+    getClientesPorSalao,
+    getProfissionaisPorSalao,
+    getServicosPorSalao
+  } = useContext(SalaoContext);
+  
   const [viewMode, setViewMode] = useState('lista');
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -26,6 +36,7 @@ const Agendamentos = () => {
   const [servicoSelecionado, setServicoSelecionado] = useState(null);
   const [profissionaisDisponiveis, setProfissionaisDisponiveis] = useState([]);
 
+  // Estados para agendamentos - incluir salaoId
   const [agendamentos, setAgendamentos] = useState([
     {
       id: 1,
@@ -34,7 +45,8 @@ const Agendamentos = () => {
       profissionalId: 1,
       data: '01/11/2025',
       horario: '14:00',
-      status: 'confirmado'
+      status: 'confirmado',
+      salaoId: 1
     },
     {
       id: 2,
@@ -43,7 +55,8 @@ const Agendamentos = () => {
       profissionalId: 2,
       data: '01/11/2025',
       horario: '14:30',
-      status: 'pendente'
+      status: 'pendente',
+      salaoId: 1
     },
     {
       id: 3,
@@ -52,11 +65,18 @@ const Agendamentos = () => {
       profissionalId: 1,
       data: '01/11/2025',
       horario: '15:00',
-      status: 'confirmado'
+      status: 'confirmado',
+      salaoId: 1
     }
   ]);
 
   const timeOptions = generateTimeOptions();
+
+  // Obter dados do salão atual
+  const clientesSalao = getClientesPorSalao();
+  const profissionaisSalao = getProfissionaisPorSalao();
+  const servicosSalao = getServicosPorSalao();
+  const agendamentosSalao = agendamentos.filter(a => a.salaoId === salaoAtual.id);
 
   const statusColors = {
     confirmado: 'bg-green-100 text-green-800 border-green-300',
@@ -68,21 +88,21 @@ const Agendamentos = () => {
   // Atualizar informações quando cliente é selecionado
   useEffect(() => {
     if (formData.clienteId) {
-      const cliente = clientes.find(c => c.id === parseInt(formData.clienteId));
+      const cliente = clientesSalao.find(c => c.id === parseInt(formData.clienteId));
       setClienteSelecionado(cliente);
     } else {
       setClienteSelecionado(null);
     }
-  }, [formData.clienteId, clientes]);
+  }, [formData.clienteId, clientesSalao]);
 
   // Atualizar profissionais disponíveis quando serviço é selecionado
   useEffect(() => {
     if (formData.servicoId) {
-      const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
+      const servico = servicosSalao.find(s => s.id === parseInt(formData.servicoId));
       setServicoSelecionado(servico);
       
       if (servico && servico.profissionaisHabilitados) {
-        const profsDisponiveis = profissionais.filter(p => 
+        const profsDisponiveis = profissionaisSalao.filter(p => 
           servico.profissionaisHabilitados.includes(p.id)
         );
         setProfissionaisDisponiveis(profsDisponiveis);
@@ -96,7 +116,7 @@ const Agendamentos = () => {
       setServicoSelecionado(null);
       setProfissionaisDisponiveis([]);
     }
-  }, [formData.servicoId, servicos, profissionais, formData.profissionalId]);
+  }, [formData.servicoId, servicosSalao, profissionaisSalao, formData.profissionalId]);
 
   const handleOpenModal = (agendamento = null) => {
     if (agendamento) {
@@ -151,7 +171,8 @@ const Agendamentos = () => {
       profissionalId: parseInt(formData.profissionalId),
       data: formData.data,
       horario: formData.horario,
-      status: formData.status
+      status: formData.status,
+      salaoId: salaoAtual.id
     };
 
     if (editingId) {
@@ -197,7 +218,7 @@ const Agendamentos = () => {
     };
   };
 
-  const filteredAgendamentos = agendamentos
+  const filteredAgendamentos = agendamentosSalao
     .map(ag => getAgendamentoCompleto(ag))
     .filter(ag => {
       if (!ag.cliente || !ag.servico) return false;
@@ -219,7 +240,7 @@ const Agendamentos = () => {
 
   const getAgendamentosForDate = (date) => {
     const dateStr = date.toLocaleDateString('pt-BR');
-    return agendamentos
+    return agendamentosSalao
       .filter(ag => ag.data === dateStr)
       .map(ag => getAgendamentoCompleto(ag));
   };
@@ -303,7 +324,7 @@ const Agendamentos = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Agendamentos</h1>
-          <p className="text-gray-600 mt-1">Gerencie a agenda do seu salão</p>
+          <p className="text-gray-600 mt-1">Gerencie a agenda - {salaoAtual.nome}</p>
         </div>
         <button
           onClick={() => handleOpenModal()}
@@ -394,94 +415,102 @@ const Agendamentos = () => {
 
       {/* Visualização em Lista */}
       {viewMode === 'lista' && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Cliente
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Serviço
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Profissional
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Data/Hora
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Valor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredAgendamentos.map((agendamento) => (
-                  <tr key={agendamento.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                          <User size={18} className="text-purple-600" />
-                        </div>
-                        <div className="ml-3">
-                          <p className="font-medium text-gray-800">{agendamento.cliente?.nome}</p>
-                          <p className="text-sm text-gray-500">{agendamento.cliente?.telefone}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <p className="font-medium text-gray-800">{agendamento.servico?.nome}</p>
-                      <p className="text-sm text-gray-500">{formatDuration(agendamento.servico?.duracao || 0)}</p>
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">
-                      {agendamento.profissional?.nome}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <Calendar size={16} className="text-gray-400" />
-                        <div>
-                          <p className="text-gray-800">{agendamento.data}</p>
-                          <p className="text-sm text-gray-500">{agendamento.horario}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-green-600">
-                      R$ {agendamento.servico?.valor.toFixed(2)}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[agendamento.status]}`}>
-                        {agendamento.status.charAt(0).toUpperCase() + agendamento.status.slice(1)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => handleOpenModal(agendamento)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(agendamento.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
+        filteredAgendamentos.length > 0 ? (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cliente
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Serviço
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Profissional
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Data/Hora
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Valor
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ações
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {filteredAgendamentos.map((agendamento) => (
+                    <tr key={agendamento.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <User size={18} className="text-purple-600" />
+                          </div>
+                          <div className="ml-3">
+                            <p className="font-medium text-gray-800">{agendamento.cliente?.nome}</p>
+                            <p className="text-sm text-gray-500">{agendamento.cliente?.telefone}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-medium text-gray-800">{agendamento.servico?.nome}</p>
+                        <p className="text-sm text-gray-500">{formatDuration(agendamento.servico?.duracao || 0)}</p>
+                      </td>
+                      <td className="px-6 py-4 text-gray-700">
+                        {agendamento.profissional?.nome}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          <Calendar size={16} className="text-gray-400" />
+                          <div>
+                            <p className="text-gray-800">{agendamento.data}</p>
+                            <p className="text-sm text-gray-500">{agendamento.horario}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-semibold text-green-600">
+                        R$ {agendamento.servico?.valor.toFixed(2)}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[agendamento.status]}`}>
+                          {agendamento.status.charAt(0).toUpperCase() + agendamento.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center space-x-2">
+                          <button 
+                            onClick={() => handleOpenModal(agendamento)}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          >
+                            <Edit size={18} />
+                          </button>
+                          <button 
+                            onClick={() => handleDelete(agendamento.id)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 size={18} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
+            <Calendar size={48} className="mx-auto mb-4 opacity-50" />
+            <p>Nenhum agendamento encontrado para este salão.</p>
+            <p className="text-sm mt-2">Clique em "Novo Agendamento" para criar o primeiro agendamento.</p>
+          </div>
+        )
       )}
 
       {/* Visualização em Calendário */}
@@ -537,20 +566,28 @@ const Agendamentos = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Cliente *
             </label>
-            <select
-              name="clienteId"
-              value={formData.clienteId}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="">Selecione um cliente</option>
-              {clientes.filter(c => c.status === 'ativo').map(cliente => (
-                <option key={cliente.id} value={cliente.id}>
-                  {cliente.nome} - {cliente.telefone}
-                </option>
-              ))}
-            </select>
+            {clientesSalao.length > 0 ? (
+              <select
+                name="clienteId"
+                value={formData.clienteId}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Selecione um cliente</option>
+                {clientesSalao.filter(c => c.status === 'ativo').map(cliente => (
+                  <option key={cliente.id} value={cliente.id}>
+                    {cliente.nome} - {cliente.telefone}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  Nenhum cliente cadastrado neste salão. Cadastre clientes primeiro.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Informações do Cliente Selecionado */}
@@ -578,20 +615,28 @@ const Agendamentos = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Serviço *
             </label>
-            <select
-              name="servicoId"
-              value={formData.servicoId}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="">Selecione um serviço</option>
-              {servicos.filter(s => s.ativo).map(servico => (
-                <option key={servico.id} value={servico.id}>
-                  {servico.nome} - R$ {servico.valor.toFixed(2)} ({formatDuration(servico.duracao)})
-                </option>
-              ))}
-            </select>
+            {servicosSalao.length > 0 ? (
+              <select
+                name="servicoId"
+                value={formData.servicoId}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Selecione um serviço</option>
+                {servicosSalao.filter(s => s.ativo).map(servico => (
+                  <option key={servico.id} value={servico.id}>
+                    {servico.nome} - R$ {servico.valor.toFixed(2)} ({formatDuration(servico.duracao)})
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  Nenhum serviço cadastrado neste salão. Cadastre serviços primeiro.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Informações do Serviço Selecionado */}
@@ -624,11 +669,15 @@ const Agendamentos = () => {
               value={formData.profissionalId}
               onChange={handleChange}
               required
-              disabled={!formData.servicoId}
+              disabled={!formData.servicoId || profissionaisDisponiveis.length === 0}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             >
               <option value="">
-                {formData.servicoId ? 'Selecione um profissional' : 'Selecione um serviço primeiro'}
+                {!formData.servicoId 
+                  ? 'Selecione um serviço primeiro'
+                  : profissionaisDisponiveis.length === 0
+                  ? 'Nenhum profissional habilitado'
+                  : 'Selecione um profissional'}
               </option>
               {profissionaisDisponiveis.map(prof => (
                 <option key={prof.id} value={prof.id}>
@@ -705,7 +754,8 @@ const Agendamentos = () => {
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+              disabled={clientesSalao.length === 0 || servicosSalao.length === 0}
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editingId ? 'Salvar Alterações' : 'Criar Agendamento'}
             </button>
@@ -717,24 +767,24 @@ const Agendamentos = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Total de Agendamentos</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{agendamentos.length}</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">{agendamentosSalao.length}</p>
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Confirmados</p>
           <p className="text-2xl font-bold text-green-600 mt-1">
-            {agendamentos.filter(a => a.status === 'confirmado').length}
+            {agendamentosSalao.filter(a => a.status === 'confirmado').length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Pendentes</p>
           <p className="text-2xl font-bold text-yellow-600 mt-1">
-            {agendamentos.filter(a => a.status === 'pendente').length}
+            {agendamentosSalao.filter(a => a.status === 'pendente').length}
           </p>
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Faturamento Previsto</p>
           <p className="text-2xl font-bold text-purple-600 mt-1">
-            R$ {agendamentos.map(ag => {
+            R$ {agendamentosSalao.map(ag => {
               const serv = servicos.find(s => s.id === ag.servicoId);
               return serv ? serv.valor : 0;
             }).reduce((a, b) => a + b, 0).toFixed(2)}

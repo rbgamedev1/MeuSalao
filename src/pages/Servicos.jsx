@@ -1,3 +1,4 @@
+// src/pages/Servicos.jsx
 import { useState, useContext } from 'react';
 import { Plus, Search, Clock, DollarSign, Edit, Trash2, Scissors, Tag, X } from 'lucide-react';
 import Modal from '../components/Modal';
@@ -5,7 +6,17 @@ import { SalaoContext } from '../contexts/SalaoContext';
 import { generateDurationOptions, unmaskCurrency } from '../utils/masks';
 
 const Servicos = () => {
-  const { servicos, setServicos, categorias, setCategorias, profissionais } = useContext(SalaoContext);
+  const { 
+    salaoAtual,
+    servicos, 
+    setServicos, 
+    categorias, 
+    setCategorias, 
+    profissionais,
+    getServicosPorSalao,
+    getProfissionaisPorSalao
+  } = useContext(SalaoContext);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showCategoriaModal, setShowCategoriaModal] = useState(false);
@@ -27,6 +38,10 @@ const Servicos = () => {
   });
 
   const durationOptions = generateDurationOptions();
+
+  // Obter apenas serviços e profissionais do salão atual
+  const servicosSalao = getServicosPorSalao();
+  const profissionaisSalao = getProfissionaisPorSalao();
 
   const handleOpenModal = (servico = null) => {
     if (servico) {
@@ -73,7 +88,8 @@ const Servicos = () => {
               id: editingId,
               duracao: parseInt(formData.duracao),
               valor: parseFloat(formData.valor),
-              comissao: parseInt(formData.comissao)
+              comissao: parseInt(formData.comissao),
+              salaoId: salaoAtual.id
             } 
           : s
       ));
@@ -83,7 +99,8 @@ const Servicos = () => {
         id: Math.max(...servicos.map(s => s.id), 0) + 1,
         duracao: parseInt(formData.duracao),
         valor: parseFloat(formData.valor),
-        comissao: parseInt(formData.comissao)
+        comissao: parseInt(formData.comissao),
+        salaoId: salaoAtual.id
       };
       setServicos([...servicos, newServico]);
     }
@@ -124,10 +141,10 @@ const Servicos = () => {
 
   const handleDeleteCategoria = (categoria) => {
     if (confirm(`Tem certeza que deseja excluir a categoria "${categoria}"?`)) {
-      // Verificar se existem serviços usando esta categoria
-      const servicosComCategoria = servicos.filter(s => s.categoria === categoria);
+      // Verificar se existem serviços usando esta categoria no salão atual
+      const servicosComCategoria = servicosSalao.filter(s => s.categoria === categoria);
       if (servicosComCategoria.length > 0) {
-        alert(`Não é possível excluir. Existem ${servicosComCategoria.length} serviço(s) usando esta categoria.`);
+        alert(`Não é possível excluir. Existem ${servicosComCategoria.length} serviço(s) usando esta categoria neste salão.`);
         return;
       }
       setCategorias(categorias.filter(c => c !== categoria));
@@ -155,7 +172,7 @@ const Servicos = () => {
     setCategoriaParaEditar('');
   };
 
-  const filteredServicos = servicos.filter(servico => {
+  const filteredServicos = servicosSalao.filter(servico => {
     const matchSearch = servico.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        servico.descricao.toLowerCase().includes(searchTerm.toLowerCase());
     const matchCategoria = categoriaFiltro === 'Todos' || servico.categoria === categoriaFiltro;
@@ -170,9 +187,11 @@ const Servicos = () => {
     return `${mins}min`;
   };
 
-  const totalServicos = servicos.length;
-  const valorMedio = servicos.reduce((acc, s) => acc + s.valor, 0) / servicos.length;
-  const servicosMaisCaros = servicos.filter(s => s.valor > 100).length;
+  const totalServicos = servicosSalao.length;
+  const valorMedio = servicosSalao.length > 0 
+    ? servicosSalao.reduce((acc, s) => acc + s.valor, 0) / servicosSalao.length 
+    : 0;
+  const servicosMaisCaros = servicosSalao.filter(s => s.valor > 100).length;
 
   return (
     <div className="space-y-6">
@@ -180,7 +199,7 @@ const Servicos = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-800">Serviços</h1>
-          <p className="text-gray-600 mt-1">Gerencie os serviços do seu salão</p>
+          <p className="text-gray-600 mt-1">Gerencie os serviços - {salaoAtual.nome}</p>
         </div>
         <div className="flex items-center space-x-3">
           <button
@@ -281,82 +300,90 @@ const Servicos = () => {
       </div>
 
       {/* Grid de Serviços */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredServicos.map((servico) => (
-          <div key={servico.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2"></div>
-            
-            <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-800">{servico.nome}</h3>
-                  <span className="inline-block mt-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                    {servico.categoria}
-                  </span>
-                </div>
-                <div className={`w-3 h-3 rounded-full ${servico.ativo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-              </div>
-
-              <p className="text-sm text-gray-600 mb-4">{servico.descricao}</p>
-
-              <div className="space-y-2 mb-4">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <Clock size={16} />
-                    <span>Duração</span>
+      {filteredServicos.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredServicos.map((servico) => (
+            <div key={servico.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+              <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2"></div>
+              
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-800">{servico.nome}</h3>
+                    <span className="inline-block mt-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
+                      {servico.categoria}
+                    </span>
                   </div>
-                  <span className="font-medium text-gray-800">{formatDuration(servico.duracao)}</span>
+                  <div className={`w-3 h-3 rounded-full ${servico.ativo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                 </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-2 text-gray-600">
-                    <DollarSign size={16} />
-                    <span>Valor</span>
+                <p className="text-sm text-gray-600 mb-4">{servico.descricao}</p>
+
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <Clock size={16} />
+                      <span>Duração</span>
+                    </div>
+                    <span className="font-medium text-gray-800">{formatDuration(servico.duracao)}</span>
                   </div>
-                  <span className="font-bold text-green-600">R$ {servico.valor.toFixed(2)}</span>
-                </div>
 
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Comissão</span>
-                  <span className="font-medium text-purple-600">{servico.comissao}%</span>
-                </div>
-              </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2 text-gray-600">
+                      <DollarSign size={16} />
+                      <span>Valor</span>
+                    </div>
+                    <span className="font-bold text-green-600">R$ {servico.valor.toFixed(2)}</span>
+                  </div>
 
-              {servico.profissionaisHabilitados && servico.profissionaisHabilitados.length > 0 && (
-                <div className="mb-4 pb-4 border-t border-gray-200 pt-4">
-                  <p className="text-xs text-gray-600 mb-2">Profissionais:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {servico.profissionaisHabilitados.map(profId => {
-                      const prof = profissionais.find(p => p.id === profId);
-                      return prof ? (
-                        <span key={profId} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                          {prof.nome}
-                        </span>
-                      ) : null;
-                    })}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Comissão</span>
+                    <span className="font-medium text-purple-600">{servico.comissao}%</span>
                   </div>
                 </div>
-              )}
 
-              <div className="flex items-center space-x-2">
-                <button 
-                  onClick={() => handleOpenModal(servico)}
-                  className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                  <Edit size={16} />
-                  <span>Editar</span>
-                </button>
-                <button 
-                  onClick={() => handleDelete(servico.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                >
-                  <Trash2 size={18} />
-                </button>
+                {servico.profissionaisHabilitados && servico.profissionaisHabilitados.length > 0 && (
+                  <div className="mb-4 pb-4 border-t border-gray-200 pt-4">
+                    <p className="text-xs text-gray-600 mb-2">Profissionais:</p>
+                    <div className="flex flex-wrap gap-1">
+                      {servico.profissionaisHabilitados.map(profId => {
+                        const prof = profissionais.find(p => p.id === profId);
+                        return prof ? (
+                          <span key={profId} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                            {prof.nome}
+                          </span>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <button 
+                    onClick={() => handleOpenModal(servico)}
+                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                  >
+                    <Edit size={16} />
+                    <span>Editar</span>
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(servico.id)}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
+          <Scissors size={48} className="mx-auto mb-4 opacity-50" />
+          <p>Nenhum serviço encontrado para este salão.</p>
+          <p className="text-sm mt-2">Clique em "Novo Serviço" para adicionar o primeiro serviço.</p>
+        </div>
+      )}
 
       {/* Modal de Gerenciar Categorias */}
       <Modal
@@ -432,7 +459,7 @@ const Servicos = () => {
                       <span className="font-medium text-gray-800">{categoria}</span>
                       <div className="flex items-center space-x-2">
                         <span className="text-xs text-gray-500">
-                          {servicos.filter(s => s.categoria === categoria).length} serviço(s)
+                          {servicosSalao.filter(s => s.categoria === categoria).length} serviço(s)
                         </span>
                         <button
                           onClick={() => handleEditCategoria(categoria)}
@@ -571,23 +598,31 @@ const Servicos = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Profissionais Habilitados *
             </label>
-            <div className="space-y-2 p-4 border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
-              {profissionais.map(prof => (
-                <label key={prof.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                  <input
-                    type="checkbox"
-                    checked={formData.profissionaisHabilitados.includes(prof.id)}
-                    onChange={() => handleProfissionalToggle(prof.id)}
-                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                  />
-                  <div>
-                    <span className="text-sm font-medium text-gray-700">{prof.nome}</span>
-                    <p className="text-xs text-gray-500">{prof.especialidades.join(', ')}</p>
-                  </div>
-                </label>
-              ))}
-            </div>
-            {formData.profissionaisHabilitados.length === 0 && (
+            {profissionaisSalao.length > 0 ? (
+              <div className="space-y-2 p-4 border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
+                {profissionaisSalao.map(prof => (
+                  <label key={prof.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                    <input
+                      type="checkbox"
+                      checked={formData.profissionaisHabilitados.includes(prof.id)}
+                      onChange={() => handleProfissionalToggle(prof.id)}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <div>
+                      <span className="text-sm font-medium text-gray-700">{prof.nome}</span>
+                      <p className="text-xs text-gray-500">{prof.especialidades.join(', ')}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  Nenhum profissional cadastrado neste salão. Cadastre profissionais em Configurações primeiro.
+                </p>
+              </div>
+            )}
+            {profissionaisSalao.length > 0 && formData.profissionaisHabilitados.length === 0 && (
               <p className="text-xs text-red-500 mt-1">Selecione pelo menos um profissional</p>
             )}
           </div>
@@ -615,7 +650,7 @@ const Servicos = () => {
             </button>
             <button
               type="submit"
-              disabled={formData.profissionaisHabilitados.length === 0}
+              disabled={profissionaisSalao.length === 0 || formData.profissionaisHabilitados.length === 0}
               className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editingId ? 'Salvar Alterações' : 'Cadastrar Serviço'}
