@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye } from 'lucide-react';
 import Modal from '../components/Modal';
+import MaskedInput from '../components/MaskedInput';
+import { SalaoContext } from '../contexts/SalaoContext';
+import { isValidDate } from '../utils/masks';
 
 const Clientes = () => {
+  const { clientes, setClientes } = useContext(SalaoContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
@@ -15,52 +19,7 @@ const Clientes = () => {
     status: 'ativo'
   });
 
-  const [clientes, setClientes] = useState([
-    {
-      id: 1,
-      nome: 'Maria Silva',
-      telefone: '(11) 98765-4321',
-      email: 'maria.silva@email.com',
-      dataNascimento: '15/03/1985',
-      ultimaVisita: '25/10/2025',
-      totalGasto: 'R$ 2.450,00',
-      visitas: 18,
-      status: 'ativo'
-    },
-    {
-      id: 2,
-      nome: 'João Santos',
-      telefone: '(11) 91234-5678',
-      email: 'joao.santos@email.com',
-      dataNascimento: '22/07/1990',
-      ultimaVisita: '28/10/2025',
-      totalGasto: 'R$ 890,00',
-      visitas: 8,
-      status: 'ativo'
-    },
-    {
-      id: 3,
-      nome: 'Paula Souza',
-      telefone: '(11) 99876-5432',
-      email: 'paula.souza@email.com',
-      dataNascimento: '10/11/1988',
-      ultimaVisita: '30/10/2025',
-      totalGasto: 'R$ 3.120,00',
-      visitas: 24,
-      status: 'ativo'
-    },
-    {
-      id: 4,
-      nome: 'Roberto Alves',
-      telefone: '(11) 97654-3210',
-      email: 'roberto.alves@email.com',
-      dataNascimento: '05/05/1995',
-      ultimaVisita: '15/09/2025',
-      totalGasto: 'R$ 450,00',
-      visitas: 5,
-      status: 'inativo'
-    }
-  ]);
+  const [errors, setErrors] = useState({});
 
   const handleOpenModal = (cliente = null) => {
     if (cliente) {
@@ -82,6 +41,7 @@ const Clientes = () => {
         status: 'ativo'
       });
     }
+    setErrors({});
     setShowModal(true);
   };
 
@@ -95,10 +55,38 @@ const Clientes = () => {
       dataNascimento: '',
       status: 'ativo'
     });
+    setErrors({});
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    if (!formData.nome.trim()) {
+      newErrors.nome = 'Nome é obrigatório';
+    }
+
+    if (!formData.telefone || formData.telefone.length < 15) {
+      newErrors.telefone = 'Telefone inválido';
+    }
+
+    if (!formData.email || !formData.email.includes('@')) {
+      newErrors.email = 'Email inválido';
+    }
+
+    if (!formData.dataNascimento || !isValidDate(formData.dataNascimento)) {
+      newErrors.dataNascimento = 'Data inválida (DD/MM/AAAA)';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
     
     if (editingId) {
       setClientes(clientes.map(c => 
@@ -114,7 +102,7 @@ const Clientes = () => {
         ...formData,
         id: Math.max(...clientes.map(c => c.id), 0) + 1,
         ultimaVisita: new Date().toLocaleDateString('pt-BR'),
-        totalGasto: 'R$ 0,00',
+        totalGasto: 0,
         visitas: 0
       };
       setClientes([...clientes, newCliente]);
@@ -135,6 +123,10 @@ const Clientes = () => {
       ...prev,
       [name]: value
     }));
+    // Limpar erro do campo ao digitar
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
+    }
   };
 
   const filteredClientes = clientes.filter(cliente =>
@@ -300,7 +292,7 @@ const Clientes = () => {
                     <span className="font-semibold text-purple-600">{cliente.visitas}</span>
                   </td>
                   <td className="px-6 py-4 font-semibold text-green-600">
-                    {cliente.totalGasto}
+                    R$ {cliente.totalGasto.toFixed(2)}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -354,10 +346,10 @@ const Clientes = () => {
               name="nome"
               value={formData.nome}
               onChange={handleChange}
-              required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="Digite o nome completo"
             />
+            {errors.nome && <p className="text-red-500 text-xs mt-1">{errors.nome}</p>}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -365,30 +357,28 @@ const Clientes = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Telefone *
               </label>
-              <input
-                type="tel"
+              <MaskedInput
+                mask="phone"
                 name="telefone"
                 value={formData.telefone}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="(11) 98765-4321"
               />
+              {errors.telefone && <p className="text-red-500 text-xs mt-1">{errors.telefone}</p>}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Data de Nascimento *
               </label>
-              <input
-                type="text"
+              <MaskedInput
+                mask="date"
                 name="dataNascimento"
                 value={formData.dataNascimento}
                 onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="DD/MM/AAAA"
               />
+              {errors.dataNascimento && <p className="text-red-500 text-xs mt-1">{errors.dataNascimento}</p>}
             </div>
           </div>
 
@@ -401,10 +391,10 @@ const Clientes = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="email@exemplo.com"
             />
+            {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
           </div>
 
           <div>
@@ -415,7 +405,6 @@ const Clientes = () => {
               name="status"
               value={formData.status}
               onChange={handleChange}
-              required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="ativo">Ativo</option>

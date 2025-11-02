@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { Calendar, Plus, Search, Clock, User, Edit, Trash2, ChevronLeft, ChevronRight, List, CalendarDays } from 'lucide-react';
 import Modal from '../components/Modal';
+import MaskedInput from '../components/MaskedInput';
+import { SalaoContext } from '../contexts/SalaoContext';
+import { dateToISO, dateFromISO, generateTimeOptions } from '../utils/masks';
 
 const Agendamentos = () => {
+  const { clientes, profissionais, servicos } = useContext(SalaoContext);
   const [viewMode, setViewMode] = useState('lista');
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -10,91 +14,49 @@ const Agendamentos = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   const [formData, setFormData] = useState({
-    cliente: '',
-    telefone: '',
-    servico: '',
-    profissional: '',
+    clienteId: '',
+    servicoId: '',
+    profissionalId: '',
     data: '',
     horario: '',
-    duracao: '',
-    valor: '',
     status: 'pendente'
   });
+
+  const [clienteSelecionado, setClienteSelecionado] = useState(null);
+  const [servicoSelecionado, setServicoSelecionado] = useState(null);
+  const [profissionaisDisponiveis, setProfissionaisDisponiveis] = useState([]);
 
   const [agendamentos, setAgendamentos] = useState([
     {
       id: 1,
-      cliente: 'Maria Silva',
-      telefone: '(11) 98765-4321',
-      servico: 'Corte + Escova',
-      profissional: 'Ana Costa',
-      data: '2025-11-01',
+      clienteId: 1,
+      servicoId: 1,
+      profissionalId: 1,
+      data: '01/11/2025',
       horario: '14:00',
-      duracao: '1h',
-      valor: 'R$ 120,00',
       status: 'confirmado'
     },
     {
       id: 2,
-      cliente: 'João Santos',
-      telefone: '(11) 91234-5678',
-      servico: 'Barba',
-      profissional: 'Carlos Lima',
-      data: '2025-11-01',
+      clienteId: 2,
+      servicoId: 7,
+      profissionalId: 2,
+      data: '01/11/2025',
       horario: '14:30',
-      duracao: '30min',
-      valor: 'R$ 45,00',
       status: 'pendente'
     },
     {
       id: 3,
-      cliente: 'Paula Souza',
-      telefone: '(11) 99876-5432',
-      servico: 'Coloração',
-      profissional: 'Ana Costa',
-      data: '2025-11-01',
+      clienteId: 3,
+      servicoId: 3,
+      profissionalId: 1,
+      data: '01/11/2025',
       horario: '15:00',
-      duracao: '2h',
-      valor: 'R$ 250,00',
-      status: 'confirmado'
-    },
-    {
-      id: 4,
-      cliente: 'Roberto Alves',
-      telefone: '(11) 97654-3210',
-      servico: 'Corte',
-      profissional: 'Carlos Lima',
-      data: '2025-11-05',
-      horario: '10:00',
-      duracao: '30min',
-      valor: 'R$ 45,00',
-      status: 'confirmado'
-    },
-    {
-      id: 5,
-      cliente: 'Fernanda Costa',
-      telefone: '(11) 99123-4567',
-      servico: 'Hidratação',
-      profissional: 'Ana Costa',
-      data: '2025-11-08',
-      horario: '16:00',
-      duracao: '1h',
-      valor: 'R$ 90,00',
-      status: 'pendente'
-    },
-    {
-      id: 6,
-      cliente: 'Carlos Mendes',
-      telefone: '(11) 98234-5678',
-      servico: 'Manicure',
-      profissional: 'Beatriz Silva',
-      data: '2025-11-12',
-      horario: '11:00',
-      duracao: '45min',
-      valor: 'R$ 35,00',
       status: 'confirmado'
     }
   ]);
+
+  const timeOptions = generateTimeOptions();
 
   const statusColors = {
     confirmado: 'bg-green-100 text-green-800 border-green-300',
@@ -103,33 +65,63 @@ const Agendamentos = () => {
     concluido: 'bg-blue-100 text-blue-800 border-blue-300'
   };
 
+  // Atualizar informações quando cliente é selecionado
+  useEffect(() => {
+    if (formData.clienteId) {
+      const cliente = clientes.find(c => c.id === parseInt(formData.clienteId));
+      setClienteSelecionado(cliente);
+    } else {
+      setClienteSelecionado(null);
+    }
+  }, [formData.clienteId, clientes]);
+
+  // Atualizar profissionais disponíveis quando serviço é selecionado
+  useEffect(() => {
+    if (formData.servicoId) {
+      const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
+      setServicoSelecionado(servico);
+      
+      if (servico && servico.profissionaisHabilitados) {
+        const profsDisponiveis = profissionais.filter(p => 
+          servico.profissionaisHabilitados.includes(p.id)
+        );
+        setProfissionaisDisponiveis(profsDisponiveis);
+        
+        // Se o profissional atual não está na lista, limpar seleção
+        if (formData.profissionalId && !servico.profissionaisHabilitados.includes(parseInt(formData.profissionalId))) {
+          setFormData(prev => ({ ...prev, profissionalId: '' }));
+        }
+      }
+    } else {
+      setServicoSelecionado(null);
+      setProfissionaisDisponiveis([]);
+    }
+  }, [formData.servicoId, servicos, profissionais, formData.profissionalId]);
+
   const handleOpenModal = (agendamento = null) => {
     if (agendamento) {
       setEditingId(agendamento.id);
       setFormData({
-        cliente: agendamento.cliente,
-        telefone: agendamento.telefone,
-        servico: agendamento.servico,
-        profissional: agendamento.profissional,
+        clienteId: agendamento.clienteId.toString(),
+        servicoId: agendamento.servicoId.toString(),
+        profissionalId: agendamento.profissionalId.toString(),
         data: agendamento.data,
         horario: agendamento.horario,
-        duracao: agendamento.duracao,
-        valor: agendamento.valor,
         status: agendamento.status
       });
     } else {
       setEditingId(null);
       setFormData({
-        cliente: '',
-        telefone: '',
-        servico: '',
-        profissional: '',
+        clienteId: '',
+        servicoId: '',
+        profissionalId: '',
         data: '',
         horario: '',
-        duracao: '',
-        valor: '',
         status: 'pendente'
       });
+      setClienteSelecionado(null);
+      setServicoSelecionado(null);
+      setProfissionaisDisponiveis([]);
     }
     setShowModal(true);
   };
@@ -138,28 +130,37 @@ const Agendamentos = () => {
     setShowModal(false);
     setEditingId(null);
     setFormData({
-      cliente: '',
-      telefone: '',
-      servico: '',
-      profissional: '',
+      clienteId: '',
+      servicoId: '',
+      profissionalId: '',
       data: '',
       horario: '',
-      duracao: '',
-      valor: '',
       status: 'pendente'
     });
+    setClienteSelecionado(null);
+    setServicoSelecionado(null);
+    setProfissionaisDisponiveis([]);
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    const agendamentoData = {
+      clienteId: parseInt(formData.clienteId),
+      servicoId: parseInt(formData.servicoId),
+      profissionalId: parseInt(formData.profissionalId),
+      data: formData.data,
+      horario: formData.horario,
+      status: formData.status
+    };
+
     if (editingId) {
       setAgendamentos(agendamentos.map(ag => 
-        ag.id === editingId ? { ...formData, id: editingId } : ag
+        ag.id === editingId ? { ...agendamentoData, id: editingId } : ag
       ));
     } else {
       const newAgendamento = {
-        ...formData,
+        ...agendamentoData,
         id: Math.max(...agendamentos.map(a => a.id), 0) + 1
       };
       setAgendamentos([...agendamentos, newAgendamento]);
@@ -182,10 +183,27 @@ const Agendamentos = () => {
     }));
   };
 
-  const filteredAgendamentos = agendamentos.filter(ag =>
-    ag.cliente.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ag.servico.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Obter informações completas do agendamento
+  const getAgendamentoCompleto = (agendamento) => {
+    const cliente = clientes.find(c => c.id === agendamento.clienteId);
+    const servico = servicos.find(s => s.id === agendamento.servicoId);
+    const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
+    
+    return {
+      ...agendamento,
+      cliente,
+      servico,
+      profissional
+    };
+  };
+
+  const filteredAgendamentos = agendamentos
+    .map(ag => getAgendamentoCompleto(ag))
+    .filter(ag => {
+      if (!ag.cliente || !ag.servico) return false;
+      return ag.cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             ag.servico.nome.toLowerCase().includes(searchTerm.toLowerCase());
+    });
 
   // Funções do Calendário
   const getDaysInMonth = (date) => {
@@ -200,8 +218,10 @@ const Agendamentos = () => {
   };
 
   const getAgendamentosForDate = (date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    return agendamentos.filter(ag => ag.data === dateStr);
+    const dateStr = date.toLocaleDateString('pt-BR');
+    return agendamentos
+      .filter(ag => ag.data === dateStr)
+      .map(ag => getAgendamentoCompleto(ag));
   };
 
   const changeMonth = (delta) => {
@@ -220,14 +240,12 @@ const Agendamentos = () => {
   const renderCalendar = () => {
     const days = [];
     
-    // Dias vazios no início
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(
         <div key={`empty-${i}`} className="min-h-32 bg-gray-50 border border-gray-200"></div>
       );
     }
     
-    // Dias do mês
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(year, month, day);
       const dateAgendamentos = getAgendamentosForDate(date);
@@ -253,8 +271,8 @@ const Agendamentos = () => {
                 onClick={() => handleOpenModal(ag)}
                 className={`text-xs p-1 rounded cursor-pointer border ${statusColors[ag.status]} hover:opacity-80 transition-opacity`}
               >
-                <div className="font-medium truncate">{ag.horario} - {ag.cliente}</div>
-                <div className="truncate text-xs opacity-75">{ag.servico}</div>
+                <div className="font-medium truncate">{ag.horario} - {ag.cliente?.nome}</div>
+                <div className="truncate text-xs opacity-75">{ag.servico?.nome}</div>
               </div>
             ))}
             
@@ -269,6 +287,14 @@ const Agendamentos = () => {
     }
     
     return days;
+  };
+
+  const formatDuration = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}min`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}min`;
   };
 
   return (
@@ -302,10 +328,10 @@ const Agendamentos = () => {
             />
           </div>
 
-          <input
-            type="date"
+          <MaskedInput
+            mask="date"
+            placeholder="DD/MM/AAAA"
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            defaultValue="2025-11-01"
           />
 
           <select className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
@@ -405,17 +431,17 @@ const Agendamentos = () => {
                           <User size={18} className="text-purple-600" />
                         </div>
                         <div className="ml-3">
-                          <p className="font-medium text-gray-800">{agendamento.cliente}</p>
-                          <p className="text-sm text-gray-500">{agendamento.telefone}</p>
+                          <p className="font-medium text-gray-800">{agendamento.cliente?.nome}</p>
+                          <p className="text-sm text-gray-500">{agendamento.cliente?.telefone}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <p className="font-medium text-gray-800">{agendamento.servico}</p>
-                      <p className="text-sm text-gray-500">{agendamento.duracao}</p>
+                      <p className="font-medium text-gray-800">{agendamento.servico?.nome}</p>
+                      <p className="text-sm text-gray-500">{formatDuration(agendamento.servico?.duracao || 0)}</p>
                     </td>
                     <td className="px-6 py-4 text-gray-700">
-                      {agendamento.profissional}
+                      {agendamento.profissional?.nome}
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
@@ -427,7 +453,7 @@ const Agendamentos = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 font-semibold text-green-600">
-                      {agendamento.valor}
+                      R$ {agendamento.servico?.valor.toFixed(2)}
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${statusColors[agendamento.status]}`}>
@@ -461,7 +487,6 @@ const Agendamentos = () => {
       {/* Visualização em Calendário */}
       {viewMode === 'calendario' && (
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          {/* Header do Calendário */}
           <div className="grid grid-cols-7 bg-gray-50 border-b border-gray-200">
             {weekDays.map(day => (
               <div key={day} className="p-3 text-center font-semibold text-gray-700 text-sm">
@@ -470,7 +495,6 @@ const Agendamentos = () => {
             ))}
           </div>
           
-          {/* Grid do Calendário */}
           <div className="grid grid-cols-7">
             {renderCalendar()}
           </div>
@@ -501,6 +525,194 @@ const Agendamentos = () => {
         </div>
       )}
 
+      {/* Modal de Cadastro/Edição */}
+      <Modal
+        isOpen={showModal}
+        onClose={handleCloseModal}
+        title={editingId ? 'Editar Agendamento' : 'Novo Agendamento'}
+        size="lg"
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Cliente *
+            </label>
+            <select
+              name="clienteId"
+              value={formData.clienteId}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="">Selecione um cliente</option>
+              {clientes.filter(c => c.status === 'ativo').map(cliente => (
+                <option key={cliente.id} value={cliente.id}>
+                  {cliente.nome} - {cliente.telefone}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Informações do Cliente Selecionado */}
+          {clienteSelecionado && (
+            <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+              <p className="text-sm font-medium text-purple-900 mb-2">Informações do Cliente:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm text-purple-800">
+                <div>
+                  <span className="font-medium">Telefone:</span> {clienteSelecionado.telefone}
+                </div>
+                <div>
+                  <span className="font-medium">Email:</span> {clienteSelecionado.email}
+                </div>
+                <div>
+                  <span className="font-medium">Última Visita:</span> {clienteSelecionado.ultimaVisita}
+                </div>
+                <div>
+                  <span className="font-medium">Total de Visitas:</span> {clienteSelecionado.visitas}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Serviço *
+            </label>
+            <select
+              name="servicoId"
+              value={formData.servicoId}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="">Selecione um serviço</option>
+              {servicos.filter(s => s.ativo).map(servico => (
+                <option key={servico.id} value={servico.id}>
+                  {servico.nome} - R$ {servico.valor.toFixed(2)} ({formatDuration(servico.duracao)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Informações do Serviço Selecionado */}
+          {servicoSelecionado && (
+            <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+              <p className="text-sm font-medium text-green-900 mb-2">Detalhes do Serviço:</p>
+              <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
+                <div>
+                  <span className="font-medium">Categoria:</span> {servicoSelecionado.categoria}
+                </div>
+                <div>
+                  <span className="font-medium">Duração:</span> {formatDuration(servicoSelecionado.duracao)}
+                </div>
+                <div>
+                  <span className="font-medium">Valor:</span> R$ {servicoSelecionado.valor.toFixed(2)}
+                </div>
+                <div>
+                  <span className="font-medium">Comissão:</span> {servicoSelecionado.comissao}%
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Profissional *
+            </label>
+            <select
+              name="profissionalId"
+              value={formData.profissionalId}
+              onChange={handleChange}
+              required
+              disabled={!formData.servicoId}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="">
+                {formData.servicoId ? 'Selecione um profissional' : 'Selecione um serviço primeiro'}
+              </option>
+              {profissionaisDisponiveis.map(prof => (
+                <option key={prof.id} value={prof.id}>
+                  {prof.nome}
+                </option>
+              ))}
+            </select>
+            {formData.servicoId && profissionaisDisponiveis.length === 0 && (
+              <p className="text-xs text-red-500 mt-1">
+                Nenhum profissional habilitado para este serviço
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Data *
+              </label>
+              <MaskedInput
+                mask="date"
+                name="data"
+                value={formData.data}
+                onChange={handleChange}
+                required
+                placeholder="DD/MM/AAAA"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Horário *
+              </label>
+              <select
+                name="horario"
+                value={formData.horario}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Selecione um horário</option>
+                {timeOptions.map(time => (
+                  <option key={time} value={time}>{time}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status *
+            </label>
+            <select
+              name="status"
+              value={formData.status}
+              onChange={handleChange}
+              required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="pendente">Pendente</option>
+              <option value="confirmado">Confirmado</option>
+              <option value="concluido">Concluído</option>
+              <option value="cancelado">Cancelado</option>
+            </select>
+          </div>
+
+          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+            >
+              {editingId ? 'Salvar Alterações' : 'Criar Agendamento'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Resumo */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
@@ -521,185 +733,14 @@ const Agendamentos = () => {
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Faturamento Previsto</p>
-          <p className="text-2xl font-bold text-purple-600 mt-1">R$ 585,00</p>
+          <p className="text-2xl font-bold text-purple-600 mt-1">
+            R$ {agendamentos.map(ag => {
+              const serv = servicos.find(s => s.id === ag.servicoId);
+              return serv ? serv.valor : 0;
+            }).reduce((a, b) => a + b, 0).toFixed(2)}
+          </p>
         </div>
       </div>
-
-      {/* Modal de Cadastro/Edição */}
-      <Modal
-        isOpen={showModal}
-        onClose={handleCloseModal}
-        title={editingId ? 'Editar Agendamento' : 'Novo Agendamento'}
-        size="lg"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Cliente *
-              </label>
-              <input
-                type="text"
-                name="cliente"
-                value={formData.cliente}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Nome do cliente"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Telefone *
-              </label>
-              <input
-                type="tel"
-                name="telefone"
-                value={formData.telefone}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="(11) 98765-4321"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Serviço *
-              </label>
-              <select
-                name="servico"
-                value={formData.servico}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Selecione um serviço</option>
-                <option value="Corte">Corte</option>
-                <option value="Corte + Escova">Corte + Escova</option>
-                <option value="Coloração">Coloração</option>
-                <option value="Escova">Escova</option>
-                <option value="Hidratação">Hidratação</option>
-                <option value="Manicure">Manicure</option>
-                <option value="Pedicure">Pedicure</option>
-                <option value="Barba">Barba</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Profissional *
-              </label>
-              <select
-                name="profissional"
-                value={formData.profissional}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Selecione um profissional</option>
-                <option value="Ana Costa">Ana Costa</option>
-                <option value="Carlos Lima">Carlos Lima</option>
-                <option value="Beatriz Silva">Beatriz Silva</option>
-                <option value="Diego Santos">Diego Santos</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data *
-              </label>
-              <input
-                type="date"
-                name="data"
-                value={formData.data}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Horário *
-              </label>
-              <input
-                type="time"
-                name="horario"
-                value={formData.horario}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duração *
-              </label>
-              <input
-                type="text"
-                name="duracao"
-                value={formData.duracao}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Ex: 1h, 30min"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor *
-              </label>
-              <input
-                type="text"
-                name="valor"
-                value={formData.valor}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="R$ 0,00"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status *
-              </label>
-              <select
-                name="status"
-                value={formData.status}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="pendente">Pendente</option>
-                <option value="confirmado">Confirmado</option>
-                <option value="concluido">Concluído</option>
-                <option value="cancelado">Cancelado</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
-            >
-              {editingId ? 'Salvar Alterações' : 'Criar Agendamento'}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   );
 };

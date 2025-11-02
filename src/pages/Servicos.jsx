@@ -1,107 +1,32 @@
-import { useState } from 'react';
-import { Plus, Search, Clock, DollarSign, Edit, Trash2, Scissors } from 'lucide-react';
+import { useState, useContext } from 'react';
+import { Plus, Search, Clock, DollarSign, Edit, Trash2, Scissors, Tag, X } from 'lucide-react';
 import Modal from '../components/Modal';
+import { SalaoContext } from '../contexts/SalaoContext';
+import { generateDurationOptions, unmaskCurrency } from '../utils/masks';
 
 const Servicos = () => {
+  const { servicos, setServicos, categorias, setCategorias, profissionais } = useContext(SalaoContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState('Todos');
+  const [novaCategoria, setNovaCategoria] = useState('');
+  const [categoriaParaEditar, setCategoriaParaEditar] = useState('');
+  const [categoriaEditando, setCategoriaEditando] = useState('');
 
   const [formData, setFormData] = useState({
     nome: '',
     categoria: '',
-    duracao: '',
+    duracao: 30,
     valor: '',
     comissao: '',
     descricao: '',
+    profissionaisHabilitados: [],
     ativo: true
   });
 
-  const [servicos, setServicos] = useState([
-    {
-      id: 1,
-      nome: 'Corte Feminino',
-      categoria: 'Cabelo',
-      duracao: '45min',
-      valor: 80.00,
-      comissao: 40,
-      descricao: 'Corte personalizado para cabelo feminino',
-      ativo: true
-    },
-    {
-      id: 2,
-      nome: 'Corte Masculino',
-      categoria: 'Cabelo',
-      duracao: '30min',
-      valor: 45.00,
-      comissao: 40,
-      descricao: 'Corte tradicional ou moderno',
-      ativo: true
-    },
-    {
-      id: 3,
-      nome: 'Coloração Completa',
-      categoria: 'Cabelo',
-      duracao: '2h',
-      valor: 250.00,
-      comissao: 35,
-      descricao: 'Coloração completa com produtos profissionais',
-      ativo: true
-    },
-    {
-      id: 4,
-      nome: 'Escova',
-      categoria: 'Cabelo',
-      duracao: '40min',
-      valor: 60.00,
-      comissao: 40,
-      descricao: 'Escova modeladora',
-      ativo: true
-    },
-    {
-      id: 5,
-      nome: 'Hidratação',
-      categoria: 'Tratamento',
-      duracao: '1h',
-      valor: 90.00,
-      comissao: 35,
-      descricao: 'Tratamento hidratante profundo',
-      ativo: true
-    },
-    {
-      id: 6,
-      nome: 'Manicure',
-      categoria: 'Unhas',
-      duracao: '45min',
-      valor: 35.00,
-      comissao: 50,
-      descricao: 'Cuidados com as unhas das mãos',
-      ativo: true
-    },
-    {
-      id: 7,
-      nome: 'Pedicure',
-      categoria: 'Unhas',
-      duracao: '50min',
-      valor: 40.00,
-      comissao: 50,
-      descricao: 'Cuidados com as unhas dos pés',
-      ativo: true
-    },
-    {
-      id: 8,
-      nome: 'Barba',
-      categoria: 'Barbearia',
-      duracao: '30min',
-      valor: 40.00,
-      comissao: 45,
-      descricao: 'Corte e design de barba',
-      ativo: true
-    }
-  ]);
-
-  const categorias = ['Todos', 'Cabelo', 'Tratamento', 'Unhas', 'Barbearia'];
+  const durationOptions = generateDurationOptions();
 
   const handleOpenModal = (servico = null) => {
     if (servico) {
@@ -110,9 +35,10 @@ const Servicos = () => {
         nome: servico.nome,
         categoria: servico.categoria,
         duracao: servico.duracao,
-        valor: servico.valor.toString(),
+        valor: servico.valor.toFixed(2),
         comissao: servico.comissao.toString(),
         descricao: servico.descricao,
+        profissionaisHabilitados: servico.profissionaisHabilitados || [],
         ativo: servico.ativo
       });
     } else {
@@ -120,10 +46,11 @@ const Servicos = () => {
       setFormData({
         nome: '',
         categoria: '',
-        duracao: '',
+        duracao: 30,
         valor: '',
         comissao: '',
         descricao: '',
+        profissionaisHabilitados: [],
         ativo: true
       });
     }
@@ -133,15 +60,6 @@ const Servicos = () => {
   const handleCloseModal = () => {
     setShowModal(false);
     setEditingId(null);
-    setFormData({
-      nome: '',
-      categoria: '',
-      duracao: '',
-      valor: '',
-      comissao: '',
-      descricao: '',
-      ativo: true
-    });
   };
 
   const handleSubmit = (e) => {
@@ -153,6 +71,7 @@ const Servicos = () => {
           ? { 
               ...formData, 
               id: editingId,
+              duracao: parseInt(formData.duracao),
               valor: parseFloat(formData.valor),
               comissao: parseInt(formData.comissao)
             } 
@@ -162,6 +81,7 @@ const Servicos = () => {
       const newServico = {
         ...formData,
         id: Math.max(...servicos.map(s => s.id), 0) + 1,
+        duracao: parseInt(formData.duracao),
         valor: parseFloat(formData.valor),
         comissao: parseInt(formData.comissao)
       };
@@ -185,12 +105,70 @@ const Servicos = () => {
     }));
   };
 
+  const handleProfissionalToggle = (profissionalId) => {
+    setFormData(prev => ({
+      ...prev,
+      profissionaisHabilitados: prev.profissionaisHabilitados.includes(profissionalId)
+        ? prev.profissionaisHabilitados.filter(id => id !== profissionalId)
+        : [...prev.profissionaisHabilitados, profissionalId]
+    }));
+  };
+
+  // Gerenciamento de Categorias
+  const handleAddCategoria = () => {
+    if (novaCategoria.trim() && !categorias.includes(novaCategoria.trim())) {
+      setCategorias([...categorias, novaCategoria.trim()]);
+      setNovaCategoria('');
+    }
+  };
+
+  const handleDeleteCategoria = (categoria) => {
+    if (confirm(`Tem certeza que deseja excluir a categoria "${categoria}"?`)) {
+      // Verificar se existem serviços usando esta categoria
+      const servicosComCategoria = servicos.filter(s => s.categoria === categoria);
+      if (servicosComCategoria.length > 0) {
+        alert(`Não é possível excluir. Existem ${servicosComCategoria.length} serviço(s) usando esta categoria.`);
+        return;
+      }
+      setCategorias(categorias.filter(c => c !== categoria));
+    }
+  };
+
+  const handleEditCategoria = (categoriaAntiga) => {
+    setCategoriaEditando(categoriaAntiga);
+    setCategoriaParaEditar(categoriaAntiga);
+  };
+
+  const handleSaveEditCategoria = () => {
+    if (categoriaParaEditar.trim() && categoriaParaEditar !== categoriaEditando) {
+      // Atualizar categoria
+      setCategorias(categorias.map(c => c === categoriaEditando ? categoriaParaEditar.trim() : c));
+      
+      // Atualizar serviços que usam esta categoria
+      setServicos(servicos.map(s => 
+        s.categoria === categoriaEditando 
+          ? { ...s, categoria: categoriaParaEditar.trim() }
+          : s
+      ));
+    }
+    setCategoriaEditando('');
+    setCategoriaParaEditar('');
+  };
+
   const filteredServicos = servicos.filter(servico => {
     const matchSearch = servico.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        servico.descricao.toLowerCase().includes(searchTerm.toLowerCase());
     const matchCategoria = categoriaFiltro === 'Todos' || servico.categoria === categoriaFiltro;
     return matchSearch && matchCategoria;
   });
+
+  const formatDuration = (minutes) => {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hours > 0 && mins > 0) return `${hours}h ${mins}min`;
+    if (hours > 0) return `${hours}h`;
+    return `${mins}min`;
+  };
 
   const totalServicos = servicos.length;
   const valorMedio = servicos.reduce((acc, s) => acc + s.valor, 0) / servicos.length;
@@ -204,13 +182,22 @@ const Servicos = () => {
           <h1 className="text-3xl font-bold text-gray-800">Serviços</h1>
           <p className="text-gray-600 mt-1">Gerencie os serviços do seu salão</p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
-        >
-          <Plus size={20} />
-          <span>Novo Serviço</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => setShowCategoriaModal(true)}
+            className="flex items-center space-x-2 bg-white border-2 border-purple-600 text-purple-600 px-6 py-3 rounded-lg hover:bg-purple-50 transition-all"
+          >
+            <Tag size={20} />
+            <span>Gerenciar Categorias</span>
+          </button>
+          <button
+            onClick={() => handleOpenModal()}
+            className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+          >
+            <Plus size={20} />
+            <span>Novo Serviço</span>
+          </button>
+        </div>
       </div>
 
       {/* Estatísticas */}
@@ -256,11 +243,11 @@ const Servicos = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">Duração Média</p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">52min</p>
+              <p className="text-sm text-gray-600">Categorias</p>
+              <p className="text-3xl font-bold text-blue-600 mt-1">{categorias.length}</p>
             </div>
             <div className="bg-blue-100 p-3 rounded-lg">
-              <Clock className="text-blue-600" size={24} />
+              <Tag className="text-blue-600" size={24} />
             </div>
           </div>
         </div>
@@ -285,6 +272,7 @@ const Servicos = () => {
             onChange={(e) => setCategoriaFiltro(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
+            <option value="Todos">Todas as Categorias</option>
             {categorias.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
@@ -317,7 +305,7 @@ const Servicos = () => {
                     <Clock size={16} />
                     <span>Duração</span>
                   </div>
-                  <span className="font-medium text-gray-800">{servico.duracao}</span>
+                  <span className="font-medium text-gray-800">{formatDuration(servico.duracao)}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
@@ -334,7 +322,23 @@ const Servicos = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2 pt-4 border-t border-gray-200">
+              {servico.profissionaisHabilitados && servico.profissionaisHabilitados.length > 0 && (
+                <div className="mb-4 pb-4 border-t border-gray-200 pt-4">
+                  <p className="text-xs text-gray-600 mb-2">Profissionais:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {servico.profissionaisHabilitados.map(profId => {
+                      const prof = profissionais.find(p => p.id === profId);
+                      return prof ? (
+                        <span key={profId} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                          {prof.nome}
+                        </span>
+                      ) : null;
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-2">
                 <button 
                   onClick={() => handleOpenModal(servico)}
                   className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
@@ -354,12 +358,110 @@ const Servicos = () => {
         ))}
       </div>
 
-      {/* Modal de Cadastro/Edição */}
+      {/* Modal de Gerenciar Categorias */}
+      <Modal
+        isOpen={showCategoriaModal}
+        onClose={() => {
+          setShowCategoriaModal(false);
+          setCategoriaEditando('');
+          setNovaCategoria('');
+        }}
+        title="Gerenciar Categorias"
+        size="md"
+      >
+        <div className="space-y-4">
+          {/* Adicionar Nova Categoria */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Nova Categoria
+            </label>
+            <div className="flex space-x-2">
+              <input
+                type="text"
+                value={novaCategoria}
+                onChange={(e) => setNovaCategoria(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddCategoria()}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Digite o nome da categoria"
+              />
+              <button
+                onClick={handleAddCategoria}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <Plus size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Lista de Categorias */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Categorias Existentes
+            </label>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {categorias.map((categoria) => (
+                <div key={categoria} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  {categoriaEditando === categoria ? (
+                    <>
+                      <input
+                        type="text"
+                        value={categoriaParaEditar}
+                        onChange={(e) => setCategoriaParaEditar(e.target.value)}
+                        className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      />
+                      <div className="flex space-x-2 ml-2">
+                        <button
+                          onClick={handleSaveEditCategoria}
+                          className="p-1 text-green-600 hover:bg-green-50 rounded"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => {
+                            setCategoriaEditando('');
+                            setCategoriaParaEditar('');
+                          }}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium text-gray-800">{categoria}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500">
+                          {servicos.filter(s => s.categoria === categoria).length} serviço(s)
+                        </span>
+                        <button
+                          onClick={() => handleEditCategoria(categoria)}
+                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategoria(categoria)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal de Cadastro/Edição de Serviço */}
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
         title={editingId ? 'Editar Serviço' : 'Novo Serviço'}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -390,10 +492,9 @@ const Servicos = () => {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               >
                 <option value="">Selecione uma categoria</option>
-                <option value="Cabelo">Cabelo</option>
-                <option value="Tratamento">Tratamento</option>
-                <option value="Unhas">Unhas</option>
-                <option value="Barbearia">Barbearia</option>
+                {categorias.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
               </select>
             </div>
 
@@ -401,15 +502,17 @@ const Servicos = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Duração *
               </label>
-              <input
-                type="text"
+              <select
                 name="duracao"
                 value={formData.duracao}
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Ex: 1h, 30min"
-              />
+              >
+                {durationOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
           </div>
 
@@ -464,6 +567,31 @@ const Servicos = () => {
             ></textarea>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Profissionais Habilitados *
+            </label>
+            <div className="space-y-2 p-4 border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
+              {profissionais.map(prof => (
+                <label key={prof.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                  <input
+                    type="checkbox"
+                    checked={formData.profissionaisHabilitados.includes(prof.id)}
+                    onChange={() => handleProfissionalToggle(prof.id)}
+                    className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">{prof.nome}</span>
+                    <p className="text-xs text-gray-500">{prof.especialidades.join(', ')}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            {formData.profissionaisHabilitados.length === 0 && (
+              <p className="text-xs text-red-500 mt-1">Selecione pelo menos um profissional</p>
+            )}
+          </div>
+
           <div className="flex items-center">
             <input
               type="checkbox"
@@ -487,7 +615,8 @@ const Servicos = () => {
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+              disabled={formData.profissionaisHabilitados.length === 0}
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {editingId ? 'Salvar Alterações' : 'Cadastrar Serviço'}
             </button>
