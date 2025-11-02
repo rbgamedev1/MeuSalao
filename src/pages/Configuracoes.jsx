@@ -1,3 +1,4 @@
+// src/pages/Configuracoes.jsx
 import { useState, useContext } from 'react';
 import { 
   Settings, 
@@ -12,14 +13,26 @@ import {
   Edit,
   Trash2,
   Plus,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import MaskedInput from '../components/MaskedInput';
 import Modal from '../components/Modal';
 
 const Configuracoes = () => {
-  const { salaoAtual, atualizarSalao, profissionais, setProfissionais, resetarDados } = useContext(SalaoContext);
+  const { 
+    salaoAtual, 
+    saloes,
+    atualizarSalao, 
+    deletarSalao,
+    profissionais, 
+    setProfissionais, 
+    resetarDadosSalao,
+    resetarTodosSistema,
+    getProfissionaisPorSalao
+  } = useContext(SalaoContext);
+  
   const [activeTab, setActiveTab] = useState('geral');
   const [showProfissionalModal, setShowProfissionalModal] = useState(false);
   const [editingProfissionalId, setEditingProfissionalId] = useState(null);
@@ -42,6 +55,9 @@ const Configuracoes = () => {
   });
 
   const [logoPreview, setLogoPreview] = useState(null);
+
+  // Obter profissionais do salão atual
+  const profissionaisSalao = getProfissionaisPorSalao();
 
   // Definição dos planos
   const planos = [
@@ -248,13 +264,14 @@ const Configuracoes = () => {
     if (editingProfissionalId) {
       setProfissionais(profissionais.map(p => 
         p.id === editingProfissionalId 
-          ? { ...profissionalData, id: editingProfissionalId }
+          ? { ...profissionalData, id: editingProfissionalId, salaoId: salaoAtual.id }
           : p
       ));
     } else {
       const newProfissional = {
         ...profissionalData,
-        id: Math.max(...profissionais.map(p => p.id), 0) + 1
+        id: Math.max(...profissionais.map(p => p.id), 0) + 1,
+        salaoId: salaoAtual.id
       };
       setProfissionais([...profissionais, newProfissional]);
     }
@@ -268,6 +285,20 @@ const Configuracoes = () => {
     }
   };
 
+  const handleDeletarSalao = () => {
+    if (saloes.length === 1) {
+      alert('Você não pode excluir o único salão cadastrado.');
+      return;
+    }
+
+    if (confirm(`Tem certeza que deseja excluir o salão "${salaoAtual.nome}"? Todos os dados relacionados a este salão serão perdidos permanentemente!`)) {
+      const sucesso = deletarSalao(salaoAtual.id);
+      if (sucesso) {
+        alert('Salão excluído com sucesso!');
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -276,13 +307,22 @@ const Configuracoes = () => {
           <h1 className="text-3xl font-bold text-gray-800">Configurações</h1>
           <p className="text-gray-600 mt-1">Gerencie as configurações do seu salão</p>
         </div>
-        <button
-          onClick={resetarDados}
-          className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
-        >
-          <X size={18} />
-          <span>Resetar Dados</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={resetarDadosSalao}
+            className="flex items-center space-x-2 bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors text-sm"
+          >
+            <AlertTriangle size={18} />
+            <span>Resetar Dados do Salão</span>
+          </button>
+          <button
+            onClick={resetarTodosSistema}
+            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm"
+          >
+            <X size={18} />
+            <span>Resetar Todo Sistema</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -434,10 +474,19 @@ const Configuracoes = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-4 border-t border-gray-200">
+              <div className="flex justify-between items-center pt-4 border-t border-gray-200">
+                {saloes.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={handleDeletarSalao}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+                  >
+                    Excluir Este Salão
+                  </button>
+                )}
                 <button
                   type="submit"
-                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all ml-auto"
                 >
                   Salvar Alterações
                 </button>
@@ -454,7 +503,7 @@ const Configuracoes = () => {
                     Gerenciar Profissionais
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Total de profissionais: {profissionais.length}
+                    Total de profissionais neste salão: {profissionaisSalao.length}
                   </p>
                 </div>
                 <button
@@ -468,7 +517,7 @@ const Configuracoes = () => {
 
               {/* Lista de Profissionais */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {profissionais.map(prof => (
+                {profissionaisSalao.map(prof => (
                   <div key={prof.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3">
@@ -508,6 +557,14 @@ const Configuracoes = () => {
                   </div>
                 ))}
               </div>
+
+              {profissionaisSalao.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <Users size={48} className="mx-auto mb-4 opacity-50" />
+                  <p>Nenhum profissional cadastrado neste salão.</p>
+                  <p className="text-sm mt-2">Clique em "Adicionar Profissional" para começar.</p>
+                </div>
+              )}
             </div>
           )}
 

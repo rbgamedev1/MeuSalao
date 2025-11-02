@@ -1,3 +1,4 @@
+// src/contexts/SalaoContext.jsx
 import { createContext, useState, useEffect } from 'react';
 
 export const SalaoContext = createContext();
@@ -33,15 +34,6 @@ export const SalaoProvider = ({ children }) => {
       email: 'contato@belezatotal.com.br',
       logo: null,
       plano: 'profissional'
-    },
-    {
-      id: 2,
-      nome: 'Estilo & Charme',
-      endereco: 'Av. Principal, 456 - Jardins',
-      telefone: '(11) 91234-5678',
-      email: 'contato@estilocharme.com.br',
-      logo: null,
-      plano: 'plus'
     }
   ];
 
@@ -55,7 +47,8 @@ export const SalaoProvider = ({ children }) => {
       ultimaVisita: '25/10/2025',
       totalGasto: 2450.00,
       visitas: 18,
-      status: 'ativo'
+      status: 'ativo',
+      salaoId: 1
     },
     {
       id: 2,
@@ -66,7 +59,8 @@ export const SalaoProvider = ({ children }) => {
       ultimaVisita: '28/10/2025',
       totalGasto: 890.00,
       visitas: 8,
-      status: 'ativo'
+      status: 'ativo',
+      salaoId: 1
     },
     {
       id: 3,
@@ -77,7 +71,8 @@ export const SalaoProvider = ({ children }) => {
       ultimaVisita: '30/10/2025',
       totalGasto: 3120.00,
       visitas: 24,
-      status: 'ativo'
+      status: 'ativo',
+      salaoId: 1
     }
   ];
 
@@ -87,28 +82,32 @@ export const SalaoProvider = ({ children }) => {
       nome: 'Ana Costa', 
       especialidades: ['Corte', 'Coloração', 'Escova', 'Hidratação'],
       telefone: '(11) 91111-1111',
-      email: 'ana@salao.com'
+      email: 'ana@salao.com',
+      salaoId: 1
     },
     { 
       id: 2, 
       nome: 'Carlos Lima', 
       especialidades: ['Corte', 'Barba'],
       telefone: '(11) 92222-2222',
-      email: 'carlos@salao.com'
+      email: 'carlos@salao.com',
+      salaoId: 1
     },
     { 
       id: 3, 
       nome: 'Beatriz Silva', 
       especialidades: ['Manicure', 'Pedicure'],
       telefone: '(11) 93333-3333',
-      email: 'beatriz@salao.com'
+      email: 'beatriz@salao.com',
+      salaoId: 1
     },
     { 
       id: 4, 
       nome: 'Diego Santos', 
       especialidades: ['Corte', 'Coloração'],
       telefone: '(11) 94444-4444',
-      email: 'diego@salao.com'
+      email: 'diego@salao.com',
+      salaoId: 1
     }
   ];
 
@@ -124,7 +123,8 @@ export const SalaoProvider = ({ children }) => {
       comissao: 40,
       descricao: 'Corte personalizado para cabelo feminino',
       profissionaisHabilitados: [1, 4],
-      ativo: true
+      ativo: true,
+      salaoId: 1
     },
     {
       id: 2,
@@ -135,7 +135,8 @@ export const SalaoProvider = ({ children }) => {
       comissao: 40,
       descricao: 'Corte tradicional ou moderno',
       profissionaisHabilitados: [2],
-      ativo: true
+      ativo: true,
+      salaoId: 1
     },
     {
       id: 3,
@@ -146,7 +147,8 @@ export const SalaoProvider = ({ children }) => {
       comissao: 35,
       descricao: 'Coloração completa com produtos profissionais',
       profissionaisHabilitados: [1, 4],
-      ativo: true
+      ativo: true,
+      salaoId: 1
     },
     {
       id: 4,
@@ -157,7 +159,8 @@ export const SalaoProvider = ({ children }) => {
       comissao: 40,
       descricao: 'Escova modeladora',
       profissionaisHabilitados: [1],
-      ativo: true
+      ativo: true,
+      salaoId: 1
     },
     {
       id: 5,
@@ -168,7 +171,8 @@ export const SalaoProvider = ({ children }) => {
       comissao: 35,
       descricao: 'Tratamento hidratante profundo',
       profissionaisHabilitados: [1],
-      ativo: true
+      ativo: true,
+      salaoId: 1
     },
     {
       id: 6,
@@ -179,7 +183,8 @@ export const SalaoProvider = ({ children }) => {
       comissao: 50,
       descricao: 'Cuidados com as unhas das mãos',
       profissionaisHabilitados: [3],
-      ativo: true
+      ativo: true,
+      salaoId: 1
     },
     {
       id: 7,
@@ -190,7 +195,8 @@ export const SalaoProvider = ({ children }) => {
       comissao: 45,
       descricao: 'Corte e design de barba',
       profissionaisHabilitados: [2],
-      ativo: true
+      ativo: true,
+      salaoId: 1
     }
   ];
 
@@ -201,7 +207,8 @@ export const SalaoProvider = ({ children }) => {
       telefone: '(11) 3456-7890',
       email: 'contato@beauty.com',
       cnpj: '12.345.678/0001-90',
-      endereco: 'Rua do Comércio, 100'
+      endereco: 'Rua do Comércio, 100',
+      salaoId: 1
     },
     { 
       id: 2, 
@@ -209,7 +216,8 @@ export const SalaoProvider = ({ children }) => {
       telefone: '(11) 3456-7891',
       email: 'contato@beautysupply.com',
       cnpj: '98.765.432/0001-10',
-      endereco: 'Av. dos Fornecedores, 200'
+      endereco: 'Av. dos Fornecedores, 200',
+      salaoId: 1
     },
     { 
       id: 3, 
@@ -217,7 +225,8 @@ export const SalaoProvider = ({ children }) => {
       telefone: '(11) 3456-7892',
       email: 'contato@cosmeticosbrasil.com',
       cnpj: '11.222.333/0001-44',
-      endereco: 'Rua das Indústrias, 300'
+      endereco: 'Rua das Indústrias, 300',
+      salaoId: 1
     }
   ];
 
@@ -262,23 +271,68 @@ export const SalaoProvider = ({ children }) => {
     saveToStorage('fornecedores', fornecedores);
   }, [fornecedores]);
 
+  // Função para adicionar novo salão
+  const adicionarSalao = (dadosSalao) => {
+    const novoSalao = {
+      ...dadosSalao,
+      id: Math.max(...saloes.map(s => s.id), 0) + 1
+    };
+    setSaloes([...saloes, novoSalao]);
+    return novoSalao;
+  };
+
   // Função para atualizar informações do salão
   const atualizarSalao = (salaoId, dadosAtualizados) => {
-    // Atualizar na lista de salões
     const saloesAtualizados = saloes.map(s => 
       s.id === salaoId ? { ...s, ...dadosAtualizados } : s
     );
     setSaloes(saloesAtualizados);
     
-    // Atualizar salão atual se for o que está sendo editado
     if (salaoAtual.id === salaoId) {
       setSalaoAtual({ ...salaoAtual, ...dadosAtualizados });
     }
   };
 
-  // Função para resetar todos os dados (útil para desenvolvimento/testes)
-  const resetarDados = () => {
-    if (confirm('Tem certeza que deseja resetar todos os dados? Esta ação não pode ser desfeita!')) {
+  // Função para deletar um salão
+  const deletarSalao = (salaoId) => {
+    if (saloes.length === 1) {
+      alert('Você não pode excluir o único salão cadastrado.');
+      return false;
+    }
+
+    // Remover todos os dados relacionados ao salão
+    setClientes(clientes.filter(c => c.salaoId !== salaoId));
+    setProfissionais(profissionais.filter(p => p.salaoId !== salaoId));
+    setServicos(servicos.filter(s => s.salaoId !== salaoId));
+    setFornecedores(fornecedores.filter(f => f.salaoId !== salaoId));
+    
+    const novosSaloes = saloes.filter(s => s.id !== salaoId);
+    setSaloes(novosSaloes);
+
+    // Se o salão deletado era o atual, mudar para o primeiro disponível
+    if (salaoAtual.id === salaoId) {
+      setSalaoAtual(novosSaloes[0]);
+    }
+
+    return true;
+  };
+
+  // Função para resetar dados do salão atual
+  const resetarDadosSalao = () => {
+    if (confirm(`Tem certeza que deseja resetar todos os dados do salão "${salaoAtual.nome}"? Esta ação não pode ser desfeita!`)) {
+      // Remove apenas os dados do salão atual
+      setClientes(clientes.filter(c => c.salaoId !== salaoAtual.id));
+      setProfissionais(profissionais.filter(p => p.salaoId !== salaoAtual.id));
+      setServicos(servicos.filter(s => s.salaoId !== salaoAtual.id));
+      setFornecedores(fornecedores.filter(f => f.salaoId !== salaoAtual.id));
+      
+      alert('Dados do salão resetados com sucesso!');
+    }
+  };
+
+  // Função para resetar TODOS os dados do sistema
+  const resetarTodosSistema = () => {
+    if (confirm('Tem certeza que deseja resetar TODOS os dados do sistema? Todos os salões e dados serão perdidos!')) {
       localStorage.clear();
       setSaloes(defaultSaloes);
       setSalaoAtual(defaultSaloes[0]);
@@ -287,16 +341,24 @@ export const SalaoProvider = ({ children }) => {
       setCategorias(defaultCategorias);
       setServicos(defaultServicos);
       setFornecedores(defaultFornecedores);
-      alert('Dados resetados com sucesso!');
+      alert('Sistema resetado com sucesso!');
     }
   };
+
+  // Filtrar dados pelo salão atual
+  const getClientesPorSalao = () => clientes.filter(c => c.salaoId === salaoAtual.id);
+  const getProfissionaisPorSalao = () => profissionais.filter(p => p.salaoId === salaoAtual.id);
+  const getServicosPorSalao = () => servicos.filter(s => s.salaoId === salaoAtual.id);
+  const getFornecedoresPorSalao = () => fornecedores.filter(f => f.salaoId === salaoAtual.id);
 
   return (
     <SalaoContext.Provider value={{
       saloes,
       salaoAtual,
       setSalaoAtual,
+      adicionarSalao,
       atualizarSalao,
+      deletarSalao,
       clientes,
       setClientes,
       profissionais,
@@ -307,7 +369,12 @@ export const SalaoProvider = ({ children }) => {
       setServicos,
       fornecedores,
       setFornecedores,
-      resetarDados
+      resetarDadosSalao,
+      resetarTodosSistema,
+      getClientesPorSalao,
+      getProfissionaisPorSalao,
+      getServicosPorSalao,
+      getFornecedoresPorSalao
     }}>
       {children}
     </SalaoContext.Provider>
