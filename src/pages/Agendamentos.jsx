@@ -1,10 +1,10 @@
 // src/pages/Agendamentos.jsx
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useMemo } from 'react';
 import { Calendar, Plus, Search, Clock, User, Edit, Trash2, ChevronLeft, ChevronRight, List, CalendarDays } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
 import { SalaoContext } from '../contexts/SalaoContext';
-import { dateToISO, dateFromISO, generateTimeOptions } from '../utils/masks';
+import { generateTimeOptions } from '../utils/masks';
 
 const Agendamentos = () => {
   const { 
@@ -12,9 +12,12 @@ const Agendamentos = () => {
     clientes, 
     profissionais, 
     servicos,
+    agendamentos,
+    setAgendamentos,
     getClientesPorSalao,
     getProfissionaisPorSalao,
-    getServicosPorSalao
+    getServicosPorSalao,
+    getAgendamentosPorSalao
   } = useContext(SalaoContext);
   
   const [viewMode, setViewMode] = useState('lista');
@@ -36,47 +39,13 @@ const Agendamentos = () => {
   const [servicoSelecionado, setServicoSelecionado] = useState(null);
   const [profissionaisDisponiveis, setProfissionaisDisponiveis] = useState([]);
 
-  // Estados para agendamentos - incluir salaoId
-  const [agendamentos, setAgendamentos] = useState([
-    {
-      id: 1,
-      clienteId: 1,
-      servicoId: 1,
-      profissionalId: 1,
-      data: '01/11/2025',
-      horario: '14:00',
-      status: 'confirmado',
-      salaoId: 1
-    },
-    {
-      id: 2,
-      clienteId: 2,
-      servicoId: 7,
-      profissionalId: 2,
-      data: '01/11/2025',
-      horario: '14:30',
-      status: 'pendente',
-      salaoId: 1
-    },
-    {
-      id: 3,
-      clienteId: 3,
-      servicoId: 3,
-      profissionalId: 1,
-      data: '01/11/2025',
-      horario: '15:00',
-      status: 'confirmado',
-      salaoId: 1
-    }
-  ]);
-
   const timeOptions = generateTimeOptions();
 
-  // Obter dados do salão atual
-  const clientesSalao = getClientesPorSalao();
-  const profissionaisSalao = getProfissionaisPorSalao();
-  const servicosSalao = getServicosPorSalao();
-  const agendamentosSalao = agendamentos.filter(a => a.salaoId === salaoAtual.id);
+  // Obter dados do salão atual usando useMemo para otimização
+  const clientesSalao = useMemo(() => getClientesPorSalao(), [clientes, salaoAtual.id]);
+  const profissionaisSalao = useMemo(() => getProfissionaisPorSalao(), [profissionais, salaoAtual.id]);
+  const servicosSalao = useMemo(() => getServicosPorSalao(), [servicos, salaoAtual.id]);
+  const agendamentosSalao = useMemo(() => getAgendamentosPorSalao(), [agendamentos, salaoAtual.id]);
 
   const statusColors = {
     confirmado: 'bg-green-100 text-green-800 border-green-300',
@@ -204,27 +173,31 @@ const Agendamentos = () => {
     }));
   };
 
-  // Obter informações completas do agendamento
-  const getAgendamentoCompleto = (agendamento) => {
-    const cliente = clientes.find(c => c.id === agendamento.clienteId);
-    const servico = servicos.find(s => s.id === agendamento.servicoId);
-    const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
-    
-    return {
-      ...agendamento,
-      cliente,
-      servico,
-      profissional
+  // Obter informações completas do agendamento - otimizado com useMemo
+  const getAgendamentoCompleto = useMemo(() => {
+    return (agendamento) => {
+      const cliente = clientes.find(c => c.id === agendamento.clienteId);
+      const servico = servicos.find(s => s.id === agendamento.servicoId);
+      const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
+      
+      return {
+        ...agendamento,
+        cliente,
+        servico,
+        profissional
+      };
     };
-  };
+  }, [clientes, servicos, profissionais]);
 
-  const filteredAgendamentos = agendamentosSalao
-    .map(ag => getAgendamentoCompleto(ag))
-    .filter(ag => {
-      if (!ag.cliente || !ag.servico) return false;
-      return ag.cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-             ag.servico.nome.toLowerCase().includes(searchTerm.toLowerCase());
-    });
+  const filteredAgendamentos = useMemo(() => {
+    return agendamentosSalao
+      .map(ag => getAgendamentoCompleto(ag))
+      .filter(ag => {
+        if (!ag.cliente || !ag.servico) return false;
+        return ag.cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+               ag.servico.nome.toLowerCase().includes(searchTerm.toLowerCase());
+      });
+  }, [agendamentosSalao, searchTerm, getAgendamentoCompleto]);
 
   // Funções do Calendário
   const getDaysInMonth = (date) => {
@@ -317,6 +290,17 @@ const Agendamentos = () => {
     if (hours > 0) return `${hours}h`;
     return `${mins}min`;
   };
+
+  // Estatísticas otimizadas
+  const stats = useMemo(() => ({
+    total: agendamentosSalao.length,
+    confirmados: agendamentosSalao.filter(a => a.status === 'confirmado').length,
+    pendentes: agendamentosSalao.filter(a => a.status === 'pendente').length,
+    faturamentoPrevisto: agendamentosSalao.reduce((acc, ag) => {
+      const serv = servicos.find(s => s.id === ag.servicoId);
+      return acc + (serv ? serv.valor : 0);
+    }, 0)
+  }), [agendamentosSalao, servicos]);
 
   return (
     <div className="space-y-6">
@@ -767,27 +751,20 @@ const Agendamentos = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Total de Agendamentos</p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{agendamentosSalao.length}</p>
+          <p className="text-2xl font-bold text-gray-800 mt-1">{stats.total}</p>
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Confirmados</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">
-            {agendamentosSalao.filter(a => a.status === 'confirmado').length}
-          </p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{stats.confirmados}</p>
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Pendentes</p>
-          <p className="text-2xl font-bold text-yellow-600 mt-1">
-            {agendamentosSalao.filter(a => a.status === 'pendente').length}
-          </p>
+          <p className="text-2xl font-bold text-yellow-600 mt-1">{stats.pendentes}</p>
         </div>
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <p className="text-sm text-gray-600">Faturamento Previsto</p>
           <p className="text-2xl font-bold text-purple-600 mt-1">
-            R$ {agendamentosSalao.map(ag => {
-              const serv = servicos.find(s => s.id === ag.servicoId);
-              return serv ? serv.valor : 0;
-            }).reduce((a, b) => a + b, 0).toFixed(2)}
+            R$ {stats.faturamentoPrevisto.toFixed(2)}
           </p>
         </div>
       </div>

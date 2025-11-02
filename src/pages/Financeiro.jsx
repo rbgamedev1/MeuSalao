@@ -1,5 +1,5 @@
 // src/pages/Financeiro.jsx
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useMemo } from 'react';
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard, Edit, Trash2 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Modal from '../components/Modal';
@@ -46,21 +46,88 @@ const Financeiro = () => {
     }));
   }, [salaoAtual.id]);
 
-  const fluxoCaixaData = [
-    { mes: 'Jun', receita: 18500, despesa: 8200 },
-    { mes: 'Jul', receita: 21300, despesa: 9100 },
-    { mes: 'Ago', receita: 19800, despesa: 8800 },
-    { mes: 'Set', receita: 24500, despesa: 9500 },
-    { mes: 'Out', receita: 28900, despesa: 10200 },
-    { mes: 'Nov', receita: 32450, despesa: 11800 },
-  ];
+  // Calcular totais
+  const totalReceitas = useMemo(() => {
+    return transacoesSalao
+      .filter(t => t.tipo === 'receita')
+      .reduce((acc, t) => acc + t.valor, 0);
+  }, [transacoesSalao]);
 
-  const categoriasDespesas = [
-    { name: 'Estoque', value: 35, color: '#8B5CF6' },
-    { name: 'Fixas', value: 30, color: '#EC4899' },
-    { name: 'Salários', value: 25, color: '#F59E0B' },
-    { name: 'Marketing', value: 10, color: '#10B981' },
-  ];
+  const totalDespesas = useMemo(() => {
+    return transacoesSalao
+      .filter(t => t.tipo === 'despesa')
+      .reduce((acc, t) => acc + t.valor, 0);
+  }, [transacoesSalao]);
+
+  const saldo = totalReceitas - totalDespesas;
+
+  // Calcular ticket médio baseado em receitas
+  const ticketMedio = useMemo(() => {
+    const receitas = transacoesSalao.filter(t => t.tipo === 'receita');
+    if (receitas.length === 0) return 0;
+    return totalReceitas / receitas.length;
+  }, [transacoesSalao, totalReceitas]);
+
+  // Dados de fluxo de caixa dos últimos 6 meses
+  const fluxoCaixaData = useMemo(() => {
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const dataAtual = new Date();
+    const dados = [];
+
+    for (let i = 5; i >= 0; i--) {
+      const data = new Date(dataAtual.getFullYear(), dataAtual.getMonth() - i, 1);
+      const mes = data.getMonth();
+      const ano = data.getFullYear();
+
+      const receita = transacoesSalao
+        .filter(t => {
+          if (t.tipo !== 'receita') return false;
+          const [tAno, tMes] = t.data.split('-').map(Number);
+          return tAno === ano && tMes - 1 === mes;
+        })
+        .reduce((sum, t) => sum + t.valor, 0);
+
+      const despesa = transacoesSalao
+        .filter(t => {
+          if (t.tipo !== 'despesa') return false;
+          const [tAno, tMes] = t.data.split('-').map(Number);
+          return tAno === ano && tMes - 1 === mes;
+        })
+        .reduce((sum, t) => sum + t.valor, 0);
+
+      dados.push({
+        mes: meses[mes],
+        receita,
+        despesa
+      });
+    }
+
+    return dados;
+  }, [transacoesSalao]);
+
+  // Distribuição de despesas por categoria
+  const categoriasDespesas = useMemo(() => {
+    const categorias = {};
+    const despesas = transacoesSalao.filter(t => t.tipo === 'despesa');
+    
+    if (despesas.length === 0) return [];
+
+    despesas.forEach(t => {
+      if (!categorias[t.categoria]) {
+        categorias[t.categoria] = 0;
+      }
+      categorias[t.categoria] += t.valor;
+    });
+
+    const totalDespesas = Object.values(categorias).reduce((a, b) => a + b, 0);
+    const cores = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
+
+    return Object.entries(categorias).map(([name, valor], index) => ({
+      name,
+      value: Math.round((valor / totalDespesas) * 100),
+      color: cores[index % cores.length]
+    }));
+  }, [transacoesSalao]);
 
   const handleOpenModal = (transacao = null) => {
     if (transacao) {
@@ -151,16 +218,6 @@ const Financeiro = () => {
     }));
   };
 
-  const totalReceitas = transacoesSalao
-    .filter(t => t.tipo === 'receita')
-    .reduce((acc, t) => acc + t.valor, 0);
-
-  const totalDespesas = transacoesSalao
-    .filter(t => t.tipo === 'despesa')
-    .reduce((acc, t) => acc + t.valor, 0);
-
-  const saldo = totalReceitas - totalDespesas;
-
   const filteredTransacoes = transacoesSalao.filter(t => {
     if (tipoTransacao === 'todas') return true;
     return t.tipo === tipoTransacao;
@@ -204,7 +261,9 @@ const Financeiro = () => {
               <p className="text-2xl font-bold text-green-600 mt-1">
                 R$ {totalReceitas.toFixed(2)}
               </p>
-              <p className="text-xs text-green-600 mt-1">+12% vs mês anterior</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {transacoesSalao.filter(t => t.tipo === 'receita').length} transações
+              </p>
             </div>
             <div className="bg-green-100 p-3 rounded-lg">
               <TrendingUp className="text-green-600" size={24} />
@@ -219,7 +278,9 @@ const Financeiro = () => {
               <p className="text-2xl font-bold text-red-600 mt-1">
                 R$ {totalDespesas.toFixed(2)}
               </p>
-              <p className="text-xs text-red-600 mt-1">+5% vs mês anterior</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {transacoesSalao.filter(t => t.tipo === 'despesa').length} transações
+              </p>
             </div>
             <div className="bg-red-100 p-3 rounded-lg">
               <TrendingDown className="text-red-600" size={24} />
@@ -234,7 +295,7 @@ const Financeiro = () => {
               <p className={`text-2xl font-bold mt-1 ${saldo >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
                 R$ {Math.abs(saldo).toFixed(2)}
               </p>
-              <p className="text-xs text-gray-600 mt-1">{saldo >= 0 ? 'Positivo' : 'Negativo'}</p>
+              <p className="text-xs text-gray-500 mt-1">{saldo >= 0 ? 'Positivo' : 'Negativo'}</p>
             </div>
             <div className="bg-purple-100 p-3 rounded-lg">
               <DollarSign className="text-purple-600" size={24} />
@@ -246,8 +307,12 @@ const Financeiro = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Ticket Médio</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">R$ 153,30</p>
-              <p className="text-xs text-blue-600 mt-1">+8% vs mês anterior</p>
+              <p className="text-2xl font-bold text-blue-600 mt-1">
+                R$ {ticketMedio.toFixed(2)}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {ticketMedio > 0 ? 'Por transação' : 'Sem dados'}
+              </p>
             </div>
             <div className="bg-blue-100 p-3 rounded-lg">
               <CreditCard className="text-blue-600" size={24} />
@@ -259,41 +324,61 @@ const Financeiro = () => {
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Fluxo de Caixa</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={fluxoCaixaData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="mes" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="receita" fill="#10B981" name="Receitas" />
-              <Bar dataKey="despesa" fill="#EF4444" name="Despesas" />
-            </BarChart>
-          </ResponsiveContainer>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Fluxo de Caixa (6 meses)</h3>
+          {fluxoCaixaData.some(d => d.receita > 0 || d.despesa > 0) ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={fluxoCaixaData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="receita" fill="#10B981" name="Receitas" />
+                <Bar dataKey="despesa" fill="#EF4444" name="Despesas" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-72 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhuma transação registrada</p>
+                <p className="text-sm mt-2">Adicione transações para visualizar o fluxo</p>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Despesas por Categoria</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={categoriasDespesas}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {categoriasDespesas.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          {categoriasDespesas.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categoriasDespesas}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, value }) => `${name} ${value}%`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {categoriasDespesas.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-72 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <TrendingDown size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhuma despesa registrada</p>
+                <p className="text-sm mt-2">Adicione despesas para visualizar distribuição</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

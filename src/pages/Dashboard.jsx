@@ -9,78 +9,134 @@ const Dashboard = () => {
     salaoAtual,
     getClientesPorSalao,
     getProfissionaisPorSalao,
-    getServicosPorSalao
+    getServicosPorSalao,
+    getAgendamentosPorSalao,
+    getTransacoesPorSalao
   } = useContext(SalaoContext);
 
   // Obter dados filtrados por salão
   const clientesSalao = getClientesPorSalao();
   const profissionaisSalao = getProfissionaisPorSalao();
   const servicosSalao = getServicosPorSalao();
+  const agendamentosSalao = getAgendamentosPorSalao();
+  const transacoesSalao = getTransacoesPorSalao();
 
-  // Dados mockados para exemplo - em produção viriam de agendamentos e transações filtrados por salaoId
-  const stats = useMemo(() => [
-    {
-      icon: Calendar,
-      label: 'Agendamentos Hoje',
-      value: '12',
-      change: '+2 que ontem',
-      color: 'bg-blue-500'
-    },
-    {
-      icon: Users,
-      label: 'Clientes Ativos',
-      value: clientesSalao.filter(c => c.status === 'ativo').length.toString(),
-      change: `${clientesSalao.length} total`,
-      color: 'bg-green-500'
-    },
-    {
-      icon: DollarSign,
-      label: 'Faturamento Hoje',
-      value: 'R$ 1.850',
-      change: '+18% vs ontem',
-      color: 'bg-purple-500'
-    },
-    {
-      icon: TrendingUp,
-      label: 'Faturamento Mês',
-      value: 'R$ 32.450',
-      change: '+12% vs mês anterior',
-      color: 'bg-pink-500'
+  // Calcular agendamentos de hoje
+  const agendamentosHoje = useMemo(() => {
+    const hoje = new Date().toLocaleDateString('pt-BR');
+    return agendamentosSalao.filter(a => a.data === hoje).length;
+  }, [agendamentosSalao]);
+
+  // Calcular faturamento de hoje baseado em transações
+  const faturamentoHoje = useMemo(() => {
+    const hoje = new Date().toISOString().split('T')[0];
+    return transacoesSalao
+      .filter(t => t.tipo === 'receita' && t.data === hoje)
+      .reduce((sum, t) => sum + t.valor, 0);
+  }, [transacoesSalao]);
+
+  // Calcular faturamento do mês
+  const faturamentoMes = useMemo(() => {
+    const dataAtual = new Date();
+    const mesAtual = dataAtual.getMonth();
+    const anoAtual = dataAtual.getFullYear();
+    
+    return transacoesSalao
+      .filter(t => {
+        if (t.tipo !== 'receita') return false;
+        const [ano, mes] = t.data.split('-').map(Number);
+        return ano === anoAtual && mes - 1 === mesAtual;
+      })
+      .reduce((sum, t) => sum + t.valor, 0);
+  }, [transacoesSalao]);
+
+  // Estatísticas principais
+  const stats = useMemo(() => {
+    const clientesAtivos = clientesSalao.filter(c => c.status === 'ativo').length;
+    
+    return [
+      {
+        icon: Calendar,
+        label: 'Agendamentos Hoje',
+        value: agendamentosHoje.toString(),
+        change: agendamentosSalao.length > 0 ? `${agendamentosSalao.length} total` : 'Nenhum agendamento',
+        color: 'bg-blue-500'
+      },
+      {
+        icon: Users,
+        label: 'Clientes Ativos',
+        value: clientesAtivos.toString(),
+        change: `${clientesSalao.length} total`,
+        color: 'bg-green-500'
+      },
+      {
+        icon: DollarSign,
+        label: 'Faturamento Hoje',
+        value: `R$ ${faturamentoHoje.toFixed(2)}`,
+        change: faturamentoHoje > 0 ? 'Receitas confirmadas' : 'Sem receitas hoje',
+        color: 'bg-purple-500'
+      },
+      {
+        icon: TrendingUp,
+        label: 'Faturamento Mês',
+        value: `R$ ${faturamentoMes.toFixed(2)}`,
+        change: faturamentoMes > 0 ? 'Receitas do mês' : 'Sem receitas no mês',
+        color: 'bg-pink-500'
+      }
+    ];
+  }, [clientesSalao, agendamentosHoje, agendamentosSalao, faturamentoHoje, faturamentoMes]);
+
+  // Dados de faturamento semanal baseados em transações reais
+  const faturamentoSemanal = useMemo(() => {
+    const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    const hoje = new Date();
+    const dados = [];
+
+    for (let i = 6; i >= 0; i--) {
+      const data = new Date(hoje);
+      data.setDate(data.getDate() - i);
+      const dataStr = data.toISOString().split('T')[0];
+      const diaSemana = diasSemana[data.getDay()];
+
+      const valorDia = transacoesSalao
+        .filter(t => t.tipo === 'receita' && t.data === dataStr)
+        .reduce((sum, t) => sum + t.valor, 0);
+
+      dados.push({
+        name: diaSemana,
+        valor: valorDia
+      });
     }
-  ], [clientesSalao]);
 
-  const revenueData = [
-    { name: 'Seg', valor: 850 },
-    { name: 'Ter', valor: 1200 },
-    { name: 'Qua', valor: 980 },
-    { name: 'Qui', valor: 1450 },
-    { name: 'Sex', valor: 1850 },
-    { name: 'Sáb', valor: 2100 },
-    { name: 'Dom', valor: 900 },
-  ];
+    return dados;
+  }, [transacoesSalao]);
 
-  const servicesData = useMemo(() => {
-    // Agrupar serviços por categoria
+  // Serviços por categoria baseados em dados reais
+  const servicosPorCategoria = useMemo(() => {
     const categorias = {};
     servicosSalao.forEach(servico => {
       if (!categorias[servico.categoria]) {
-        categorias[servico.categoria] = 0;
+        categorias[servico.categoria] = {
+          name: servico.categoria,
+          qtd: 0
+        };
       }
-      categorias[servico.categoria]++;
+      categorias[servico.categoria].qtd++;
     });
 
-    return Object.entries(categorias).map(([name, qtd]) => ({
-      name,
-      qtd
-    })).slice(0, 5);
+    return Object.values(categorias).slice(0, 5);
   }, [servicosSalao]);
 
-  const proximosAgendamentos = [
-    { id: 1, cliente: 'Maria Silva', servico: 'Corte + Escova', horario: '14:00', profissional: 'Ana Costa' },
-    { id: 2, cliente: 'João Santos', servico: 'Barba', horario: '14:30', profissional: 'Carlos Lima' },
-    { id: 3, cliente: 'Paula Souza', servico: 'Coloração', horario: '15:00', profissional: 'Ana Costa' },
-    { id: 4, cliente: 'Roberto Alves', servico: 'Corte', horario: '15:30', profissional: 'Carlos Lima' },
-  ];
+  // Próximos agendamentos reais
+  const proximosAgendamentos = useMemo(() => {
+    const hoje = new Date();
+    const hojeStr = hoje.toLocaleDateString('pt-BR');
+    
+    return agendamentosSalao
+      .filter(a => a.data === hojeStr && a.status !== 'cancelado')
+      .sort((a, b) => a.horario.localeCompare(b.horario))
+      .slice(0, 4);
+  }, [agendamentosSalao]);
 
   return (
     <div className="space-y-6">
@@ -104,7 +160,7 @@ const Dashboard = () => {
               <div>
                 <p className="text-gray-600 text-sm">{stat.label}</p>
                 <p className="text-3xl font-bold text-gray-800 mt-1">{stat.value}</p>
-                <p className="text-green-600 text-sm mt-2">{stat.change}</p>
+                <p className="text-gray-500 text-sm mt-2">{stat.change}</p>
               </div>
             </div>
           );
@@ -135,23 +191,33 @@ const Dashboard = () => {
         {/* Faturamento da Semana */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Faturamento da Semana</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={revenueData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="valor" stroke="#8B5CF6" strokeWidth={2} />
-            </LineChart>
-          </ResponsiveContainer>
+          {faturamentoSemanal.some(d => d.valor > 0) ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={faturamentoSemanal}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="valor" stroke="#8B5CF6" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhuma receita registrada</p>
+                <p className="text-sm mt-2">Adicione transações no módulo Financeiro</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Serviços por Categoria */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Serviços por Categoria</h3>
-          {servicesData.length > 0 ? (
+          {servicosPorCategoria.length > 0 ? (
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={servicesData}>
+              <BarChart data={servicosPorCategoria}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
@@ -162,6 +228,7 @@ const Dashboard = () => {
           ) : (
             <div className="h-64 flex items-center justify-center text-gray-500">
               <div className="text-center">
+                <Calendar size={48} className="mx-auto mb-4 opacity-50" />
                 <p>Nenhum serviço cadastrado</p>
                 <p className="text-sm mt-2">Cadastre serviços para visualizar estatísticas</p>
               </div>
@@ -174,26 +241,34 @@ const Dashboard = () => {
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800">Próximos Agendamentos</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Próximos Agendamentos Hoje</h3>
             <Clock size={20} className="text-gray-400" />
           </div>
         </div>
-        <div className="divide-y divide-gray-200">
-          {proximosAgendamentos.map((agendamento) => (
-            <div key={agendamento.id} className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">{agendamento.cliente}</p>
-                  <p className="text-sm text-gray-600 mt-1">{agendamento.servico}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-purple-600">{agendamento.horario}</p>
-                  <p className="text-sm text-gray-600 mt-1">{agendamento.profissional}</p>
+        {proximosAgendamentos.length > 0 ? (
+          <div className="divide-y divide-gray-200">
+            {proximosAgendamentos.map((agendamento) => (
+              <div key={agendamento.id} className="p-6 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-800">Cliente ID: {agendamento.clienteId}</p>
+                    <p className="text-sm text-gray-600 mt-1">Serviço ID: {agendamento.servicoId}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-purple-600">{agendamento.horario}</p>
+                    <p className="text-sm text-gray-600 mt-1">Profissional ID: {agendamento.profissionalId}</p>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-12 text-center text-gray-500">
+            <Calendar size={48} className="mx-auto mb-4 opacity-50" />
+            <p>Nenhum agendamento para hoje</p>
+            <p className="text-sm mt-2">Os agendamentos aparecerão aqui</p>
+          </div>
+        )}
       </div>
 
       {/* Informações do Plano */}

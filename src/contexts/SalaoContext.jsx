@@ -1,5 +1,5 @@
 // src/contexts/SalaoContext.jsx
-import { createContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect, useMemo } from 'react';
 
 export const SalaoContext = createContext();
 
@@ -289,45 +289,75 @@ export const SalaoProvider = ({ children }) => {
   const [agendamentos, setAgendamentos] = useState(() => loadFromStorage('agendamentos', defaultAgendamentos));
   const [transacoes, setTransacoes] = useState(() => loadFromStorage('transacoes', defaultTransacoes));
 
-  // Salvar no localStorage sempre que os dados mudarem
+  // Salvar no localStorage sempre que os dados mudarem - com debounce
   useEffect(() => {
-    saveToStorage('saloes', saloes);
+    const timer = setTimeout(() => {
+      saveToStorage('saloes', saloes);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [saloes]);
 
   useEffect(() => {
-    saveToStorage('salaoAtual', salaoAtual);
+    const timer = setTimeout(() => {
+      saveToStorage('salaoAtual', salaoAtual);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [salaoAtual]);
 
   useEffect(() => {
-    saveToStorage('clientes', clientes);
+    const timer = setTimeout(() => {
+      saveToStorage('clientes', clientes);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [clientes]);
 
   useEffect(() => {
-    saveToStorage('profissionais', profissionais);
+    const timer = setTimeout(() => {
+      saveToStorage('profissionais', profissionais);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [profissionais]);
 
   useEffect(() => {
-    saveToStorage('categorias', categorias);
+    const timer = setTimeout(() => {
+      saveToStorage('categorias', categorias);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [categorias]);
 
   useEffect(() => {
-    saveToStorage('servicos', servicos);
+    const timer = setTimeout(() => {
+      saveToStorage('servicos', servicos);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [servicos]);
 
   useEffect(() => {
-    saveToStorage('fornecedores', fornecedores);
+    const timer = setTimeout(() => {
+      saveToStorage('fornecedores', fornecedores);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [fornecedores]);
 
   useEffect(() => {
-    saveToStorage('produtos', produtos);
+    const timer = setTimeout(() => {
+      saveToStorage('produtos', produtos);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [produtos]);
 
   useEffect(() => {
-    saveToStorage('agendamentos', agendamentos);
+    const timer = setTimeout(() => {
+      saveToStorage('agendamentos', agendamentos);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [agendamentos]);
 
   useEffect(() => {
-    saveToStorage('transacoes', transacoes);
+    const timer = setTimeout(() => {
+      saveToStorage('transacoes', transacoes);
+    }, 300);
+    return () => clearTimeout(timer);
   }, [transacoes]);
 
   // Função para adicionar novo salão
@@ -413,49 +443,97 @@ export const SalaoProvider = ({ children }) => {
     }
   };
 
-  // Filtrar dados pelo salão atual
-  const getClientesPorSalao = () => clientes.filter(c => c.salaoId === salaoAtual.id);
-  const getProfissionaisPorSalao = () => profissionais.filter(p => p.salaoId === salaoAtual.id);
-  const getServicosPorSalao = () => servicos.filter(s => s.salaoId === salaoAtual.id);
-  const getFornecedoresPorSalao = () => fornecedores.filter(f => f.salaoId === salaoAtual.id);
-  const getProdutosPorSalao = () => produtos.filter(p => p.salaoId === salaoAtual.id);
-  const getAgendamentosPorSalao = () => agendamentos.filter(a => a.salaoId === salaoAtual.id);
-  const getTransacoesPorSalao = () => transacoes.filter(t => t.salaoId === salaoAtual.id);
+  // Filtrar dados pelo salão atual - usando useMemo para performance
+  const getClientesPorSalao = useMemo(() => 
+    () => clientes.filter(c => c.salaoId === salaoAtual.id),
+    [clientes, salaoAtual.id]
+  );
+
+  const getProfissionaisPorSalao = useMemo(() => 
+    () => profissionais.filter(p => p.salaoId === salaoAtual.id),
+    [profissionais, salaoAtual.id]
+  );
+
+  const getServicosPorSalao = useMemo(() => 
+    () => servicos.filter(s => s.salaoId === salaoAtual.id),
+    [servicos, salaoAtual.id]
+  );
+
+  const getFornecedoresPorSalao = useMemo(() => 
+    () => fornecedores.filter(f => f.salaoId === salaoAtual.id),
+    [fornecedores, salaoAtual.id]
+  );
+
+  const getProdutosPorSalao = useMemo(() => 
+    () => produtos.filter(p => p.salaoId === salaoAtual.id),
+    [produtos, salaoAtual.id]
+  );
+
+  const getAgendamentosPorSalao = useMemo(() => 
+    () => agendamentos.filter(a => a.salaoId === salaoAtual.id),
+    [agendamentos, salaoAtual.id]
+  );
+
+  const getTransacoesPorSalao = useMemo(() => 
+    () => transacoes.filter(t => t.salaoId === salaoAtual.id),
+    [transacoes, salaoAtual.id]
+  );
+
+  // Valor do contexto memoizado
+  const contextValue = useMemo(() => ({
+    saloes,
+    salaoAtual,
+    setSalaoAtual,
+    adicionarSalao,
+    atualizarSalao,
+    deletarSalao,
+    clientes,
+    setClientes,
+    profissionais,
+    setProfissionais,
+    categorias,
+    setCategorias,
+    servicos,
+    setServicos,
+    fornecedores,
+    setFornecedores,
+    produtos,
+    setProdutos,
+    agendamentos,
+    setAgendamentos,
+    transacoes,
+    setTransacoes,
+    resetarDadosSalao,
+    resetarTodosSistema,
+    getClientesPorSalao,
+    getProfissionaisPorSalao,
+    getServicosPorSalao,
+    getFornecedoresPorSalao,
+    getProdutosPorSalao,
+    getAgendamentosPorSalao,
+    getTransacoesPorSalao
+  }), [
+    saloes,
+    salaoAtual,
+    clientes,
+    profissionais,
+    categorias,
+    servicos,
+    fornecedores,
+    produtos,
+    agendamentos,
+    transacoes,
+    getClientesPorSalao,
+    getProfissionaisPorSalao,
+    getServicosPorSalao,
+    getFornecedoresPorSalao,
+    getProdutosPorSalao,
+    getAgendamentosPorSalao,
+    getTransacoesPorSalao
+  ]);
 
   return (
-    <SalaoContext.Provider value={{
-      saloes,
-      salaoAtual,
-      setSalaoAtual,
-      adicionarSalao,
-      atualizarSalao,
-      deletarSalao,
-      clientes,
-      setClientes,
-      profissionais,
-      setProfissionais,
-      categorias,
-      setCategorias,
-      servicos,
-      setServicos,
-      fornecedores,
-      setFornecedores,
-      produtos,
-      setProdutos,
-      agendamentos,
-      setAgendamentos,
-      transacoes,
-      setTransacoes,
-      resetarDadosSalao,
-      resetarTodosSistema,
-      getClientesPorSalao,
-      getProfissionaisPorSalao,
-      getServicosPorSalao,
-      getFornecedoresPorSalao,
-      getProdutosPorSalao,
-      getAgendamentosPorSalao,
-      getTransacoesPorSalao
-    }}>
+    <SalaoContext.Provider value={contextValue}>
       {children}
     </SalaoContext.Provider>
   );
