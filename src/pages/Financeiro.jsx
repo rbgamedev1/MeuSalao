@@ -3,7 +3,9 @@ import { useState, useContext, useEffect, useMemo } from 'react';
 import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard, Edit, Trash2 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import Modal from '../components/Modal';
+import MaskedInput from '../components/MaskedInput';
 import { SalaoContext } from '../contexts/SalaoContext';
+import { dateToISO, dateFromISO, getTodayBR } from '../utils/masks';
 
 const Financeiro = () => {
   const { 
@@ -82,7 +84,8 @@ const Financeiro = () => {
       const receita = transacoesSalao
         .filter(t => {
           if (t.tipo !== 'receita') return false;
-          const [tAno, tMes] = t.data.split('-').map(Number);
+          const dataISO = dateToISO(t.data);
+          const [tAno, tMes] = dataISO.split('-').map(Number);
           return tAno === ano && tMes - 1 === mes;
         })
         .reduce((sum, t) => sum + t.valor, 0);
@@ -90,7 +93,8 @@ const Financeiro = () => {
       const despesa = transacoesSalao
         .filter(t => {
           if (t.tipo !== 'despesa') return false;
-          const [tAno, tMes] = t.data.split('-').map(Number);
+          const dataISO = dateToISO(t.data);
+          const [tAno, tMes] = dataISO.split('-').map(Number);
           return tAno === ano && tMes - 1 === mes;
         })
         .reduce((sum, t) => sum + t.valor, 0);
@@ -152,7 +156,7 @@ const Financeiro = () => {
         categoria: '',
         valor: '',
         formaPagamento: '',
-        data: '',
+        data: getTodayBR(),
         cliente: '',
         fornecedor: '',
         status: 'confirmado',
@@ -171,7 +175,7 @@ const Financeiro = () => {
       categoria: '',
       valor: '',
       formaPagamento: '',
-      data: '',
+      data: getTodayBR(),
       cliente: '',
       fornecedor: '',
       status: 'confirmado',
@@ -536,13 +540,13 @@ const Financeiro = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Data *
               </label>
-              <input
-                type="date"
+              <MaskedInput
+                mask="date"
                 name="data"
                 value={formData.data}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="DD/MM/AAAA"
               />
             </div>
           </div>

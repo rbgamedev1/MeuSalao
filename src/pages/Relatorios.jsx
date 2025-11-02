@@ -7,9 +7,12 @@ import { SalaoContext } from '../contexts/SalaoContext';
 const Relatorios = () => {
   const { 
     salaoAtual,
+    servicos,
     getClientesPorSalao,
     getProfissionaisPorSalao,
-    getServicosPorSalao
+    getServicosPorSalao,
+    getAgendamentosPorSalao,
+    getTransacoesPorSalao
   } = useContext(SalaoContext);
 
   const [periodoInicio, setPeriodoInicio] = useState('2025-10-01');
@@ -20,23 +23,41 @@ const Relatorios = () => {
   const clientesSalao = getClientesPorSalao();
   const profissionaisSalao = getProfissionaisPorSalao();
   const servicosSalao = getServicosPorSalao();
+  const agendamentosSalao = getAgendamentosPorSalao();
+  const transacoesSalao = getTransacoesPorSalao();
 
-  // Dados para os relatórios
-  const faturamentoMensal = [
-    { mes: 'Jan', valor: 15200 },
-    { mes: 'Fev', valor: 18500 },
-    { mes: 'Mar', valor: 21300 },
-    { mes: 'Abr', valor: 19800 },
-    { mes: 'Mai', valor: 24500 },
-    { mes: 'Jun', valor: 22800 },
-    { mes: 'Jul', valor: 26900 },
-    { mes: 'Ago', valor: 28400 },
-    { mes: 'Set', valor: 30100 },
-    { mes: 'Out', valor: 32450 },
-  ];
+  // Faturamento mensal baseado em transações reais
+  const faturamentoMensal = useMemo(() => {
+    const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const dataAtual = new Date();
+    const dados = [];
 
+    for (let i = 9; i >= 0; i--) {
+      const data = new Date(dataAtual.getFullYear(), dataAtual.getMonth() - i, 1);
+      const mes = data.getMonth();
+      const ano = data.getFullYear();
+
+      const valorMes = transacoesSalao
+        .filter(t => {
+          if (t.tipo !== 'receita') return false;
+          const [tAno, tMes] = t.data.split('-').map(Number);
+          return tAno === ano && tMes - 1 === mes;
+        })
+        .reduce((sum, t) => sum + t.valor, 0);
+
+      dados.push({
+        mes: meses[mes],
+        valor: valorMes
+      });
+    }
+
+    return dados;
+  }, [transacoesSalao]);
+
+  // Serviços por categoria baseado em dados reais
   const servicosPorCategoria = useMemo(() => {
     const categorias = {};
+    
     servicosSalao.forEach(servico => {
       if (!categorias[servico.categoria]) {
         categorias[servico.categoria] = {
@@ -45,37 +66,68 @@ const Relatorios = () => {
           valor: 0
         };
       }
-      // Simulação de quantidade vendida - em produção viria de agendamentos
-      const qtdSimulada = Math.floor(Math.random() * 50) + 10;
-      categorias[servico.categoria].quantidade += qtdSimulada;
-      categorias[servico.categoria].valor += servico.valor * qtdSimulada;
+      
+      // Contar agendamentos reais para este serviço
+      const agendamentosDoServico = agendamentosSalao.filter(
+        a => a.servicoId === servico.id && a.status !== 'cancelado'
+      );
+      
+      categorias[servico.categoria].quantidade += agendamentosDoServico.length;
+      categorias[servico.categoria].valor += servico.valor * agendamentosDoServico.length;
     });
 
     return Object.values(categorias);
-  }, [servicosSalao]);
+  }, [servicosSalao, agendamentosSalao]);
 
+  // Performance dos profissionais baseada em dados reais
   const profissionaisPerformance = useMemo(() => {
-    return profissionaisSalao.map(prof => ({
-      nome: prof.nome,
-      atendimentos: Math.floor(Math.random() * 100) + 50,
-      faturamento: Math.floor(Math.random() * 10000) + 5000,
-      comissao: Math.floor(Math.random() * 4000) + 2000
-    }));
-  }, [profissionaisSalao]);
+    return profissionaisSalao.map(prof => {
+      const agendamentosProf = agendamentosSalao.filter(
+        a => a.profissionalId === prof.id && a.status !== 'cancelado'
+      );
+      
+      const faturamento = agendamentosProf.reduce((sum, ag) => {
+        const servico = servicos.find(s => s.id === ag.servicoId);
+        return sum + (servico ? servico.valor : 0);
+      }, 0);
+      
+      const comissao = agendamentosProf.reduce((sum, ag) => {
+        const servico = servicos.find(s => s.id === ag.servicoId);
+        return sum + (servico ? (servico.valor * servico.comissao / 100) : 0);
+      }, 0);
 
-  const horariosPopulares = [
-    { horario: '09:00', atendimentos: 12 },
-    { horario: '10:00', atendimentos: 18 },
-    { horario: '11:00', atendimentos: 22 },
-    { horario: '14:00', atendimentos: 28 },
-    { horario: '15:00', atendimentos: 35 },
-    { horario: '16:00', atendimentos: 32 },
-    { horario: '17:00', atendimentos: 26 },
-    { horario: '18:00', atendimentos: 19 },
-  ];
+      return {
+        nome: prof.nome,
+        atendimentos: agendamentosProf.length,
+        faturamento: faturamento,
+        comissao: comissao
+      };
+    });
+  }, [profissionaisSalao, agendamentosSalao, servicos]);
 
+  // Horários populares baseado em agendamentos reais
+  const horariosPopulares = useMemo(() => {
+    const horarios = {};
+    
+    agendamentosSalao.forEach(ag => {
+      if (ag.status !== 'cancelado') {
+        if (!horarios[ag.horario]) {
+          horarios[ag.horario] = 0;
+        }
+        horarios[ag.horario]++;
+      }
+    });
+
+    return Object.entries(horarios)
+      .map(([horario, atendimentos]) => ({ horario, atendimentos }))
+      .sort((a, b) => a.horario.localeCompare(b.horario))
+      .slice(0, 8);
+  }, [agendamentosSalao]);
+
+  // Top clientes baseado em dados reais
   const topClientes = useMemo(() => {
     return clientesSalao
+      .filter(c => c.status === 'ativo')
       .sort((a, b) => b.totalGasto - a.totalGasto)
       .slice(0, 5)
       .map(cliente => ({
@@ -85,25 +137,86 @@ const Relatorios = () => {
       }));
   }, [clientesSalao]);
 
-  const distribuicaoPagamento = [
-    { tipo: 'Cartão Crédito', value: 45, color: '#8B5CF6' },
-    { tipo: 'Pix', value: 30, color: '#EC4899' },
-    { tipo: 'Dinheiro', value: 15, color: '#F59E0B' },
-    { tipo: 'Cartão Débito', value: 10, color: '#10B981' },
-  ];
+  // Distribuição de pagamento baseada em transações reais
+  const distribuicaoPagamento = useMemo(() => {
+    const formas = {};
+    const cores = {
+      'Cartão de Crédito': '#8B5CF6',
+      'Pix': '#EC4899',
+      'Dinheiro': '#F59E0B',
+      'Cartão de Débito': '#10B981',
+      'Boleto': '#3B82F6',
+      'Transferência': '#EF4444',
+      'Débito Automático': '#06B6D4'
+    };
 
-  const estatisticasGerais = useMemo(() => ({
-    totalFaturamento: 32450,
-    totalAtendimentos: 753,
-    ticketMedio: clientesSalao.length > 0 
-      ? clientesSalao.reduce((sum, c) => sum + c.totalGasto, 0) / clientesSalao.length
-      : 0,
-    clientesAtivos: clientesSalao.filter(c => c.status === 'ativo').length,
-    novosClientes: 18,
-    taxaRetorno: 78,
-    produtosVendidos: 145,
-    servicosRealizados: 608
-  }), [clientesSalao]);
+    transacoesSalao
+      .filter(t => t.tipo === 'receita')
+      .forEach(t => {
+        if (!formas[t.formaPagamento]) {
+          formas[t.formaPagamento] = 0;
+        }
+        formas[t.formaPagamento]++;
+      });
+
+    const total = Object.values(formas).reduce((a, b) => a + b, 0);
+    
+    if (total === 0) return [];
+
+    return Object.entries(formas).map(([tipo, count]) => ({
+      tipo,
+      value: Math.round((count / total) * 100),
+      color: cores[tipo] || '#6B7280'
+    }));
+  }, [transacoesSalao]);
+
+  // Estatísticas gerais baseadas em dados reais
+  const estatisticasGerais = useMemo(() => {
+    const totalFaturamento = transacoesSalao
+      .filter(t => t.tipo === 'receita')
+      .reduce((sum, t) => sum + t.valor, 0);
+
+    const agendamentosValidos = agendamentosSalao.filter(a => a.status !== 'cancelado');
+    const totalAtendimentos = agendamentosValidos.length;
+
+    const clientesAtivos = clientesSalao.filter(c => c.status === 'ativo').length;
+    
+    const ticketMedio = clientesAtivos > 0 
+      ? clientesSalao.reduce((sum, c) => sum + c.totalGasto, 0) / clientesAtivos
+      : 0;
+
+    // Novos clientes do mês (simulado - em produção usar data de cadastro real)
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const novosClientes = clientesSalao.filter(c => {
+      // Simulação - todos clientes são considerados do mês
+      return true;
+    }).length;
+
+    // Taxa de retorno (clientes com mais de 1 visita)
+    const clientesComRetorno = clientesSalao.filter(c => c.visitas > 1).length;
+    const taxaRetorno = clientesAtivos > 0 
+      ? Math.round((clientesComRetorno / clientesAtivos) * 100)
+      : 0;
+
+    // Produtos vendidos e serviços realizados
+    const produtosVendidos = transacoesSalao.filter(
+      t => t.tipo === 'receita' && t.categoria === 'Produtos'
+    ).length;
+
+    const servicosRealizados = agendamentosValidos.length;
+
+    return {
+      totalFaturamento,
+      totalAtendimentos,
+      ticketMedio,
+      clientesAtivos,
+      novosClientes,
+      taxaRetorno,
+      produtosVendidos,
+      servicosRealizados
+    };
+  }, [clientesSalao, agendamentosSalao, transacoesSalao]);
 
   const COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
 
@@ -169,10 +282,10 @@ const Relatorios = () => {
         <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-2">
             <DollarSign className="text-green-600" size={20} />
-            <TrendingUp className="text-green-600" size={16} />
+            {estatisticasGerais.totalFaturamento > 0 && <TrendingUp className="text-green-600" size={16} />}
           </div>
           <p className="text-2xl font-bold text-gray-800">
-            R$ {estatisticasGerais.totalFaturamento.toLocaleString()}
+            R$ {estatisticasGerais.totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
           <p className="text-xs text-gray-600 mt-1">Faturamento Total</p>
         </div>
@@ -209,29 +322,49 @@ const Relatorios = () => {
         {/* Faturamento Mensal */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Evolução do Faturamento</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={faturamentoMensal}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="mes" />
-              <YAxis />
-              <Tooltip />
-              <Line type="monotone" dataKey="valor" stroke="#8B5CF6" strokeWidth={3} />
-            </LineChart>
-          </ResponsiveContainer>
+          {faturamentoMensal.some(d => d.valor > 0) ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={faturamentoMensal}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="mes" />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="valor" stroke="#8B5CF6" strokeWidth={3} />
+              </LineChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-72 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhuma receita registrada</p>
+                <p className="text-sm mt-2">Adicione transações no módulo Financeiro</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Horários Mais Populares */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Horários Mais Procurados</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={horariosPopulares}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="horario" />
-              <YAxis />
-              <Tooltip />
-              <Bar dataKey="atendimentos" fill="#EC4899" />
-            </BarChart>
-          </ResponsiveContainer>
+          {horariosPopulares.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={horariosPopulares}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="horario" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="atendimentos" fill="#EC4899" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-72 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <Calendar size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhum agendamento registrado</p>
+                <p className="text-sm mt-2">Crie agendamentos para visualizar horários populares</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -240,9 +373,9 @@ const Relatorios = () => {
         {/* Serviços por Categoria */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Serviços Realizados por Categoria</h3>
-          {servicosPorCategoria.length > 0 ? (
+          {servicosPorCategoria.length > 0 && servicosPorCategoria.some(s => s.quantidade > 0) ? (
             <div className="space-y-3">
-              {servicosPorCategoria.map((servico, index) => {
+              {servicosPorCategoria.filter(s => s.quantidade > 0).map((servico, index) => {
                 const totalQuantidade = servicosPorCategoria.reduce((sum, s) => sum + s.quantidade, 0);
                 const porcentagem = totalQuantidade > 0 ? (servico.quantidade / totalQuantidade * 100).toFixed(1) : 0;
                 return (
@@ -257,7 +390,9 @@ const Relatorios = () => {
                         style={{ width: `${porcentagem}%` }}
                       ></div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">Faturamento: R$ {servico.valor.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Faturamento: R$ {servico.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
                 );
               })}
@@ -266,8 +401,8 @@ const Relatorios = () => {
             <div className="h-64 flex items-center justify-center text-gray-500">
               <div className="text-center">
                 <Scissors size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhum serviço cadastrado</p>
-                <p className="text-sm mt-2">Cadastre serviços para visualizar estatísticas</p>
+                <p>Nenhum serviço realizado</p>
+                <p className="text-sm mt-2">Crie agendamentos para visualizar estatísticas</p>
               </div>
             </div>
           )}
@@ -276,25 +411,35 @@ const Relatorios = () => {
         {/* Formas de Pagamento */}
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribuição de Pagamentos</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={distribuicaoPagamento}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ tipo, value }) => `${tipo} ${value}%`}
-                outerRadius={100}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {distribuicaoPagamento.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
+          {distribuicaoPagamento.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={distribuicaoPagamento}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ tipo, value }) => `${tipo} ${value}%`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {distribuicaoPagamento.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-72 flex items-center justify-center text-gray-500">
+              <div className="text-center">
+                <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
+                <p>Nenhuma transação registrada</p>
+                <p className="text-sm mt-2">Adicione transações para visualizar distribuição</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -321,7 +466,7 @@ const Relatorios = () => {
                       <td className="px-6 py-4 text-sm font-medium text-gray-800">{cliente.nome}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{cliente.visitas}</td>
                       <td className="px-6 py-4 text-sm font-semibold text-green-600">
-                        R$ {cliente.totalGasto.toLocaleString()}
+                        R$ {cliente.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}
@@ -357,7 +502,7 @@ const Relatorios = () => {
                       <td className="px-6 py-4 text-sm font-medium text-gray-800">{prof.nome}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{prof.atendimentos}</td>
                       <td className="px-6 py-4 text-sm font-semibold text-purple-600">
-                        R$ {prof.faturamento.toLocaleString()}
+                        R$ {prof.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </td>
                     </tr>
                   ))}
@@ -370,6 +515,26 @@ const Relatorios = () => {
               <p>Nenhum profissional cadastrado</p>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Métricas Adicionais */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <p className="text-sm text-gray-600">Novos Clientes</p>
+          <p className="text-2xl font-bold text-purple-600 mt-1">{estatisticasGerais.novosClientes}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <p className="text-sm text-gray-600">Taxa de Retorno</p>
+          <p className="text-2xl font-bold text-blue-600 mt-1">{estatisticasGerais.taxaRetorno}%</p>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <p className="text-sm text-gray-600">Produtos Vendidos</p>
+          <p className="text-2xl font-bold text-pink-600 mt-1">{estatisticasGerais.produtosVendidos}</p>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+          <p className="text-sm text-gray-600">Serviços Realizados</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{estatisticasGerais.servicosRealizados}</p>
         </div>
       </div>
     </div>

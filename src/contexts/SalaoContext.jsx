@@ -1,5 +1,6 @@
 // src/contexts/SalaoContext.jsx
 import { createContext, useState, useEffect, useMemo } from 'react';
+import { getTodayBR, dateFromISO } from '../utils/masks';
 
 export const SalaoContext = createContext();
 
@@ -267,7 +268,7 @@ export const SalaoProvider = ({ children }) => {
       categoria: 'Serviços',
       valor: 120.00,
       formaPagamento: 'Cartão de Crédito',
-      data: '2025-11-01',
+      data: '01/11/2025',
       cliente: 'Maria Silva',
       status: 'confirmado',
       salaoId: 1

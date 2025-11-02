@@ -1,3 +1,5 @@
+// src/utils/masks.js
+
 // Máscara para telefone: (11) 98765-4321
 export const maskPhone = (value) => {
   if (!value) return '';
@@ -26,7 +28,7 @@ export const maskCurrency = (value) => {
   return `R$ ${amount.replace('.', ',')}`;
 };
 
-// Converter data de DD/MM/AAAA para AAAA-MM-DD
+// Converter data de DD/MM/AAAA para AAAA-MM-DD (para input type="date" e comparações)
 export const dateToISO = (dateStr) => {
   if (!dateStr || dateStr.length !== 10) return '';
   const [day, month, year] = dateStr.split('/');
@@ -38,6 +40,38 @@ export const dateFromISO = (isoStr) => {
   if (!isoStr) return '';
   const [year, month, day] = isoStr.split('-');
   return `${day}/${month}/${year}`;
+};
+
+// Converter Date object para DD/MM/AAAA
+export const formatDateBR = (date) => {
+  if (!date) return '';
+  if (typeof date === 'string') {
+    // Se for string ISO (YYYY-MM-DD), converter
+    if (date.includes('-')) {
+      return dateFromISO(date);
+    }
+    // Se já for DD/MM/YYYY, retornar como está
+    return date;
+  }
+  // Se for objeto Date
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Obter data de hoje em formato DD/MM/AAAA
+export const getTodayBR = () => {
+  return formatDateBR(new Date());
+};
+
+// Obter data de hoje em formato YYYY-MM-DD (para input date)
+export const getTodayISO = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 // Remover máscara de moeda para número
@@ -64,6 +98,24 @@ export const isValidDate = (dateStr) => {
   
   const date = new Date(year, month - 1, day);
   return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
+};
+
+// Comparar duas datas em formato DD/MM/AAAA
+// Retorna: -1 se date1 < date2, 0 se iguais, 1 se date1 > date2
+export const compareDates = (date1, date2) => {
+  const iso1 = dateToISO(date1);
+  const iso2 = dateToISO(date2);
+  if (iso1 < iso2) return -1;
+  if (iso1 > iso2) return 1;
+  return 0;
+};
+
+// Verificar se data está no período
+export const isDateInRange = (date, startDate, endDate) => {
+  const dateISO = dateToISO(date);
+  const startISO = dateToISO(startDate);
+  const endISO = dateToISO(endDate);
+  return dateISO >= startISO && dateISO <= endISO;
 };
 
 // Gerar opções de horário

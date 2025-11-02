@@ -7,6 +7,9 @@ import { SalaoContext } from '../contexts/SalaoContext';
 const Dashboard = () => {
   const { 
     salaoAtual,
+    clientes,
+    profissionais,
+    servicos,
     getClientesPorSalao,
     getProfissionaisPorSalao,
     getServicosPorSalao,
@@ -127,7 +130,7 @@ const Dashboard = () => {
     return Object.values(categorias).slice(0, 5);
   }, [servicosSalao]);
 
-  // Próximos agendamentos reais
+  // Próximos agendamentos reais com nomes resolvidos
   const proximosAgendamentos = useMemo(() => {
     const hoje = new Date();
     const hojeStr = hoje.toLocaleDateString('pt-BR');
@@ -135,8 +138,22 @@ const Dashboard = () => {
     return agendamentosSalao
       .filter(a => a.data === hojeStr && a.status !== 'cancelado')
       .sort((a, b) => a.horario.localeCompare(b.horario))
-      .slice(0, 4);
-  }, [agendamentosSalao]);
+      .slice(0, 4)
+      .map(agendamento => {
+        const cliente = clientes.find(c => c.id === agendamento.clienteId);
+        const servico = servicos.find(s => s.id === agendamento.servicoId);
+        const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
+        
+        return {
+          ...agendamento,
+          clienteNome: cliente?.nome || 'Cliente não encontrado',
+          clienteTelefone: cliente?.telefone || '',
+          servicoNome: servico?.nome || 'Serviço não encontrado',
+          servicoValor: servico?.valor || 0,
+          profissionalNome: profissional?.nome || 'Profissional não encontrado'
+        };
+      });
+  }, [agendamentosSalao, clientes, servicos, profissionais]);
 
   return (
     <div className="space-y-6">
@@ -251,12 +268,38 @@ const Dashboard = () => {
               <div key={agendamento.id} className="p-6 hover:bg-gray-50 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="font-semibold text-gray-800">Cliente ID: {agendamento.clienteId}</p>
-                    <p className="text-sm text-gray-600 mt-1">Serviço ID: {agendamento.servicoId}</p>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white font-semibold">
+                        {agendamento.clienteNome.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-800">{agendamento.clienteNome}</p>
+                        {agendamento.clienteTelefone && (
+                          <p className="text-sm text-gray-500">{agendamento.clienteTelefone}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="mt-2 ml-13">
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium">{agendamento.servicoNome}</span>
+                        {agendamento.servicoValor > 0 && (
+                          <span className="text-green-600 ml-2">
+                            R$ {agendamento.servicoValor.toFixed(2)}
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-purple-600">{agendamento.horario}</p>
-                    <p className="text-sm text-gray-600 mt-1">Profissional ID: {agendamento.profissionalId}</p>
+                  <div className="text-right ml-4">
+                    <p className="font-semibold text-purple-600 text-lg">{agendamento.horario}</p>
+                    <p className="text-sm text-gray-600 mt-1">{agendamento.profissionalNome}</p>
+                    <span className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium ${
+                      agendamento.status === 'confirmado' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {agendamento.status.charAt(0).toUpperCase() + agendamento.status.slice(1)}
+                    </span>
                   </div>
                 </div>
               </div>
