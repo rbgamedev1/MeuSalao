@@ -1,10 +1,11 @@
-// src/pages/Clientes.jsx
+// src/pages/Clientes.jsx - CÓDIGO COMPLETO COM RESTRIÇÕES
 import { useState, useContext } from 'react';
-import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye, Crown, Lock } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { isValidDate } from '../utils/masks';
+import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 
 const Clientes = () => {
   const { salaoAtual, clientes, setClientes, getClientesPorSalao } = useContext(SalaoContext);
@@ -25,7 +26,17 @@ const Clientes = () => {
   // Obter apenas clientes do salão atual
   const clientesSalao = getClientesPorSalao();
 
+  // Verificar limite do plano
+  const canAddCliente = canAddMore(salaoAtual.plano, 'clientes', clientesSalao.length);
+  const limiteMessage = getLimitMessage(salaoAtual.plano, 'clientes');
+
   const handleOpenModal = (cliente = null) => {
+    // Verificar limite ao adicionar novo
+    if (!cliente && !canAddCliente) {
+      alert(`Limite de clientes atingido para o plano ${salaoAtual.plano}. ${limiteMessage}\n\nFaça upgrade do seu plano para adicionar mais clientes.`);
+      return;
+    }
+
     if (cliente) {
       setEditingId(cliente.id);
       setFormData({
@@ -149,11 +160,57 @@ const Clientes = () => {
         </div>
         <button
           onClick={() => handleOpenModal()}
-          className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
+          disabled={!canAddCliente}
+          className={`flex items-center space-x-2 px-6 py-3 rounded-lg transition-all shadow-lg ${
+            canAddCliente
+              ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
         >
-          <Plus size={20} />
+          {canAddCliente ? <Plus size={20} /> : <Lock size={20} />}
           <span>Novo Cliente</span>
         </button>
+      </div>
+
+      {/* Alerta de Limite */}
+      {!canAddCliente && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+          <div className="flex items-start">
+            <Crown className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
+            <div>
+              <p className="font-semibold text-yellow-800">Limite de clientes atingido!</p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Seu plano <strong>{salaoAtual.plano}</strong> permite até <strong>{limiteMessage.replace('Máximo: ', '')}</strong>. 
+                Faça upgrade para adicionar mais clientes.
+              </p>
+              <button 
+                onClick={() => window.location.href = '/configuracoes'}
+                className="mt-2 text-sm text-yellow-800 underline hover:text-yellow-900"
+              >
+                Ver Planos
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info do Plano */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="bg-blue-100 p-2 rounded-lg">
+              <User className="text-blue-600" size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Clientes: {clientesSalao.length} {limiteMessage !== 'Ilimitado' ? `/ ${limiteMessage.replace('Máximo: ', '')}` : '(Ilimitado)'}
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                Plano {salaoAtual.plano}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Estatísticas */}
@@ -193,7 +250,6 @@ const Clientes = () => {
                   const hoje = new Date();
                   const mesAtual = hoje.getMonth();
                   const anoAtual = hoje.getFullYear();
-                  // Simulação - em produção usar data real de cadastro
                   return true;
                 }).length}
               </p>

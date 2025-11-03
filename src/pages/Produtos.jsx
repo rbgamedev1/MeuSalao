@@ -1,4 +1,4 @@
-// src/pages/Produtos.jsx
+// src/pages/Produtos.jsx - CÓDIGO COMPLETO COM RESTRIÇÕES
 import { useState, useContext, useEffect } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import ProdutosHeader from '../components/produtos/ProdutosHeader';
@@ -8,6 +8,8 @@ import ProdutosFilters from '../components/produtos/ProdutosFilters';
 import ProdutosTable from '../components/produtos/ProdutosTable';
 import ProdutoModal from '../components/produtos/ProdutoModal';
 import FornecedorModal from '../components/produtos/FornecedorModal';
+import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
+import { Crown, Lock } from 'lucide-react';
 
 const Produtos = () => {
   const { 
@@ -53,12 +55,24 @@ const Produtos = () => {
   const produtosSalao = getProdutosPorSalao();
   const fornecedoresSalao = getFornecedoresPorSalao();
 
+  // Verificar limites
+  const canAddProduto = canAddMore(salaoAtual.plano, 'produtos', produtosSalao.length);
+  const limiteProdutos = getLimitMessage(salaoAtual.plano, 'produtos');
+  const canAddFornecedor = canAddMore(salaoAtual.plano, 'fornecedores', fornecedoresSalao.length);
+  const limiteFornecedores = getLimitMessage(salaoAtual.plano, 'fornecedores');
+
   useEffect(() => {
     setFormData(prev => ({ ...prev, salaoId: salaoAtual.id }));
     setFornecedorData(prev => ({ ...prev, salaoId: salaoAtual.id }));
   }, [salaoAtual.id]);
 
   const handleOpenModal = (produto = null) => {
+    // Verificar limite ao adicionar
+    if (!produto && !canAddProduto) {
+      alert(`Limite de produtos atingido para o plano ${salaoAtual.plano}. ${limiteProdutos}\n\nFaça upgrade do seu plano para adicionar mais produtos.`);
+      return;
+    }
+
     if (produto) {
       setEditingId(produto.id);
       setFormData({
@@ -97,6 +111,12 @@ const Produtos = () => {
   };
 
   const handleOpenFornecedorModal = (fornecedor = null) => {
+    // Verificar limite ao adicionar
+    if (!fornecedor && !canAddFornecedor) {
+      alert(`Limite de fornecedores atingido para o plano ${salaoAtual.plano}. ${limiteFornecedores}\n\nFaça upgrade do seu plano para adicionar mais fornecedores.`);
+      return;
+    }
+
     if (fornecedor) {
       setEditingFornecedorId(fornecedor.id);
       setFornecedorData({
@@ -233,6 +253,37 @@ const Produtos = () => {
         onOpenFornecedorModal={() => handleOpenFornecedorModal()}
         onOpenProdutoModal={() => handleOpenModal()}
       />
+
+      {/* Alertas de Limite */}
+      {!canAddProduto && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+          <div className="flex items-start">
+            <Crown className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
+            <div>
+              <p className="font-semibold text-yellow-800">Limite de produtos atingido!</p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Seu plano <strong>{salaoAtual.plano}</strong> permite até <strong>{limiteProdutos.replace('Máximo: ', '')}</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info do Plano */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              Produtos: {produtosSalao.length} {limiteProdutos !== 'Ilimitado' ? `/ ${limiteProdutos.replace('Máximo: ', '')}` : '(Ilimitado)'}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              Fornecedores: {fornecedoresSalao.length} {limiteFornecedores !== 'Ilimitado' ? `/ ${limiteFornecedores.replace('Máximo: ', '')}` : '(Ilimitado)'}
+            </p>
+          </div>
+        </div>
+      </div>
 
       <ProdutosStats 
         totalProdutos={totalProdutos}
