@@ -1,11 +1,15 @@
-// src/pages/Financeiro.jsx
+// src/pages/Financeiro.jsx - ATUALIZADO COM RESTRIÇÕES
 import { useState, useContext, useEffect, useMemo } from 'react';
-import { Plus, TrendingUp, TrendingDown, DollarSign, Calendar, CreditCard, Edit, Trash2 } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Plus, Crown } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
+import PlanRestriction from '../components/PlanRestriction';
+import FinanceiroStats from '../components/financeiro/FinanceiroStats';
+import FinanceiroCharts from '../components/financeiro/FinanceiroCharts';
+import FinanceiroTable from '../components/financeiro/FinanceiroTable';
 import { SalaoContext } from '../contexts/SalaoContext';
-import { dateToISO, dateFromISO, getTodayBR } from '../utils/masks';
+import { dateToISO, getTodayBR } from '../utils/masks';
+import { hasAccess } from '../utils/planRestrictions';
 
 const Financeiro = () => {
   const { 
@@ -16,6 +20,14 @@ const Financeiro = () => {
     getFornecedoresPorSalao,
     getTransacoesPorSalao
   } = useContext(SalaoContext);
+  
+  // Verificar acesso ao módulo financeiro
+  const temAcessoFinanceiro = hasAccess(salaoAtual.plano, 'financeiro');
+  
+  // Se não tem acesso, mostrar tela de upgrade
+  if (!temAcessoFinanceiro) {
+    return <PlanRestriction feature="financeiro" minPlan="plus" />;
+  }
   
   const [periodo, setPeriodo] = useState('mes');
   const [tipoTransacao, setTipoTransacao] = useState('todas');
@@ -256,135 +268,37 @@ const Financeiro = () => {
         </div>
       </div>
 
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
+      {/* Info do Plano */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Crown className="text-blue-600" size={20} />
             <div>
-              <p className="text-sm text-gray-600">Receitas</p>
-              <p className="text-2xl font-bold text-green-600 mt-1">
-                R$ {totalReceitas.toFixed(2)}
+              <p className="text-sm font-medium text-blue-900">
+                Plano {salaoAtual.plano} - Módulo Financeiro Ativo
               </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {transacoesSalao.filter(t => t.tipo === 'receita').length} transações
+              <p className="text-xs text-blue-700 mt-1">
+                Gerencie suas finanças com controle completo de receitas e despesas
               </p>
-            </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <TrendingUp className="text-green-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Despesas</p>
-              <p className="text-2xl font-bold text-red-600 mt-1">
-                R$ {totalDespesas.toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {transacoesSalao.filter(t => t.tipo === 'despesa').length} transações
-              </p>
-            </div>
-            <div className="bg-red-100 p-3 rounded-lg">
-              <TrendingDown className="text-red-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Saldo</p>
-              <p className={`text-2xl font-bold mt-1 ${saldo >= 0 ? 'text-purple-600' : 'text-red-600'}`}>
-                R$ {Math.abs(saldo).toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">{saldo >= 0 ? 'Positivo' : 'Negativo'}</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <DollarSign className="text-purple-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Ticket Médio</p>
-              <p className="text-2xl font-bold text-blue-600 mt-1">
-                R$ {ticketMedio.toFixed(2)}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {ticketMedio > 0 ? 'Por transação' : 'Sem dados'}
-              </p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <CreditCard className="text-blue-600" size={24} />
             </div>
           </div>
         </div>
       </div>
+
+      {/* Cards de Resumo */}
+      <FinanceiroStats 
+        totalReceitas={totalReceitas}
+        totalDespesas={totalDespesas}
+        saldo={saldo}
+        ticketMedio={ticketMedio}
+        transacoesSalao={transacoesSalao}
+      />
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Fluxo de Caixa (6 meses)</h3>
-          {fluxoCaixaData.some(d => d.receita > 0 || d.despesa > 0) ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={fluxoCaixaData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="receita" fill="#10B981" name="Receitas" />
-                <Bar dataKey="despesa" fill="#EF4444" name="Despesas" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-72 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhuma transação registrada</p>
-                <p className="text-sm mt-2">Adicione transações para visualizar o fluxo</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Despesas por Categoria</h3>
-          {categoriasDespesas.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={categoriasDespesas}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name} ${value}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {categoriasDespesas.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-72 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <TrendingDown size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhuma despesa registrada</p>
-                <p className="text-sm mt-2">Adicione despesas para visualizar distribuição</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <FinanceiroCharts 
+        fluxoCaixaData={fluxoCaixaData}
+        categoriasDespesas={categoriasDespesas}
+      />
 
       {/* Filtros */}
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -423,93 +337,11 @@ const Financeiro = () => {
       </div>
 
       {/* Lista de Transações */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        {filteredTransacoes.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Descrição
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Categoria
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Data
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Forma Pagamento
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Valor
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Ações
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredTransacoes.map((transacao) => (
-                  <tr key={transacao.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium text-gray-800">{transacao.descricao}</p>
-                        <p className="text-sm text-gray-500">
-                          {transacao.cliente || transacao.fornecedor}
-                        </p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-3 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                        {transacao.categoria}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <Calendar size={16} className="text-gray-400" />
-                        <span className="text-gray-700">{transacao.data}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-700">
-                      {transacao.formaPagamento}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`font-bold ${
-                        transacao.tipo === 'receita' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transacao.tipo === 'receita' ? '+' : '-'} R$ {transacao.valor.toFixed(2)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => handleOpenModal(transacao)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        >
-                          <Edit size={18} />
-                        </button>
-                        <button 
-                          onClick={() => handleDelete(transacao.id)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-12 text-gray-500">
-            <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
-            <p>Nenhuma transação encontrada para este salão.</p>
-            <p className="text-sm mt-2">Clique em "Nova Transação" para adicionar a primeira transação.</p>
-          </div>
-        )}
-      </div>
+      <FinanceiroTable 
+        filteredTransacoes={filteredTransacoes}
+        handleOpenModal={handleOpenModal}
+        handleDelete={handleDelete}
+      />
 
       {/* Modal de Cadastro/Edição */}
       <Modal

@@ -1,8 +1,13 @@
-// src/pages/Relatorios.jsx
+// src/pages/Relatorios.jsx - ATUALIZADO COM RESTRIÇÕES
 import { useState, useContext, useMemo } from 'react';
-import { FileText, Download, Calendar, TrendingUp, Users, DollarSign, Scissors, Package } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Download, Crown } from 'lucide-react';
+import PlanRestriction from '../components/PlanRestriction';
+import RelatoriosStats from '../components/relatorios/RelatoriosStats';
+import RelatoriosCharts from '../components/relatorios/RelatoriosCharts';
+import RelatoriosTables from '../components/relatorios/RelatoriosTables';
 import { SalaoContext } from '../contexts/SalaoContext';
+import { dateToISO } from '../utils/masks';
+import { hasAccess } from '../utils/planRestrictions';
 
 const Relatorios = () => {
   const { 
@@ -14,6 +19,14 @@ const Relatorios = () => {
     getAgendamentosPorSalao,
     getTransacoesPorSalao
   } = useContext(SalaoContext);
+
+  // Verificar acesso ao módulo de relatórios
+  const temAcessoRelatorios = hasAccess(salaoAtual.plano, 'relatorios');
+  
+  // Se não tem acesso, mostrar tela de upgrade
+  if (!temAcessoRelatorios) {
+    return <PlanRestriction feature="relatorios" minPlan="essencial" />;
+  }
 
   const [periodoInicio, setPeriodoInicio] = useState('2025-10-01');
   const [periodoFim, setPeriodoFim] = useState('2025-11-01');
@@ -67,7 +80,6 @@ const Relatorios = () => {
         };
       }
       
-      // Contar agendamentos reais para este serviço
       const agendamentosDoServico = agendamentosSalao.filter(
         a => a.servicoId === servico.id && a.status !== 'cancelado'
       );
@@ -185,21 +197,15 @@ const Relatorios = () => {
       ? clientesSalao.reduce((sum, c) => sum + c.totalGasto, 0) / clientesAtivos
       : 0;
 
-    // Novos clientes do mês (simulado - em produção usar data de cadastro real)
-    const hoje = new Date();
-    const mesAtual = hoje.getMonth();
     const novosClientes = clientesSalao.filter(c => {
-      // Simulação - todos clientes são considerados do mês
       return true;
     }).length;
 
-    // Taxa de retorno (clientes com mais de 1 visita)
     const clientesComRetorno = clientesSalao.filter(c => c.visitas > 1).length;
     const taxaRetorno = clientesAtivos > 0 
       ? Math.round((clientesComRetorno / clientesAtivos) * 100)
       : 0;
 
-    // Produtos vendidos e serviços realizados
     const produtosVendidos = transacoesSalao.filter(
       t => t.tipo === 'receita' && t.categoria === 'Produtos'
     ).length;
@@ -218,8 +224,6 @@ const Relatorios = () => {
     };
   }, [clientesSalao, agendamentosSalao, transacoesSalao]);
 
-  const COLORS = ['#8B5CF6', '#EC4899', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'];
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -232,6 +236,27 @@ const Relatorios = () => {
           <Download size={20} />
           <span>Exportar PDF</span>
         </button>
+      </div>
+
+      {/* Info do Plano */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Crown className="text-blue-600" size={20} />
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Plano {salaoAtual.plano} - Módulo de Relatórios Ativo
+              </p>
+              <p className="text-xs text-blue-700 mt-1">
+                {salaoAtual.plano === 'essencial' || salaoAtual.plano === 'plus' 
+                  ? 'Acesso a relatórios básicos e análises essenciais'
+                  : salaoAtual.plano === 'profissional' || salaoAtual.plano === 'premium'
+                  ? 'Acesso a relatórios completos e detalhados'
+                  : 'Acesso total a relatórios avançados e customizáveis'}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -278,245 +303,21 @@ const Relatorios = () => {
       </div>
 
       {/* Cards de Estatísticas Principais */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <DollarSign className="text-green-600" size={20} />
-            {estatisticasGerais.totalFaturamento > 0 && <TrendingUp className="text-green-600" size={16} />}
-          </div>
-          <p className="text-2xl font-bold text-gray-800">
-            R$ {estatisticasGerais.totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs text-gray-600 mt-1">Faturamento Total</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <Calendar className="text-blue-600" size={20} />
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{estatisticasGerais.totalAtendimentos}</p>
-          <p className="text-xs text-gray-600 mt-1">Atendimentos</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <Users className="text-purple-600" size={20} />
-          </div>
-          <p className="text-2xl font-bold text-gray-800">{estatisticasGerais.clientesAtivos}</p>
-          <p className="text-xs text-gray-600 mt-1">Clientes Ativos</p>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <DollarSign className="text-pink-600" size={20} />
-          </div>
-          <p className="text-2xl font-bold text-gray-800">
-            R$ {estatisticasGerais.ticketMedio.toFixed(2)}
-          </p>
-          <p className="text-xs text-gray-600 mt-1">Ticket Médio</p>
-        </div>
-      </div>
+      <RelatoriosStats estatisticasGerais={estatisticasGerais} />
 
       {/* Gráficos Principais */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Faturamento Mensal */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Evolução do Faturamento</h3>
-          {faturamentoMensal.some(d => d.valor > 0) ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={faturamentoMensal}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="mes" />
-                <YAxis />
-                <Tooltip />
-                <Line type="monotone" dataKey="valor" stroke="#8B5CF6" strokeWidth={3} />
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-72 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhuma receita registrada</p>
-                <p className="text-sm mt-2">Adicione transações no módulo Financeiro</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Horários Mais Populares */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Horários Mais Procurados</h3>
-          {horariosPopulares.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={horariosPopulares}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="horario" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="atendimentos" fill="#EC4899" />
-              </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-72 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <Calendar size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhum agendamento registrado</p>
-                <p className="text-sm mt-2">Crie agendamentos para visualizar horários populares</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Serviços e Formas de Pagamento */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Serviços por Categoria */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Serviços Realizados por Categoria</h3>
-          {servicosPorCategoria.length > 0 && servicosPorCategoria.some(s => s.quantidade > 0) ? (
-            <div className="space-y-3">
-              {servicosPorCategoria.filter(s => s.quantidade > 0).map((servico, index) => {
-                const totalQuantidade = servicosPorCategoria.reduce((sum, s) => sum + s.quantidade, 0);
-                const porcentagem = totalQuantidade > 0 ? (servico.quantidade / totalQuantidade * 100).toFixed(1) : 0;
-                return (
-                  <div key={index}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium text-gray-700">{servico.categoria}</span>
-                      <span className="text-sm text-gray-600">{servico.quantidade} ({porcentagem}%)</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div 
-                        className="bg-gradient-to-r from-purple-600 to-pink-600 h-2 rounded-full"
-                        style={{ width: `${porcentagem}%` }}
-                      ></div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Faturamento: R$ {servico.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="h-64 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <Scissors size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhum serviço realizado</p>
-                <p className="text-sm mt-2">Crie agendamentos para visualizar estatísticas</p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Formas de Pagamento */}
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribuição de Pagamentos</h3>
-          {distribuicaoPagamento.length > 0 ? (
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={distribuicaoPagamento}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ tipo, value }) => `${tipo} ${value}%`}
-                  outerRadius={100}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {distribuicaoPagamento.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-72 flex items-center justify-center text-gray-500">
-              <div className="text-center">
-                <DollarSign size={48} className="mx-auto mb-4 opacity-50" />
-                <p>Nenhuma transação registrada</p>
-                <p className="text-sm mt-2">Adicione transações para visualizar distribuição</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <RelatoriosCharts 
+        faturamentoMensal={faturamentoMensal}
+        horariosPopulares={horariosPopulares}
+        servicosPorCategoria={servicosPorCategoria}
+        distribuicaoPagamento={distribuicaoPagamento}
+      />
 
       {/* Tabelas */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Top Clientes */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Top 5 Clientes</h3>
-          </div>
-          {topClientes.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliente</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Visitas</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {topClientes.map((cliente, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-800">{cliente.nome}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{cliente.visitas}</td>
-                      <td className="px-6 py-4 text-sm font-semibold text-green-600">
-                        R$ {cliente.totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500">
-              <Users size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Nenhum cliente cadastrado</p>
-            </div>
-          )}
-        </div>
-
-        {/* Performance dos Profissionais */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-          <div className="p-6 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">Performance dos Profissionais</h3>
-          </div>
-          {profissionaisPerformance.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Profissional</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Atend.</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Faturamento</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {profissionaisPerformance.map((prof, index) => (
-                    <tr key={index} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-800">{prof.nome}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700">{prof.atendimentos}</td>
-                      <td className="px-6 py-4 text-sm font-semibold text-purple-600">
-                        R$ {prof.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="p-6 text-center text-gray-500">
-              <Users size={48} className="mx-auto mb-4 opacity-50" />
-              <p>Nenhum profissional cadastrado</p>
-            </div>
-          )}
-        </div>
-      </div>
+      <RelatoriosTables 
+        topClientes={topClientes}
+        profissionaisPerformance={profissionaisPerformance}
+      />
 
       {/* Métricas Adicionais */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
