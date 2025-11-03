@@ -1,9 +1,15 @@
-// src/pages/Servicos.jsx
+// src/pages/Servicos.jsx - CÓDIGO COMPLETO COM RESTRIÇÕES
 import { useState, useContext } from 'react';
-import { Plus, Search, Clock, DollarSign, Edit, Trash2, Scissors, Tag, X } from 'lucide-react';
-import Modal from '../components/Modal';
+import { Crown, Lock } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
-import { generateDurationOptions, unmaskCurrency } from '../utils/masks';
+import { generateDurationOptions } from '../utils/masks';
+import { canAddMore, getLimitMessage, canAddServiceToCategory } from '../utils/planRestrictions';
+import ServicosHeader from '../components/servicos/ServicosHeader';
+import ServicosStats from '../components/servicos/ServicosStats';
+import ServicosFilters from '../components/servicos/ServicosFilters';
+import ServicosGrid from '../components/servicos/ServicosGrid';
+import ServicoModal from '../components/servicos/ServicoModal';
+import CategoriaModal from '../components/servicos/CategoriaModal';
 
 const Servicos = () => {
   const { 
@@ -43,7 +49,19 @@ const Servicos = () => {
   const servicosSalao = getServicosPorSalao();
   const profissionaisSalao = getProfissionaisPorSalao();
 
+  // Verificar limites do plano
+  const canAddServico = canAddMore(salaoAtual.plano, 'servicosPorCategoria', servicosSalao.length);
+  const limiteServicos = getLimitMessage(salaoAtual.plano, 'servicosPorCategoria');
+  const canAddCategoria = canAddMore(salaoAtual.plano, 'categorias', categorias.length);
+  const limiteCategorias = getLimitMessage(salaoAtual.plano, 'categorias');
+
   const handleOpenModal = (servico = null) => {
+    // Verificar limite ao adicionar novo
+    if (!servico && !canAddServico) {
+      alert(`Limite de serviços atingido para o plano ${salaoAtual.plano}. ${limiteServicos}\n\nFaça upgrade do seu plano para adicionar mais serviços.`);
+      return;
+    }
+
     if (servico) {
       setEditingId(servico.id);
       setFormData({
@@ -172,6 +190,12 @@ const Servicos = () => {
     setCategoriaParaEditar('');
   };
 
+  const handleCloseCategoriaModal = () => {
+    setShowCategoriaModal(false);
+    setCategoriaEditando('');
+    setNovaCategoria('');
+  };
+
   const filteredServicos = servicosSalao.filter(servico => {
     const matchSearch = servico.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        servico.descricao.toLowerCase().includes(searchTerm.toLowerCase());
@@ -179,14 +203,7 @@ const Servicos = () => {
     return matchSearch && matchCategoria;
   });
 
-  const formatDuration = (minutes) => {
-    const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hours > 0 && mins > 0) return `${hours}h ${mins}min`;
-    if (hours > 0) return `${hours}h`;
-    return `${mins}min`;
-  };
-
+  // Estatísticas
   const totalServicos = servicosSalao.length;
   const valorMedio = servicosSalao.length > 0 
     ? servicosSalao.reduce((acc, s) => acc + s.valor, 0) / servicosSalao.length 
@@ -195,469 +212,95 @@ const Servicos = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">Serviços</h1>
-          <p className="text-gray-600 mt-1">Gerencie os serviços - {salaoAtual.nome}</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => setShowCategoriaModal(true)}
-            className="flex items-center space-x-2 bg-white border-2 border-purple-600 text-purple-600 px-6 py-3 rounded-lg hover:bg-purple-50 transition-all"
-          >
-            <Tag size={20} />
-            <span>Gerenciar Categorias</span>
-          </button>
-          <button
-            onClick={() => handleOpenModal()}
-            className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
-          >
-            <Plus size={20} />
-            <span>Novo Serviço</span>
-          </button>
-        </div>
-      </div>
+      <ServicosHeader 
+        salaoNome={salaoAtual.nome}
+        onOpenCategoriaModal={() => setShowCategoriaModal(true)}
+        onOpenServicoModal={() => handleOpenModal()}
+      />
 
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
+      {/* Alertas de Limite */}
+      {!canAddServico && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+          <div className="flex items-start">
+            <Crown className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
             <div>
-              <p className="text-sm text-gray-600">Total de Serviços</p>
-              <p className="text-3xl font-bold text-gray-800 mt-1">{totalServicos}</p>
-            </div>
-            <div className="bg-purple-100 p-3 rounded-lg">
-              <Scissors className="text-purple-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Valor Médio</p>
-              <p className="text-3xl font-bold text-green-600 mt-1">
-                R$ {valorMedio.toFixed(0)}
+              <p className="font-semibold text-yellow-800">Limite de serviços atingido!</p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Seu plano <strong>{salaoAtual.plano}</strong> permite até <strong>{limiteServicos.replace('Máximo: ', '')}</strong> por categoria.
               </p>
             </div>
-            <div className="bg-green-100 p-3 rounded-lg">
-              <DollarSign className="text-green-600" size={24} />
-            </div>
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Serviços Premium</p>
-              <p className="text-3xl font-bold text-pink-600 mt-1">{servicosMaisCaros}</p>
-            </div>
-            <div className="bg-pink-100 p-3 rounded-lg">
-              <Scissors className="text-pink-600" size={24} />
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Categorias</p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">{categorias.length}</p>
-            </div>
-            <div className="bg-blue-100 p-3 rounded-lg">
-              <Tag className="text-blue-600" size={24} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Busca e Filtros */}
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Buscar serviço..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </div>
-
-          <select 
-            value={categoriaFiltro}
-            onChange={(e) => setCategoriaFiltro(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-          >
-            <option value="Todos">Todas as Categorias</option>
-            {categorias.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Grid de Serviços */}
-      {filteredServicos.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredServicos.map((servico) => (
-            <div key={servico.id} className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              <div className="bg-gradient-to-r from-purple-500 to-pink-500 h-2"></div>
-              
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-800">{servico.nome}</h3>
-                    <span className="inline-block mt-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
-                      {servico.categoria}
-                    </span>
-                  </div>
-                  <div className={`w-3 h-3 rounded-full ${servico.ativo ? 'bg-green-500' : 'bg-gray-300'}`}></div>
-                </div>
-
-                <p className="text-sm text-gray-600 mb-4">{servico.descricao}</p>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <Clock size={16} />
-                      <span>Duração</span>
-                    </div>
-                    <span className="font-medium text-gray-800">{formatDuration(servico.duracao)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-2 text-gray-600">
-                      <DollarSign size={16} />
-                      <span>Valor</span>
-                    </div>
-                    <span className="font-bold text-green-600">R$ {servico.valor.toFixed(2)}</span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Comissão</span>
-                    <span className="font-medium text-purple-600">{servico.comissao}%</span>
-                  </div>
-                </div>
-
-                {servico.profissionaisHabilitados && servico.profissionaisHabilitados.length > 0 && (
-                  <div className="mb-4 pb-4 border-t border-gray-200 pt-4">
-                    <p className="text-xs text-gray-600 mb-2">Profissionais:</p>
-                    <div className="flex flex-wrap gap-1">
-                      {servico.profissionaisHabilitados.map(profId => {
-                        const prof = profissionais.find(p => p.id === profId);
-                        return prof ? (
-                          <span key={profId} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
-                            {prof.nome}
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center space-x-2">
-                  <button 
-                    onClick={() => handleOpenModal(servico)}
-                    className="flex-1 flex items-center justify-center space-x-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                  >
-                    <Edit size={16} />
-                    <span>Editar</span>
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(servico.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 text-gray-500 bg-white rounded-lg border border-gray-200">
-          <Scissors size={48} className="mx-auto mb-4 opacity-50" />
-          <p>Nenhum serviço encontrado para este salão.</p>
-          <p className="text-sm mt-2">Clique em "Novo Serviço" para adicionar o primeiro serviço.</p>
         </div>
       )}
 
-      {/* Modal de Gerenciar Categorias */}
-      <Modal
-        isOpen={showCategoriaModal}
-        onClose={() => {
-          setShowCategoriaModal(false);
-          setCategoriaEditando('');
-          setNovaCategoria('');
-        }}
-        title="Gerenciar Categorias"
-        size="md"
-      >
-        <div className="space-y-4">
-          {/* Adicionar Nova Categoria */}
+      {/* Info do Plano */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nova Categoria
-            </label>
-            <div className="flex space-x-2">
-              <input
-                type="text"
-                value={novaCategoria}
-                onChange={(e) => setNovaCategoria(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleAddCategoria()}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Digite o nome da categoria"
-              />
-              <button
-                onClick={handleAddCategoria}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Plus size={20} />
-              </button>
-            </div>
+            <p className="text-sm font-medium text-blue-900">
+              Serviços: {servicosSalao.length} {limiteServicos !== 'Ilimitado' ? `(${limiteServicos})` : '(Ilimitado)'}
+            </p>
           </div>
-
-          {/* Lista de Categorias */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categorias Existentes
-            </label>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {categorias.map((categoria) => (
-                <div key={categoria} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  {categoriaEditando === categoria ? (
-                    <>
-                      <input
-                        type="text"
-                        value={categoriaParaEditar}
-                        onChange={(e) => setCategoriaParaEditar(e.target.value)}
-                        className="flex-1 px-3 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-purple-500"
-                      />
-                      <div className="flex space-x-2 ml-2">
-                        <button
-                          onClick={handleSaveEditCategoria}
-                          className="p-1 text-green-600 hover:bg-green-50 rounded"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => {
-                            setCategoriaEditando('');
-                            setCategoriaParaEditar('');
-                          }}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                        >
-                          <X size={16} />
-                        </button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium text-gray-800">{categoria}</span>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-xs text-gray-500">
-                          {servicosSalao.filter(s => s.categoria === categoria).length} serviço(s)
-                        </span>
-                        <button
-                          onClick={() => handleEditCategoria(categoria)}
-                          className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        >
-                          <Edit size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCategoria(categoria)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </>
-                  )}
-                </div>
-              ))}
-            </div>
+            <p className="text-sm font-medium text-blue-900">
+              Categorias: {categorias.length} {limiteCategorias !== 'Ilimitado' ? `/ ${limiteCategorias.replace('Máximo: ', '')}` : '(Ilimitado)'}
+            </p>
           </div>
         </div>
-      </Modal>
+      </div>
 
-      {/* Modal de Cadastro/Edição de Serviço */}
-      <Modal
-        isOpen={showModal}
-        onClose={handleCloseModal}
-        title={editingId ? 'Editar Serviço' : 'Novo Serviço'}
-        size="lg"
-      >
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Nome do Serviço *
-            </label>
-            <input
-              type="text"
-              name="nome"
-              value={formData.nome}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="Ex: Corte Feminino"
-            />
-          </div>
+      <ServicosStats 
+        totalServicos={totalServicos}
+        valorMedio={valorMedio}
+        servicosPremium={servicosMaisCaros}
+        totalCategorias={categorias.length}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoria *
-              </label>
-              <select
-                name="categoria"
-                value={formData.categoria}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Selecione uma categoria</option>
-                {categorias.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
+      <ServicosFilters 
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        categoriaFiltro={categoriaFiltro}
+        setCategoriaFiltro={setCategoriaFiltro}
+        categorias={categorias}
+      />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Duração *
-              </label>
-              <select
-                name="duracao"
-                value={formData.duracao}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              >
-                {durationOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+      <ServicosGrid 
+        filteredServicos={filteredServicos}
+        profissionais={profissionais}
+        handleOpenModal={handleOpenModal}
+        handleDelete={handleDelete}
+      />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Valor (R$) *
-              </label>
-              <input
-                type="number"
-                name="valor"
-                value={formData.valor}
-                onChange={handleChange}
-                required
-                step="0.01"
-                min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="0.00"
-              />
-            </div>
+      <ServicoModal 
+        showModal={showModal}
+        handleCloseModal={handleCloseModal}
+        editingId={editingId}
+        formData={formData}
+        handleChange={handleChange}
+        handleProfissionalToggle={handleProfissionalToggle}
+        handleSubmit={handleSubmit}
+        categorias={categorias}
+        profissionaisSalao={profissionaisSalao}
+        durationOptions={durationOptions}
+        servicosSalao={servicosSalao}
+      />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Comissão (%) *
-              </label>
-              <input
-                type="number"
-                name="comissao"
-                value={formData.comissao}
-                onChange={handleChange}
-                required
-                min="0"
-                max="100"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="0"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descrição *
-            </label>
-            <textarea
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleChange}
-              required
-              rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="Descreva o serviço..."
-            ></textarea>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Profissionais Habilitados *
-            </label>
-            {profissionaisSalao.length > 0 ? (
-              <div className="space-y-2 p-4 border border-gray-300 rounded-lg max-h-40 overflow-y-auto">
-                {profissionaisSalao.map(prof => (
-                  <label key={prof.id} className="flex items-center space-x-3 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                    <input
-                      type="checkbox"
-                      checked={formData.profissionaisHabilitados.includes(prof.id)}
-                      onChange={() => handleProfissionalToggle(prof.id)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                    />
-                    <div>
-                      <span className="text-sm font-medium text-gray-700">{prof.nome}</span>
-                      <p className="text-xs text-gray-500">{prof.especialidades.join(', ')}</p>
-                    </div>
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                <p className="text-sm text-yellow-800">
-                  Nenhum profissional cadastrado neste salão. Cadastre profissionais em Configurações primeiro.
-                </p>
-              </div>
-            )}
-            {profissionaisSalao.length > 0 && formData.profissionaisHabilitados.length === 0 && (
-              <p className="text-xs text-red-500 mt-1">Selecione pelo menos um profissional</p>
-            )}
-          </div>
-
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              name="ativo"
-              checked={formData.ativo}
-              onChange={handleChange}
-              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-            />
-            <label className="ml-2 text-sm text-gray-700">
-              Serviço ativo
-            </label>
-          </div>
-
-          <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-            <button
-              type="button"
-              onClick={handleCloseModal}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={profissionaisSalao.length === 0 || formData.profissionaisHabilitados.length === 0}
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {editingId ? 'Salvar Alterações' : 'Cadastrar Serviço'}
-            </button>
-          </div>
-        </form>
-      </Modal>
+      <CategoriaModal 
+        showCategoriaModal={showCategoriaModal}
+        handleCloseCategoriaModal={handleCloseCategoriaModal}
+        categorias={categorias}
+        novaCategoria={novaCategoria}
+        setNovaCategoria={setNovaCategoria}
+        handleAddCategoria={handleAddCategoria}
+        categoriaEditando={categoriaEditando}
+        categoriaParaEditar={categoriaParaEditar}
+        setCategoriaEditando={setCategoriaEditando}
+        setCategoriaParaEditar={setCategoriaParaEditar}
+        handleEditCategoria={handleEditCategoria}
+        handleSaveEditCategoria={handleSaveEditCategoria}
+        handleDeleteCategoria={handleDeleteCategoria}
+        servicosSalao={servicosSalao}
+      />
     </div>
   );
 };

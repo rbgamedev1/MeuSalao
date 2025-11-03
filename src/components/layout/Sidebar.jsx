@@ -1,4 +1,3 @@
-// src/components/layout/Sidebar.jsx
 import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -9,6 +8,7 @@ import {
   DollarSign, 
   BarChart3,
   Settings,
+  Bell,
   ChevronLeft,
   ChevronRight,
   X
@@ -25,6 +25,7 @@ const Sidebar = ({ expanded, setExpanded }) => {
     { icon: Package, label: 'Produtos', path: '/produtos' },
     { icon: DollarSign, label: 'Financeiro', path: '/financeiro' },
     { icon: BarChart3, label: 'Relatórios', path: '/relatorios' },
+    { icon: Bell, label: 'Notificações', path: '/notificacoes' },
     { icon: Settings, label: 'Configurações', path: '/configuracoes' },
   ];
 
