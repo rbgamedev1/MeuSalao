@@ -1,6 +1,6 @@
-// src/utils/planRestrictions.js
+// src/utils/planRestrictions.js - VERIFICADO E AJUSTADO
 
-// Definição de limites por plano
+// Definição de limites por plano (conforme descrições em Configuracoes.jsx)
 export const PLAN_LIMITS = {
   inicial: {
     saloes: 1,
@@ -26,10 +26,10 @@ export const PLAN_LIMITS = {
     fornecedores: 2,
     produtos: 5,
     financeiro: false,
-    relatorios: 'basico',
+    relatorios: 'basico', // Relatórios de agendamentos
     exportacao: false,
-    agendamentoOnline: true,
-    notificacoes: 'basico',
+    agendamentoOnline: true, // Agenda online
+    notificacoes: 'basico', // Notificações básicas
     comissoes: false
   },
   plus: {
@@ -40,57 +40,66 @@ export const PLAN_LIMITS = {
     servicosPorCategoria: 5,
     fornecedores: 5,
     produtos: 15,
-    financeiro: 'simples',
-    relatorios: 'basico',
+    financeiro: 'simples', // Controle financeiro simples
+    relatorios: 'basico', // Relatórios básicos
     exportacao: false,
-    agendamentoOnline: true,
+    agendamentoOnline: true, // Agendamento avançado
     notificacoes: 'basico',
     comissoes: true
   },
   profissional: {
     saloes: 2,
-    profissionais: 10,
-    clientes: 300,
-    categorias: Infinity,
+    profissionais: 10, // 10 por salão
+    clientes: 300, // 300 por salão
+    categorias: Infinity, // Categorias e serviços ilimitados
     servicosPorCategoria: Infinity,
     fornecedores: 10,
     produtos: 30,
-    financeiro: 'completo',
-    relatorios: 'completo',
-    exportacao: true,
-    agendamentoOnline: true,
+    financeiro: 'completo', // Financeiro completo
+    relatorios: 'completo', // Relatórios detalhados
+    exportacao: true, // Exportação de dados
+    agendamentoOnline: true, // Link de agendamento
     notificacoes: 'completo',
-    comissoes: true
+    comissoes: true,
+    appProfissionais: true // App para profissionais
   },
   premium: {
     saloes: 5,
-    profissionais: 10,
-    clientes: 500,
-    categorias: Infinity,
+    profissionais: 10, // 10 por salão
+    clientes: 500, // 500 por salão
+    categorias: Infinity, // Categorias e serviços ilimitados
     servicosPorCategoria: Infinity,
     fornecedores: 30,
     produtos: 100,
-    financeiro: 'completo',
-    relatorios: 'completo',
-    exportacao: true,
-    agendamentoOnline: true,
+    financeiro: 'completo', // Financeiro completo
+    relatorios: 'completo', // Relatórios detalhados
+    exportacao: true, // Exportação de dados
+    agendamentoOnline: true, // Link de agendamento
     notificacoes: 'completo',
-    comissoes: true
+    comissoes: true,
+    appProfissionais: true // App para profissionais
   },
   master: {
-    saloes: Infinity,
-    profissionais: Infinity,
-    clientes: Infinity,
-    categorias: Infinity,
+    saloes: Infinity, // Salões ilimitados
+    profissionais: Infinity, // Profissionais ilimitados
+    clientes: Infinity, // Clientes ilimitados
+    categorias: Infinity, // Todos recursos liberados
     servicosPorCategoria: Infinity,
     fornecedores: Infinity,
     produtos: Infinity,
-    financeiro: 'completo',
-    relatorios: 'avancado',
+    financeiro: 'completo', // Todos os recursos financeiros
+    relatorios: 'avancado', // Relatórios avançados customizáveis
     exportacao: true,
     agendamentoOnline: true,
     notificacoes: 'avancado',
-    comissoes: true
+    comissoes: true,
+    appProfissionais: true,
+    appPersonalizado: true, // App personalizado
+    integracoesExternas: true, // Integrações externas
+    marketing: true, // Marketing e campanhas
+    fiscal: true, // NFe e fiscal
+    backupNuvem: true, // Backup em nuvem
+    suportePrioritario: true // Prioridade no suporte
   }
 };
 

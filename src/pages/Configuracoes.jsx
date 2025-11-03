@@ -1,4 +1,4 @@
-// src/pages/Configuracoes.jsx
+// src/pages/Configuracoes.jsx - CÓDIGO COMPLETO COM RESTRIÇÕES DE PLANO
 import { useState, useContext } from 'react';
 import { 
   Settings, 
@@ -14,11 +14,13 @@ import {
   Trash2,
   Plus,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Lock
 } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import MaskedInput from '../components/MaskedInput';
 import Modal from '../components/Modal';
+import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 
 const Configuracoes = () => {
   const { 
@@ -58,6 +60,10 @@ const Configuracoes = () => {
 
   // Obter profissionais do salão atual
   const profissionaisSalao = getProfissionaisPorSalao();
+
+  // Verificar limites do plano
+  const canAddProfissional = canAddMore(salaoAtual.plano, 'profissionais', profissionaisSalao.length);
+  const limiteProfissionais = getLimitMessage(salaoAtual.plano, 'profissionais');
 
   // Definição dos planos
   const planos = [
@@ -233,6 +239,12 @@ const Configuracoes = () => {
   };
 
   const handleOpenProfissionalModal = (profissional = null) => {
+    // Verificar limite ao adicionar novo
+    if (!profissional && !canAddProfissional) {
+      alert(`Limite de profissionais atingido para o plano ${salaoAtual.plano}. ${limiteProfissionais}\n\nFaça upgrade do seu plano para adicionar mais profissionais.`);
+      return;
+    }
+
     if (profissional) {
       setEditingProfissionalId(profissional.id);
       setProfissionalData({
@@ -357,6 +369,7 @@ const Configuracoes = () => {
                 ? 'text-purple-600 border-b-2 border-purple-600'
                 : 'text-gray-600 hover:text-gray-800'
             }`}
+            data-tab="planos"
           >
             <Crown size={20} />
             <span>Planos e Assinatura</span>
@@ -503,17 +516,37 @@ const Configuracoes = () => {
                     Gerenciar Profissionais
                   </h3>
                   <p className="text-sm text-gray-600 mt-1">
-                    Total de profissionais neste salão: {profissionaisSalao.length}
+                    Profissionais: {profissionaisSalao.length} {limiteProfissionais !== 'Ilimitado' ? `/ ${limiteProfissionais.replace('Máximo: ', '')}` : '(Ilimitado)'}
                   </p>
                 </div>
                 <button
                   onClick={() => handleOpenProfissionalModal()}
-                  className="flex items-center space-x-2 bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+                  disabled={!canAddProfissional}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                    canAddProfissional
+                      ? 'bg-purple-600 text-white hover:bg-purple-700'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
                 >
-                  <Plus size={18} />
+                  {canAddProfissional ? <Plus size={18} /> : <Lock size={18} />}
                   <span>Adicionar Profissional</span>
                 </button>
               </div>
+
+              {/* Alerta de Limite */}
+              {!canAddProfissional && (
+                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+                  <div className="flex items-start">
+                    <Crown className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
+                    <div>
+                      <p className="font-semibold text-yellow-800">Limite de profissionais atingido!</p>
+                      <p className="text-yellow-700 text-sm mt-1">
+                        Seu plano <strong>{salaoAtual.plano}</strong> permite até <strong>{limiteProfissionais.replace('Máximo: ', '')}</strong>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Lista de Profissionais */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
