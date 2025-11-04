@@ -1,9 +1,9 @@
-// src/components/agendamentos/AgendamentoFormulario.jsx - CORRIGIDO: Validação de horários
+// src/components/agendamentos/AgendamentoFormulario.jsx - ATUALIZADO COM VALIDAÇÃO DE DURAÇÃO
 
 import { Phone, Mail, Check } from 'lucide-react';
 import { useContext, useMemo } from 'react';
 import MaskedInput from '../MaskedInput';
-import { formatarDuracao } from '../../utils/agendamentoUtils';
+import { formatarDuracao, obterHorariosDisponiveisComDuracao } from '../../utils/agendamentoUtils';
 import { generateTimeOptions } from '../../utils/masks';
 import { SalaoContext } from '../../contexts/SalaoContext';
 
@@ -19,32 +19,29 @@ const AgendamentoFormulario = ({
   servicoSelecionado,
   onClose
 }) => {
-  const { agendamentos } = useContext(SalaoContext);
+  const { agendamentos, servicos } = useContext(SalaoContext);
   
   const timeOptions = generateTimeOptions();
 
-  // Calcular horários disponíveis
+  // Calcular horários disponíveis com validação de duração
   const horariosDisponiveis = useMemo(() => {
-    if (!formData.profissionalId || !formData.data) {
+    if (!formData.profissionalId || !formData.data || !servicoSelecionado) {
       return timeOptions.map(time => ({ time, disponivel: true }));
     }
 
-    return timeOptions.map(time => {
-      // Verificar se horário está ocupado
-      const ocupado = agendamentos.some(ag => 
-        ag.id !== editingId && // Ignorar o próprio agendamento ao editar
-        ag.data === formData.data && 
-        ag.horario === time &&
-        ag.profissionalId === parseInt(formData.profissionalId) &&
-        ag.status !== 'cancelado'
-      );
+    // Usar função que considera duração do serviço
+    const resultado = obterHorariosDisponiveisComDuracao(
+      timeOptions,
+      agendamentos,
+      servicos,
+      parseInt(formData.profissionalId),
+      formData.data,
+      servicoSelecionado.duracao,
+      editingId // Ignorar o próprio agendamento ao editar
+    );
 
-      return {
-        time,
-        disponivel: !ocupado
-      };
-    });
-  }, [formData.profissionalId, formData.data, agendamentos, timeOptions, editingId]);
+    return resultado.map(r => ({ time: r.horario, disponivel: r.disponivel }));
+  }, [formData.profissionalId, formData.data, agendamentos, servicos, servicoSelecionado, timeOptions, editingId]);
 
   const horariosOcupados = horariosDisponiveis.filter(h => !h.disponivel).length;
 
@@ -230,9 +227,9 @@ const AgendamentoFormulario = ({
               </option>
             ))}
           </select>
-          {formData.profissionalId && formData.data && (
+          {formData.profissionalId && formData.data && servicoSelecionado && (
             <p className="text-xs text-gray-500 mt-1">
-              ⏰ Horários ocupados aparecem riscados
+              ⏰ Horários ocupados consideram a duração do serviço ({servicoSelecionado.duracao}min)
             </p>
           )}
         </div>
@@ -257,7 +254,7 @@ const AgendamentoFormulario = ({
         </select>
       </div>
 
-      {/* Notificações (apenas para plano essencial+) */}
+      {/* Notificações */}
       {clienteSelecionado?.email && (
         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
           <label className="flex items-center space-x-3 cursor-pointer">
@@ -295,10 +292,10 @@ const AgendamentoFormulario = ({
             return (
               <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm font-medium text-red-900">
-                  ⚠️ Atenção: Este horário já está ocupado!
+                  ⚠️ Atenção: Este horário está ocupado!
                 </p>
                 <p className="text-xs text-red-700 mt-1">
-                  Escolha outro horário disponível para continuar.
+                  Não há tempo suficiente para completar este serviço ({servicoSelecionado?.duracao}min) sem conflitar com outro agendamento.
                 </p>
               </div>
             );
