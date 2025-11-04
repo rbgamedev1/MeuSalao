@@ -1,4 +1,5 @@
-// src/pages/Agendamentos.jsx - MODULARIZADO COM INTEGRAÇÃO DE NOTIFICAÇÕES
+// src/pages/Agendamentos.jsx - CORRIGIDO: Validação de horários e emails corretos
+
 import { useState, useContext, useEffect, useMemo } from 'react';
 import Modal from '../components/Modal';
 import { SalaoContext } from '../contexts/SalaoContext';
@@ -141,6 +142,20 @@ const Agendamentos = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validar se horário está disponível (exceto ao editar o próprio agendamento)
+    const horarioOcupado = agendamentosSalao.some(ag => 
+      ag.id !== editingId && // Ignorar o próprio agendamento ao editar
+      ag.data === formData.data && 
+      ag.horario === formData.horario &&
+      ag.profissionalId === parseInt(formData.profissionalId) &&
+      ag.status !== 'cancelado'
+    );
+
+    if (horarioOcupado) {
+      alert('⚠️ Este horário já está ocupado. Por favor, escolha outro horário.');
+      return;
+    }
+
     const agendamentoData = {
       clienteId: parseInt(formData.clienteId),
       servicoId: parseInt(formData.servicoId),
@@ -153,13 +168,23 @@ const Agendamentos = () => {
 
     if (editingId) {
       // Atualizar agendamento existente
+      const agendamentoAntigo = agendamentos.find(ag => ag.id === editingId);
+      
       setAgendamentos(agendamentos.map(ag => 
         ag.id === editingId ? { ...agendamentoData, id: editingId } : ag
       ));
 
-      // Notificar alteração se configurado
-      if (formData.notificarCliente && clienteSelecionado?.email) {
-        await notificationService.notifyNovoAgendamento(editingId);
+      // Verificar se status mudou para cancelado
+      if (agendamentoAntigo.status !== 'cancelado' && formData.status === 'cancelado') {
+        // Enviar email de CANCELAMENTO
+        if (formData.notificarCliente && clienteSelecionado?.email) {
+          await notificationService.notifyCancelamento(editingId);
+        }
+      } else {
+        // Email de alteração (confirmação)
+        if (formData.notificarCliente && clienteSelecionado?.email) {
+          await notificationService.notifyNovoAgendamento(editingId);
+        }
       }
     } else {
       // Criar novo agendamento
@@ -183,9 +208,12 @@ const Agendamentos = () => {
     if (confirm('Tem certeza que deseja excluir este agendamento?')) {
       const agendamento = agendamentos.find(ag => ag.id === id);
       
-      // Notificar cancelamento
-      if (agendamento) {
-        await notificationService.notifyCancelamento(id);
+      // Notificar cancelamento se não estava cancelado
+      if (agendamento && agendamento.status !== 'cancelado') {
+        const cliente = clientes.find(c => c.id === agendamento.clienteId);
+        if (cliente?.email) {
+          await notificationService.notifyCancelamento(id);
+        }
       }
       
       setAgendamentos(agendamentos.filter(ag => ag.id !== id));

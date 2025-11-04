@@ -1,10 +1,11 @@
-// src/pages/AgendaOnline.jsx - Página Pública de Agendamento Online com Mailgun
+// src/pages/AgendaOnline.jsx - CORRIGIDO: Validação de horários e limites de clientes
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, Clock, User, Scissors, Phone, Mail, CheckCircle, ArrowLeft } from 'lucide-react';
+import { Calendar, Clock, User, Scissors, Phone, Mail, CheckCircle, ArrowLeft, AlertCircle } from 'lucide-react';
 import { maskPhone, maskDate, getTodayBR, dateToISO, isValidDate } from '../utils/masks';
 import mailgunService from '../services/mailgunService';
+import { canAddMore, getLimitMessage, PLAN_LIMITS } from '../utils/planRestrictions';
 
 const AgendaOnline = () => {
   const { salaoId } = useParams();
@@ -18,6 +19,7 @@ const AgendaOnline = () => {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [planLimitError, setPlanLimitError] = useState(null);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -76,6 +78,11 @@ const AgendaOnline = () => {
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
+
+    // Recarregar horários quando data ou profissional mudar
+    if (name === 'data' || name === 'profissionalId') {
+      setFormData(prev => ({ ...prev, horario: '' }));
+    }
   };
 
   const validateStep1 = () => {
@@ -123,6 +130,20 @@ const AgendaOnline = () => {
       newErrors.horario = 'Selecione um horário';
     }
 
+    // Verificar se horário está disponível
+    if (formData.profissionalId && formData.data && formData.horario) {
+      const horarioOcupado = agendamentos.some(ag => 
+        ag.data === formData.data && 
+        ag.horario === formData.horario &&
+        ag.profissionalId === parseInt(formData.profissionalId) &&
+        ag.status !== 'cancelado'
+      );
+
+      if (horarioOcupado) {
+        newErrors.horario = 'Este horário não está mais disponível. Por favor, escolha outro.';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -139,13 +160,50 @@ const AgendaOnline = () => {
 
   const handleSubmit = async () => {
     setSendingEmail(true);
+    setPlanLimitError(null);
     
     try {
-      // Verificar se já existe cliente com este email
+      // Carregar dados atualizados
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-      let cliente = clientes.find(c => c.email === formData.email);
+      const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      
+      // Recarregar agendamentos para verificar disponibilidade em tempo real
+      const agendamentosAtualizados = agendamentosAll.filter(a => a.salaoId === parseInt(salaoId));
+      
+      // VERIFICAÇÃO FINAL: Horário ainda disponível?
+      const horarioOcupado = agendamentosAtualizados.some(ag => 
+        ag.data === formData.data && 
+        ag.horario === formData.horario &&
+        ag.profissionalId === parseInt(formData.profissionalId) &&
+        ag.status !== 'cancelado'
+      );
+
+      if (horarioOcupado) {
+        alert('⚠️ Este horário acabou de ser reservado por outro cliente. Por favor, escolha outro horário.');
+        setFormData(prev => ({ ...prev, horario: '' }));
+        setSendingEmail(false);
+        return;
+      }
+
+      // Verificar se cliente já existe
+      let cliente = clientes.find(c => c.email === formData.email && c.salaoId === parseInt(salaoId));
 
       if (!cliente) {
+        // Verificar limite de clientes do plano
+        const clientesSalao = clientes.filter(c => c.salaoId === parseInt(salaoId));
+        const canAdd = canAddMore(salao.plano, 'clientes', clientesSalao.length);
+        
+        if (!canAdd) {
+          setPlanLimitError({
+            title: 'Agenda Cheia no Momento',
+            message: `Desculpe, não estamos aceitando novos agendamentos online no momento devido à alta demanda.`,
+            suggestion: 'Entre em contato diretamente conosco por telefone para verificar disponibilidade.',
+            showPhone: true
+          });
+          setSendingEmail(false);
+          return;
+        }
+
         // Criar novo cliente
         cliente = {
           id: Math.max(...clientes.map(c => c.id), 0) + 1,
@@ -164,7 +222,6 @@ const AgendaOnline = () => {
       }
 
       // Criar agendamento
-      const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const novoAgendamento = {
         id: Math.max(...agendamentosAll.map(a => a.id), 0) + 1,
         clienteId: cliente.id,
@@ -174,7 +231,8 @@ const AgendaOnline = () => {
         horario: formData.horario,
         status: 'confirmado',
         salaoId: parseInt(salaoId),
-        origemAgendamento: 'online'
+        origemAgendamento: 'online',
+        criadoEm: new Date().toISOString()
       };
 
       agendamentosAll.push(novoAgendamento);
@@ -219,7 +277,7 @@ const AgendaOnline = () => {
       for (let m = 0; m < 60; m += 30) {
         const horario = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         
-        // Verificar se horário está ocupado
+        // Verificar se horário está ocupado (ATUALIZADO EM TEMPO REAL)
         const ocupado = agendamentos.some(ag => 
           ag.data === formData.data && 
           ag.horario === horario &&
@@ -234,6 +292,15 @@ const AgendaOnline = () => {
   };
 
   const horariosDisponiveis = gerarHorarios();
+
+  // Recarregar agendamentos quando data/profissional mudar
+  useEffect(() => {
+    if (formData.data && formData.profissionalId) {
+      // Recarregar agendamentos para ter dados atualizados
+      const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      setAgendamentos(agendamentosAll.filter(a => a.salaoId === parseInt(salaoId)));
+    }
+  }, [formData.data, formData.profissionalId, salaoId]);
 
   if (loading) {
     return (
@@ -262,6 +329,68 @@ const AgendaOnline = () => {
     );
   }
 
+  // Erro de limite de plano
+  if (planLimitError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar size={48} className="text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              {planLimitError.title}
+            </h2>
+            <p className="text-gray-600">
+              {planLimitError.message}
+            </p>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <p className="text-sm text-blue-800 text-center">
+              💡 <strong>{planLimitError.suggestion}</strong>
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {planLimitError.showPhone && (
+              <>
+                <a
+                  href={`tel:${salao.telefone.replace(/\D/g, '')}`}
+                  className="block w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 text-center font-medium"
+                >
+                  📞 Ligar para {salao.nome}
+                </a>
+                <a
+                  href={`https://wa.me/55${salao.telefone.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 text-center font-medium"
+                >
+                  💬 Chamar no WhatsApp
+                </a>
+              </>
+            )}
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+            >
+              Voltar
+            </button>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <div className="text-center text-sm text-gray-600">
+              <p className="font-medium">{salao.nome}</p>
+              <p className="mt-1">{salao.endereco}</p>
+              <p className="mt-1">{salao.telefone}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (success) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
@@ -284,15 +413,11 @@ const AgendaOnline = () => {
               <p><strong>Data:</strong> {formData.data}</p>
               <p><strong>Horário:</strong> {formData.horario}</p>
               <p><strong>Serviço:</strong> {servicoSelecionado?.nome}</p>
+              <p><strong>Profissional:</strong> {profissionais.find(p => p.id === parseInt(formData.profissionalId))?.nome}</p>
               <p><strong>Local:</strong> {salao.endereco}</p>
+              <p><strong>Telefone:</strong> {salao.telefone}</p>
             </div>
           </div>
-
-          {sendingEmail && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
-              📧 Enviando confirmação por email...
-            </div>
-          )}
 
           <button
             onClick={() => window.location.reload()}
@@ -521,9 +646,9 @@ const AgendaOnline = () => {
               {formData.profissionalId && formData.data && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Horário *
+                    Horário Disponível *
                   </label>
-                  <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto p-2">
+                  <div className="grid grid-cols-4 gap-2 max-h-64 overflow-y-auto p-2 border border-gray-200 rounded-lg">
                     {horariosDisponiveis.map(({ horario, ocupado }) => (
                       <button
                         key={horario}
@@ -533,7 +658,7 @@ const AgendaOnline = () => {
                           formData.horario === horario
                             ? 'bg-purple-600 text-white'
                             : ocupado
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed line-through'
                             : 'bg-white border-2 border-gray-200 hover:border-purple-300'
                         }`}
                       >
@@ -542,6 +667,9 @@ const AgendaOnline = () => {
                     ))}
                   </div>
                   {errors.horario && <p className="text-red-500 text-xs mt-1">{errors.horario}</p>}
+                  <p className="text-xs text-gray-500 mt-2">
+                    ⏰ Horários <span className="line-through">riscados</span> já estão reservados
+                  </p>
                 </div>
               )}
             </div>
@@ -552,7 +680,8 @@ const AgendaOnline = () => {
             {step > 1 && (
               <button
                 onClick={() => setStep(step - 1)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50"
+                disabled={sendingEmail}
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
               >
                 Voltar
               </button>

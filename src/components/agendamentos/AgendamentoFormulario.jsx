@@ -1,7 +1,11 @@
+// src/components/agendamentos/AgendamentoFormulario.jsx - CORRIGIDO: Validação de horários
+
 import { Phone, Mail, Check } from 'lucide-react';
+import { useContext, useMemo } from 'react';
 import MaskedInput from '../MaskedInput';
 import { formatarDuracao } from '../../utils/agendamentoUtils';
 import { generateTimeOptions } from '../../utils/masks';
+import { SalaoContext } from '../../contexts/SalaoContext';
 
 const AgendamentoFormulario = ({
   formData,
@@ -15,7 +19,34 @@ const AgendamentoFormulario = ({
   servicoSelecionado,
   onClose
 }) => {
+  const { agendamentos } = useContext(SalaoContext);
+  
   const timeOptions = generateTimeOptions();
+
+  // Calcular horários disponíveis
+  const horariosDisponiveis = useMemo(() => {
+    if (!formData.profissionalId || !formData.data) {
+      return timeOptions.map(time => ({ time, disponivel: true }));
+    }
+
+    return timeOptions.map(time => {
+      // Verificar se horário está ocupado
+      const ocupado = agendamentos.some(ag => 
+        ag.id !== editingId && // Ignorar o próprio agendamento ao editar
+        ag.data === formData.data && 
+        ag.horario === time &&
+        ag.profissionalId === parseInt(formData.profissionalId) &&
+        ag.status !== 'cancelado'
+      );
+
+      return {
+        time,
+        disponivel: !ocupado
+      };
+    });
+  }, [formData.profissionalId, formData.data, agendamentos, timeOptions, editingId]);
+
+  const horariosOcupados = horariosDisponiveis.filter(h => !h.disponivel).length;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -171,6 +202,11 @@ const AgendamentoFormulario = ({
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Horário *
+            {formData.profissionalId && formData.data && horariosOcupados > 0 && (
+              <span className="text-xs text-red-500 ml-2">
+                ({horariosOcupados} horário(s) ocupado(s))
+              </span>
+            )}
           </label>
           <select
             name="horario"
@@ -180,10 +216,25 @@ const AgendamentoFormulario = ({
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="">Selecione um horário</option>
-            {timeOptions.map(time => (
-              <option key={time} value={time}>{time}</option>
+            {horariosDisponiveis.map(({ time, disponivel }) => (
+              <option 
+                key={time} 
+                value={time}
+                disabled={!disponivel}
+                style={{
+                  color: disponivel ? 'inherit' : '#9CA3AF',
+                  textDecoration: disponivel ? 'none' : 'line-through'
+                }}
+              >
+                {time} {!disponivel ? '(Ocupado)' : ''}
+              </option>
             ))}
           </select>
+          {formData.profissionalId && formData.data && (
+            <p className="text-xs text-gray-500 mt-1">
+              ⏰ Horários ocupados aparecem riscados
+            </p>
+          )}
         </div>
       </div>
 
@@ -227,11 +278,33 @@ const AgendamentoFormulario = ({
                 Enviar notificação por email
               </span>
               <p className="text-xs text-blue-700 mt-1">
-                O cliente receberá um email de confirmação
+                {formData.status === 'cancelado' 
+                  ? 'Cliente receberá email de cancelamento'
+                  : 'Cliente receberá email de confirmação/alteração'}
               </p>
             </div>
           </label>
         </div>
+      )}
+
+      {/* Alerta se horário estiver ocupado */}
+      {formData.horario && formData.profissionalId && formData.data && (
+        (() => {
+          const horarioInfo = horariosDisponiveis.find(h => h.time === formData.horario);
+          if (horarioInfo && !horarioInfo.disponivel) {
+            return (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm font-medium text-red-900">
+                  ⚠️ Atenção: Este horário já está ocupado!
+                </p>
+                <p className="text-xs text-red-700 mt-1">
+                  Escolha outro horário disponível para continuar.
+                </p>
+              </div>
+            );
+          }
+          return null;
+        })()
       )}
 
       {/* Botões */}
