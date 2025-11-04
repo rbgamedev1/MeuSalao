@@ -1,4 +1,4 @@
-// src/pages/AgendaOnline.jsx - COM ATUALIZAÇÃO EM TEMPO REAL
+// src/pages/AgendaOnline.jsx - COMPLETO COM SINCRONIZAÇÃO EM TEMPO REAL
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -12,7 +12,8 @@ import AgendaLoading from '../components/agendaOnline/AgendaLoading';
 import AgendaErro from '../components/agendaOnline/AgendaErro';
 import mailgunService from '../services/mailgunService';
 import { canAddMore } from '../utils/planRestrictions';
-import { calcularHorariosOcupados } from '../utils/agendamentoUtils';
+import { verificarConflitoHorario } from '../utils/agendamentoUtils';
+import { useRealtimeAgendamentos } from '../hooks/useRealtimeAgendamentos';
 
 const AgendaOnline = () => {
   const { salaoId } = useParams();
@@ -21,12 +22,19 @@ const AgendaOnline = () => {
   const [salao, setSalao] = useState(null);
   const [servicos, setServicos] = useState([]);
   const [profissionais, setProfissionais] = useState([]);
-  const [agendamentos, setAgendamentos] = useState([]);
   const [step, setStep] = useState(1);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [planLimitError, setPlanLimitError] = useState(null);
+
+  // ✅ HOOK DE TEMPO REAL - Sincronização automática
+  const { 
+    agendamentos, 
+    isUpdating, 
+    lastUpdate,
+    forceRefresh 
+  } = useRealtimeAgendamentos(parseInt(salaoId), 2000);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -45,37 +53,11 @@ const AgendaOnline = () => {
     loadSalaoData();
   }, [salaoId]);
 
-  // ✨ NOVO: Listener para atualização em tempo real
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      // Detectar mudanças no localStorage
-      if (e.key === 'agendamentos' || e.key === null) {
-        console.log('📡 Detectada mudança nos agendamentos, atualizando...');
-        reloadAgendamentos();
-      }
-    };
-
-    // Listener para mudanças de outras abas/janelas
-    window.addEventListener('storage', handleStorageChange);
-
-    // ✨ NOVO: Polling interno para detectar mudanças na mesma aba
-    // (storage event não dispara na mesma aba que fez a mudança)
-    const pollInterval = setInterval(() => {
-      reloadAgendamentos();
-    }, 2000); // Verifica a cada 2 segundos
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      clearInterval(pollInterval);
-    };
-  }, [salaoId, formData.data, formData.profissionalId]);
-
   const loadSalaoData = () => {
     try {
       const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
       const servicosAll = JSON.parse(localStorage.getItem('servicos') || '[]');
       const profissionaisAll = JSON.parse(localStorage.getItem('profissionais') || '[]');
-      const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
 
       const salaoEncontrado = saloes.find(s => s.id === parseInt(salaoId));
       
@@ -87,48 +69,10 @@ const AgendaOnline = () => {
       setSalao(salaoEncontrado);
       setServicos(servicosAll.filter(s => s.salaoId === parseInt(salaoId) && s.ativo));
       setProfissionais(profissionaisAll.filter(p => p.salaoId === parseInt(salaoId)));
-      setAgendamentos(agendamentosAll.filter(a => a.salaoId === parseInt(salaoId)));
       setLoading(false);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
       setLoading(false);
-    }
-  };
-
-  // ✨ NOVO: Função para recarregar apenas agendamentos
-  const reloadAgendamentos = () => {
-    try {
-      const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      const agendamentosFiltrados = agendamentosAll.filter(a => a.salaoId === parseInt(salaoId));
-      
-      // Só atualizar se realmente mudou
-      if (JSON.stringify(agendamentosFiltrados) !== JSON.stringify(agendamentos)) {
-        console.log('🔄 Agendamentos atualizados em tempo real');
-        setAgendamentos(agendamentosFiltrados);
-        
-        // Se estiver na tela de seleção de horário e o horário selecionado foi ocupado
-        if (step === 3 && formData.horario && formData.profissionalId && formData.data) {
-          const servicosAll = JSON.parse(localStorage.getItem('servicos') || '[]');
-          const servico = servicosAll.find(s => s.id === parseInt(formData.servicoId));
-          
-          if (servico) {
-            const horariosOcupados = calcularHorariosOcupados(
-              agendamentosFiltrados,
-              servicosAll,
-              parseInt(formData.profissionalId),
-              formData.data
-            );
-            
-            // Se o horário atual foi ocupado, alertar e limpar
-            if (horariosOcupados.includes(formData.horario)) {
-              alert('⚠️ O horário que você selecionou acabou de ser reservado por outro cliente. Por favor, escolha outro horário.');
-              setFormData(prev => ({ ...prev, horario: '' }));
-            }
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao recarregar agendamentos:', error);
     }
   };
 
@@ -182,18 +126,23 @@ const AgendaOnline = () => {
     if (!formData.data) newErrors.data = 'Selecione uma data';
     if (!formData.horario) newErrors.horario = 'Selecione um horário';
 
-    // Verificar se horário ainda está disponível
-    if (formData.profissionalId && formData.data && formData.horario) {
+    // ✅ VERIFICAÇÃO FINAL: Usar função que considera duração
+    if (formData.profissionalId && formData.data && formData.horario && formData.servicoId) {
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
-      const horariosOcupados = calcularHorariosOcupados(
-        agendamentos,
-        servicos,
-        parseInt(formData.profissionalId),
-        formData.data
-      );
+      
+      if (servico) {
+        const resultado = verificarConflitoHorario(
+          formData.horario,
+          servico.duracao,
+          agendamentos,
+          servicos,
+          parseInt(formData.profissionalId),
+          formData.data
+        );
 
-      if (horariosOcupados.includes(formData.horario)) {
-        newErrors.horario = 'Este horário não está mais disponível. Por favor, escolha outro.';
+        if (resultado.conflito) {
+          newErrors.horario = 'Este horário não está mais disponível. Por favor, escolha outro.';
+        }
       }
     }
 
@@ -209,24 +158,29 @@ const AgendaOnline = () => {
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       
-      // Recarregar agendamentos atualizados
+      // ✅ RECARREGAR agendamentos atualizados
       const agendamentosAtualizados = agendamentosAll.filter(a => a.salaoId === parseInt(salaoId));
       
-      // VERIFICAÇÃO FINAL: Horário ainda disponível considerando duração?
+      // ✅ VERIFICAÇÃO FINAL DE CONFLITO antes de salvar
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
-      const horariosOcupados = calcularHorariosOcupados(
-        agendamentosAtualizados,
-        servicos,
-        parseInt(formData.profissionalId),
-        formData.data
-      );
+      
+      if (servico) {
+        const resultado = verificarConflitoHorario(
+          formData.horario,
+          servico.duracao,
+          agendamentosAtualizados,
+          servicos,
+          parseInt(formData.profissionalId),
+          formData.data
+        );
 
-      if (horariosOcupados.includes(formData.horario)) {
-        alert('⚠️ Este horário acabou de ser reservado por outro cliente. Por favor, escolha outro horário.');
-        setFormData(prev => ({ ...prev, horario: '' }));
-        setSendingEmail(false);
-        setStep(3);
-        return;
+        if (resultado.conflito) {
+          alert('⚠️ Este horário acabou de ser reservado por outro cliente. Por favor, escolha outro horário.');
+          setFormData(prev => ({ ...prev, horario: '' }));
+          setSendingEmail(false);
+          setStep(3);
+          return;
+        }
       }
 
       // Verificar se cliente já existe
@@ -282,7 +236,7 @@ const AgendaOnline = () => {
       agendamentosAll.push(novoAgendamento);
       localStorage.setItem('agendamentos', JSON.stringify(agendamentosAll));
 
-      // ✨ NOVO: Disparar evento customizado para outras instâncias
+      // ✅ DISPARAR EVENTO STORAGE para sincronização em tempo real
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'agendamentos',
         newValue: JSON.stringify(agendamentosAll),
@@ -306,6 +260,7 @@ const AgendaOnline = () => {
         console.log('✅ Email de confirmação enviado com sucesso!');
       } catch (emailError) {
         console.error('❌ Erro ao enviar email:', emailError);
+        // Não bloquear o agendamento se o email falhar
       }
 
       setSuccess(true);
@@ -354,10 +309,22 @@ const AgendaOnline = () => {
         
         <AgendaStepIndicator currentStep={step} />
 
-        {/* ✨ NOVO: Indicador de atualização em tempo real */}
-        <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3">
-          <p className="text-xs text-green-800 text-center">
-            🔄 Horários atualizados em tempo real • Última atualização: {new Date().toLocaleTimeString('pt-BR')}
+        {/* ✅ Indicador de Sincronização em Tempo Real */}
+        <div className={`mb-4 rounded-lg p-3 transition-all ${
+          isUpdating 
+            ? 'bg-blue-50 border border-blue-200' 
+            : 'bg-green-50 border border-green-200'
+        }`}>
+          <p className="text-xs text-center">
+            {isUpdating ? (
+              <span className="text-blue-800">
+                🔄 Atualizando horários disponíveis...
+              </span>
+            ) : (
+              <span className="text-green-800">
+                ✅ Horários sincronizados em tempo real • Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+              </span>
+            )}
           </p>
         </div>
 
@@ -396,7 +363,7 @@ const AgendaOnline = () => {
               <button
                 onClick={handleBack}
                 disabled={sendingEmail}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
                 Voltar
               </button>
@@ -404,7 +371,7 @@ const AgendaOnline = () => {
             <button
               onClick={handleNext}
               disabled={sendingEmail}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {sendingEmail ? 'Processando...' : step === 3 ? 'Confirmar Agendamento' : 'Continuar'}
             </button>

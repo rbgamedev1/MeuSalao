@@ -1,4 +1,4 @@
-// src/pages/Agendamentos.jsx - CORRIGIDO: Validação de horários e emails corretos
+// src/pages/Agendamentos.jsx - COM SINCRONIZAÇÃO EM TEMPO REAL
 
 import { useState, useContext, useEffect, useMemo } from 'react';
 import Modal from '../components/Modal';
@@ -10,6 +10,8 @@ import AgendamentoLista from '../components/agendamentos/AgendamentoLista';
 import AgendamentoCalendario from '../components/agendamentos/AgendamentoCalendario';
 import AgendamentoFormulario from '../components/agendamentos/AgendamentoFormulario';
 import { formatarDuracao } from '../utils/agendamentoUtils';
+import { useRealtimeAgendamentos } from '../hooks/useRealtimeAgendamentos';
+import { RefreshCw } from 'lucide-react';
 
 const Agendamentos = () => {
   const { 
@@ -17,13 +19,19 @@ const Agendamentos = () => {
     clientes, 
     profissionais, 
     servicos,
-    agendamentos,
     setAgendamentos,
     getClientesPorSalao,
     getProfissionaisPorSalao,
-    getServicosPorSalao,
-    getAgendamentosPorSalao
+    getServicosPorSalao
   } = useContext(SalaoContext);
+  
+  // ✅ USAR HOOK DE TEMPO REAL
+  const { 
+    agendamentos: agendamentosSalaoRealtime, 
+    isUpdating, 
+    lastUpdate,
+    forceRefresh 
+  } = useRealtimeAgendamentos(salaoAtual.id, 2000);
   
   // Estados
   const [viewMode, setViewMode] = useState('lista');
@@ -51,7 +59,9 @@ const Agendamentos = () => {
   const clientesSalao = useMemo(() => getClientesPorSalao(), [clientes, salaoAtual.id]);
   const profissionaisSalao = useMemo(() => getProfissionaisPorSalao(), [profissionais, salaoAtual.id]);
   const servicosSalao = useMemo(() => getServicosPorSalao(), [servicos, salaoAtual.id]);
-  const agendamentosSalao = useMemo(() => getAgendamentosPorSalao(), [agendamentos, salaoAtual.id]);
+
+  // ✅ USAR AGENDAMENTOS DO HOOK REALTIME
+  const agendamentosSalao = agendamentosSalaoRealtime;
 
   // Constantes
   const monthNames = [
@@ -142,9 +152,9 @@ const Agendamentos = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validar se horário está disponível (exceto ao editar o próprio agendamento)
+    // Validar se horário está disponível
     const horarioOcupado = agendamentosSalao.some(ag => 
-      ag.id !== editingId && // Ignorar o próprio agendamento ao editar
+      ag.id !== editingId &&
       ag.data === formData.data && 
       ag.horario === formData.horario &&
       ag.profissionalId === parseInt(formData.profissionalId) &&
@@ -155,6 +165,8 @@ const Agendamentos = () => {
       alert('⚠️ Este horário já está ocupado. Por favor, escolha outro horário.');
       return;
     }
+
+    const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
 
     const agendamentoData = {
       clienteId: parseInt(formData.clienteId),
@@ -168,20 +180,28 @@ const Agendamentos = () => {
 
     if (editingId) {
       // Atualizar agendamento existente
-      const agendamentoAntigo = agendamentos.find(ag => ag.id === editingId);
+      const agendamentoAntigo = agendamentosAll.find(ag => ag.id === editingId);
       
-      setAgendamentos(agendamentos.map(ag => 
+      const updated = agendamentosAll.map(ag => 
         ag.id === editingId ? { ...agendamentoData, id: editingId } : ag
-      ));
+      );
+      
+      localStorage.setItem('agendamentos', JSON.stringify(updated));
+      setAgendamentos(updated);
 
-      // Verificar se status mudou para cancelado
+      // ✅ DISPARAR EVENTO STORAGE
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'agendamentos',
+        newValue: JSON.stringify(updated),
+        url: window.location.href
+      }));
+
+      // Notificações
       if (agendamentoAntigo.status !== 'cancelado' && formData.status === 'cancelado') {
-        // Enviar email de CANCELAMENTO
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyCancelamento(editingId);
         }
       } else {
-        // Email de alteração (confirmação)
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyNovoAgendamento(editingId);
         }
@@ -190,12 +210,22 @@ const Agendamentos = () => {
       // Criar novo agendamento
       const newAgendamento = {
         ...agendamentoData,
-        id: Math.max(...agendamentos.map(a => a.id), 0) + 1,
+        id: Math.max(...agendamentosAll.map(a => a.id), 0) + 1,
         origemAgendamento: 'sistema'
       };
-      setAgendamentos([...agendamentos, newAgendamento]);
+      
+      const updated = [...agendamentosAll, newAgendamento];
+      localStorage.setItem('agendamentos', JSON.stringify(updated));
+      setAgendamentos(updated);
 
-      // Enviar notificações se configurado
+      // ✅ DISPARAR EVENTO STORAGE
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'agendamentos',
+        newValue: JSON.stringify(updated),
+        url: window.location.href
+      }));
+
+      // Enviar notificações
       if (formData.notificarCliente && clienteSelecionado?.email) {
         await notificationService.notifyNovoAgendamento(newAgendamento.id);
       }
@@ -206,9 +236,10 @@ const Agendamentos = () => {
 
   const handleDelete = async (id) => {
     if (confirm('Tem certeza que deseja excluir este agendamento?')) {
-      const agendamento = agendamentos.find(ag => ag.id === id);
+      const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const agendamento = agendamentosAll.find(ag => ag.id === id);
       
-      // Notificar cancelamento se não estava cancelado
+      // Notificar cancelamento
       if (agendamento && agendamento.status !== 'cancelado') {
         const cliente = clientes.find(c => c.id === agendamento.clienteId);
         if (cliente?.email) {
@@ -216,7 +247,16 @@ const Agendamentos = () => {
         }
       }
       
-      setAgendamentos(agendamentos.filter(ag => ag.id !== id));
+      const updated = agendamentosAll.filter(ag => ag.id !== id);
+      localStorage.setItem('agendamentos', JSON.stringify(updated));
+      setAgendamentos(updated);
+
+      // ✅ DISPARAR EVENTO STORAGE
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'agendamentos',
+        newValue: JSON.stringify(updated),
+        url: window.location.href
+      }));
     }
   };
 
@@ -286,6 +326,24 @@ const Agendamentos = () => {
         changeMonth={changeMonth}
         monthNames={monthNames}
       />
+
+      {/* ✅ Indicador de Sincronização */}
+      {isUpdating && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="flex items-center justify-center space-x-2 text-blue-800">
+            <RefreshCw size={16} className="animate-spin" />
+            <span className="text-sm font-medium">Sincronizando agendamentos...</span>
+          </div>
+        </div>
+      )}
+
+      {!isUpdating && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <p className="text-center text-sm text-green-800">
+            ✅ Agendamentos sincronizados • Última atualização: {lastUpdate.toLocaleTimeString('pt-BR')}
+          </p>
+        </div>
+      )}
 
       {/* Filtros */}
       <AgendamentoFiltros 
