@@ -1,10 +1,10 @@
-// src/pages/AgendaOnline.jsx - Página Pública de Agendamento Online
+// src/pages/AgendaOnline.jsx - Página Pública de Agendamento Online com Mailgun
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Calendar, Clock, User, Scissors, Phone, Mail, CheckCircle, ArrowLeft } from 'lucide-react';
 import { maskPhone, maskDate, getTodayBR, dateToISO, isValidDate } from '../utils/masks';
-import notificationService from '../services/notificationService';
+import mailgunService from '../services/mailgunService';
 
 const AgendaOnline = () => {
   const { salaoId } = useParams();
@@ -17,6 +17,7 @@ const AgendaOnline = () => {
   const [step, setStep] = useState(1);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -137,6 +138,8 @@ const AgendaOnline = () => {
   };
 
   const handleSubmit = async () => {
+    setSendingEmail(true);
+    
     try {
       // Verificar se já existe cliente com este email
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
@@ -177,13 +180,31 @@ const AgendaOnline = () => {
       agendamentosAll.push(novoAgendamento);
       localStorage.setItem('agendamentos', JSON.stringify(agendamentosAll));
 
-      // Enviar notificações
-      await notificationService.notifyNovoAgendamento(novoAgendamento.id);
+      // Enviar email de confirmação via Mailgun
+      try {
+        const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
+        const profissional = profissionais.find(p => p.id === parseInt(formData.profissionalId));
+        
+        await mailgunService.sendConfirmacaoAgendamento({
+          cliente,
+          servico,
+          profissional,
+          salao,
+          agendamento: novoAgendamento
+        });
+        
+        console.log('✅ Email de confirmação enviado com sucesso!');
+      } catch (emailError) {
+        console.error('❌ Erro ao enviar email:', emailError);
+        // Não bloquear o agendamento se o email falhar
+      }
 
       setSuccess(true);
     } catch (error) {
       console.error('Erro ao criar agendamento:', error);
       alert('Erro ao criar agendamento. Tente novamente.');
+    } finally {
+      setSendingEmail(false);
     }
   };
 
@@ -266,6 +287,12 @@ const AgendaOnline = () => {
               <p><strong>Local:</strong> {salao.endereco}</p>
             </div>
           </div>
+
+          {sendingEmail && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm text-blue-800">
+              📧 Enviando confirmação por email...
+            </div>
+          )}
 
           <button
             onClick={() => window.location.reload()}
@@ -376,6 +403,7 @@ const AgendaOnline = () => {
                   />
                 </div>
                 {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+                <p className="text-xs text-gray-500 mt-1">📧 Você receberá a confirmação neste email</p>
               </div>
             </div>
           )}
@@ -531,9 +559,10 @@ const AgendaOnline = () => {
             )}
             <button
               onClick={handleNext}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700"
+              disabled={sendingEmail}
+              className="flex-1 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {step === 3 ? 'Confirmar Agendamento' : 'Continuar'}
+              {sendingEmail ? 'Processando...' : step === 3 ? 'Confirmar Agendamento' : 'Continuar'}
             </button>
           </div>
         </div>
