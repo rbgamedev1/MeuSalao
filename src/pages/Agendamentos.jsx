@@ -1,4 +1,4 @@
-// src/pages/Agendamentos.jsx - ATUALIZADO COM NOTIFICAÇÕES DE ALTERAÇÃO
+// src/pages/Agendamentos.jsx - CORRIGIDO: Email de avaliação ao concluir
 
 import { useState, useContext, useEffect, useMemo } from 'react';
 import Modal from '../components/Modal';
@@ -38,7 +38,7 @@ const Agendamentos = () => {
   const [statusFiltro, setStatusFiltro] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [dadosOriginais, setDadosOriginais] = useState(null); // ✨ NOVO
+  const [dadosOriginais, setDadosOriginais] = useState(null);
 
   const [formData, setFormData] = useState({
     clienteId: '',
@@ -48,7 +48,7 @@ const Agendamentos = () => {
     horario: '',
     status: 'pendente',
     notificarCliente: true,
-    motivoAlteracao: '' // ✨ NOVO
+    motivoAlteracao: ''
   });
 
   const [clienteSelecionado, setClienteSelecionado] = useState(null);
@@ -99,12 +99,12 @@ const Agendamentos = () => {
     if (agendamento) {
       setEditingId(agendamento.id);
       
-      // ✨ SALVAR DADOS ORIGINAIS para comparar depois
       setDadosOriginais({
         data: agendamento.data,
         horario: agendamento.horario,
         profissionalId: agendamento.profissionalId,
-        profissionalNome: profissionais.find(p => p.id === agendamento.profissionalId)?.nome
+        profissionalNome: profissionais.find(p => p.id === agendamento.profissionalId)?.nome,
+        status: agendamento.status // ✨ ADICIONAR STATUS ORIGINAL
       });
       
       setFormData({
@@ -187,7 +187,10 @@ const Agendamentos = () => {
     if (editingId) {
       const agendamentoAntigo = agendamentosAll.find(ag => ag.id === editingId);
       
-      // ✨ VERIFICAR SE HOUVE ALTERAÇÕES SIGNIFICATIVAS
+      // ✨ DETECTAR MUDANÇA DE STATUS PARA CONCLUÍDO
+      const foiConcluido = dadosOriginais.status !== 'concluido' && formData.status === 'concluido';
+      
+      // Verificar se houve alterações significativas de data/hora/profissional
       const houveAlteracao = 
         dadosOriginais.data !== formData.data ||
         dadosOriginais.horario !== formData.horario ||
@@ -206,11 +209,27 @@ const Agendamentos = () => {
         url: window.location.href
       }));
 
-      // ✨ NOTIFICAÇÕES INTELIGENTES
+      // ✨ LÓGICA DE NOTIFICAÇÕES ATUALIZADA
       if (agendamentoAntigo.status !== 'cancelado' && formData.status === 'cancelado') {
         // CANCELAMENTO
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyCancelamento(editingId);
+        }
+      } else if (foiConcluido) {
+        // ✅ ATENDIMENTO CONCLUÍDO - Solicitar avaliação SEMPRE
+        const settings = notificationService.getSettings();
+        if (settings.avaliacoes && clienteSelecionado?.email) {
+          console.log('🎯 Solicitando avaliação para agendamento concluído:', editingId);
+          const sucesso = await notificationService.solicitarAvaliacao(editingId);
+          if (sucesso) {
+            alert('✅ Solicitação de avaliação enviada para o cliente!');
+          } else {
+            alert('⚠️ Não foi possível enviar solicitação de avaliação. Verifique o email do cliente.');
+          }
+        } else if (!settings.avaliacoes) {
+          console.log('⏭️ Avaliações desabilitadas nas configurações');
+        } else if (!clienteSelecionado?.email) {
+          console.log('⚠️ Cliente sem email cadastrado');
         }
       } else if (houveAlteracao) {
         // ALTERAÇÃO DE DATA/HORA/PROFISSIONAL
@@ -222,17 +241,8 @@ const Agendamentos = () => {
           );
           alert('✅ Email de alteração enviado para o cliente!');
         }
-      } else if (agendamentoAntigo.status === 'pendente' && formData.status === 'concluido') {
-        // ✨ ATENDIMENTO CONCLUÍDO - Solicitar avaliação automaticamente
-        const settings = notificationService.getSettings();
-        if (settings.avaliacoes && clienteSelecionado?.email) {
-          const sucesso = await notificationService.solicitarAvaliacao(editingId);
-          if (sucesso) {
-            alert('✅ Solicitação de avaliação enviada para o cliente!');
-          }
-        }
       } else {
-        // OUTRAS ALTERAÇÕES (ex: apenas mudança de status)
+        // OUTRAS ALTERAÇÕES (ex: apenas mudança de status de pendente para confirmado)
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyNovoAgendamento(editingId);
         }
@@ -412,7 +422,7 @@ const Agendamentos = () => {
             onClose={handleCloseModal}
           />
 
-          {/* ✨ NOVO: Campo para motivo da alteração */}
+          {/* Campo para motivo da alteração */}
           {editingId && dadosOriginais && (
             dadosOriginais.data !== formData.data ||
             dadosOriginais.horario !== formData.horario ||
@@ -433,6 +443,17 @@ const Agendamentos = () => {
               <p className="text-xs text-gray-500 mt-1">
                 📧 Este motivo será incluído no email de notificação ao cliente
               </p>
+            </div>
+          )}
+
+          {/* ✨ ALERTA quando marcar como concluído */}
+          {editingId && dadosOriginais && dadosOriginais.status !== 'concluido' && formData.status === 'concluido' && (
+            <div className="pt-4 border-t border-gray-200">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-sm font-medium text-green-900">
+                  ⭐ Ao marcar como concluído, o cliente receberá automaticamente um email solicitando avaliação do atendimento.
+                </p>
+              </div>
             </div>
           )}
         </form>
