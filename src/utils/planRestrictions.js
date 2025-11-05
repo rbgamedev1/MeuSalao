@@ -1,4 +1,4 @@
-// src/utils/planRestrictions.js - ARQUIVO ÚNICO E CONSOLIDADO
+// src/utils/planRestrictions.js - ATUALIZADO COM NOVOS NÍVEIS DE NOTIFICAÇÃO
 
 // ============================================
 // DEFINIÇÃO DE LIMITES POR PLANO
@@ -20,7 +20,7 @@ export const PLAN_LIMITS = {
     relatorios: false,
     exportacao: false,
     agendamentoOnline: false,
-    notificacoes: false, // ❌ SEM notificações
+    notificacoes: 'minimo', // ✅ Apenas confirmações
     comissoes: false
   },
   
@@ -39,7 +39,7 @@ export const PLAN_LIMITS = {
     relatorios: 'basico',
     exportacao: false,
     agendamentoOnline: true,
-    notificacoes: 'basico', // ✅ Confirmações + Cancelamentos + Lembretes + Avaliações
+    notificacoes: 'basico', // ✅ Confirmações + Cancelamentos
     comissoes: false
   },
   
@@ -58,7 +58,7 @@ export const PLAN_LIMITS = {
     relatorios: 'basico',
     exportacao: false,
     agendamentoOnline: true,
-    notificacoes: 'basico', // ✅ Confirmações + Cancelamentos + Lembretes + Avaliações
+    notificacoes: 'basico', // ✅ Confirmações + Cancelamentos (igual Essencial)
     comissoes: true
   },
   
@@ -77,7 +77,7 @@ export const PLAN_LIMITS = {
     relatorios: 'completo',
     exportacao: true,
     agendamentoOnline: true,
-    notificacoes: 'avancado', // ✅ + Alterações + Notificar Profissional
+    notificacoes: 'avancado', // ✅ Confirmações + Alterações + Cancelamentos
     comissoes: true,
     appProfissionais: true
   },
@@ -97,7 +97,7 @@ export const PLAN_LIMITS = {
     relatorios: 'completo',
     exportacao: true,
     agendamentoOnline: true,
-    notificacoes: 'completo', // ✅ TODAS as notificações
+    notificacoes: 'completo', // ✅ TODAS (+ Avaliações)
     comissoes: true,
     appProfissionais: true,
     relatoriosMultiSalao: true
@@ -118,7 +118,7 @@ export const PLAN_LIMITS = {
     relatorios: 'avancado',
     exportacao: true,
     agendamentoOnline: true,
-    notificacoes: 'completo', // ✅ TODAS as notificações
+    notificacoes: 'completo', // ✅ TODAS (+ Avaliações)
     comissoes: true,
     appProfissionais: true,
     appPersonalizado: true,
@@ -136,36 +136,70 @@ export const PLAN_LIMITS = {
 // ============================================
 
 export const NOTIFICATION_FEATURES = {
-  // Plano Inicial: SEM notificações
-  false: [],
-  
-  // Plano Essencial/Plus: Notificações Básicas
-  basico: [
-    'confirmacao',      // ✅ Email de confirmação
-    'cancelamento',     // ✅ Email de cancelamento
-    'lembretes',        // ✅ Lembretes 24h antes
-    'avaliacoes'        // ✅ Solicitação de avaliação
+  // Plano Inicial: Apenas confirmações
+  minimo: [
+    'confirmacao'      // ✅ Email de confirmação APENAS
   ],
   
-  // Plano Profissional: Notificações Avançadas
+  // Plano Essencial/Plus: Confirmações + Cancelamentos
+  basico: [
+    'confirmacao',     // ✅ Email de confirmação
+    'cancelamento'     // ✅ Email de cancelamento
+  ],
+  
+  // Plano Profissional: + Alterações
   avancado: [
     'confirmacao',
     'cancelamento',
-    'lembretes',
-    'avaliacoes',
-    'alteracoes',         // ✅ Notificação de alteração
-    'notifyProfissional'  // ✅ Notificar profissional
+    'alteracoes'       // ✅ Notificação de alteração
   ],
   
-  // Plano Premium/Master: Todas as Notificações
+  // Plano Premium/Master: + Avaliações (Feedback)
   completo: [
     'confirmacao',
     'cancelamento',
-    'lembretes',
-    'avaliacoes',
     'alteracoes',
-    'notifyProfissional'
+    'avaliacoes'       // ✅ Solicitação de avaliação/feedback
   ]
+};
+
+// ============================================
+// DESCRIÇÕES DOS NÍVEIS DE NOTIFICAÇÃO
+// ============================================
+
+export const NOTIFICATION_LEVELS_INFO = {
+  minimo: {
+    name: 'Notificações Básicas',
+    description: 'Confirmações de agendamento',
+    features: ['Email de confirmação ao criar agendamento']
+  },
+  basico: {
+    name: 'Notificações Essenciais',
+    description: 'Confirmações e cancelamentos',
+    features: [
+      'Email de confirmação ao criar agendamento',
+      'Email de cancelamento quando necessário'
+    ]
+  },
+  avancado: {
+    name: 'Notificações Avançadas',
+    description: 'Confirmações, alterações e cancelamentos',
+    features: [
+      'Email de confirmação ao criar agendamento',
+      'Email de alteração quando mudar data/horário/profissional',
+      'Email de cancelamento quando necessário'
+    ]
+  },
+  completo: {
+    name: 'Notificações Completas',
+    description: 'Todas as notificações incluindo feedback',
+    features: [
+      'Email de confirmação ao criar agendamento',
+      'Email de alteração quando mudar data/horário/profissional',
+      'Email de cancelamento quando necessário',
+      'Email de solicitação de avaliação após atendimento concluído'
+    ]
+  }
 };
 
 // ============================================
@@ -269,6 +303,24 @@ export const getAvailableNotifications = (plano) => {
 };
 
 /**
+ * Obter informações sobre o nível de notificação do plano
+ */
+export const getNotificationLevelInfo = (plano) => {
+  const limits = PLAN_LIMITS[plano] || PLAN_LIMITS.inicial;
+  const nivelNotificacoes = limits.notificacoes;
+  
+  if (!nivelNotificacoes || nivelNotificacoes === false) {
+    return {
+      name: 'Sem Notificações',
+      description: 'Plano não inclui sistema de notificações',
+      features: []
+    };
+  }
+  
+  return NOTIFICATION_LEVELS_INFO[nivelNotificacoes] || NOTIFICATION_LEVELS_INFO.minimo;
+};
+
+/**
  * Obter plano mínimo para tipo de notificação
  */
 export const getMinimumPlanForNotification = (tipoNotificacao) => {
@@ -325,8 +377,8 @@ export const getUpgradeMessage = (currentPlan, feature) => {
     },
     notificacoes: {
       title: 'Sistema de Notificações',
-      description: 'Envie notificações automáticas para clientes e profissionais.',
-      minPlan: 'essencial'
+      description: 'Envie notificações automáticas para clientes.',
+      minPlan: 'inicial'
     },
     agendamentoOnline: {
       title: 'Agenda Online',
@@ -360,7 +412,8 @@ export const getPlanInfo = (plano) => {
   return {
     nome: plano.charAt(0).toUpperCase() + plano.slice(1),
     limits,
-    notificacoes: getAvailableNotifications(plano)
+    notificacoes: getAvailableNotifications(plano),
+    notificationLevel: getNotificationLevelInfo(plano)
   };
 };
 
@@ -434,12 +487,14 @@ export const canDowngrade = (planoAtual, planoNovo, currentData) => {
 export default {
   PLAN_LIMITS,
   NOTIFICATION_FEATURES,
+  NOTIFICATION_LEVELS_INFO,
   canAddMore,
   hasAccess,
   getLimitMessage,
   canAddServiceToCategory,
   hasNotificationAccess,
   getAvailableNotifications,
+  getNotificationLevelInfo,
   getMinimumPlanForNotification,
   getMinimumPlan,
   getUpgradeMessage,
