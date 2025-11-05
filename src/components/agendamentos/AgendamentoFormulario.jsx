@@ -46,7 +46,7 @@ const AgendamentoFormulario = ({
   const horariosOcupados = horariosDisponiveis.filter(h => !h.disponivel).length;
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="space-y-4">
       {/* Cliente */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -321,7 +321,7 @@ const AgendamentoFormulario = ({
           {editingId ? 'Salvar Alterações' : 'Criar Agendamento'}
         </button>
       </div>
-    </form>
+    </div>
   );
 };
 
