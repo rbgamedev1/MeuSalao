@@ -1,4 +1,5 @@
-// src/pages/Relatorios.jsx - ATUALIZADO COM RESTRIÇÕES
+// src/pages/Relatorios.jsx - CORRIGIDO
+
 import { useState, useContext, useMemo } from 'react';
 import { Download, Crown } from 'lucide-react';
 import PlanRestriction from '../components/PlanRestriction';
