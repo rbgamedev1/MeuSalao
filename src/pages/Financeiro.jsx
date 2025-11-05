@@ -3,7 +3,6 @@ import { useState, useContext, useEffect, useMemo } from 'react';
 import { Plus, Crown } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
-import PlanRestriction from '../components/PlanRestriction';
 import FinanceiroStats from '../components/financeiro/FinanceiroStats';
 import FinanceiroCharts from '../components/financeiro/FinanceiroCharts';
 import FinanceiroTable from '../components/financeiro/FinanceiroTable';

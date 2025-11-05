@@ -1,4 +1,4 @@
-// src/services/notificationService.js - ATUALIZADO: Controle por plano
+// src/services/notificationService.js - CORRIGIDO: Usando planRestrictions consolidado
 
 import mailgunService from './mailgunService';
 import { hasNotificationAccess, getAvailableNotifications } from '../utils/planRestrictions';
@@ -37,7 +37,9 @@ class NotificationService {
     console.log('🔕 Serviço de notificações parado');
   }
 
-  // ✅ NOVO: Verificar se o plano permite enviar uma notificação
+  /**
+   * Verificar se o plano permite enviar uma notificação
+   */
   canSendNotification(salaoPlano, tipoNotificacao) {
     const hasAccess = hasNotificationAccess(salaoPlano, tipoNotificacao);
     
@@ -46,6 +48,13 @@ class NotificationService {
     }
     
     return hasAccess;
+  }
+
+  /**
+   * Obter notificações disponíveis para o plano
+   */
+  getAvailableNotificationsForPlan(salaoPlano) {
+    return getAvailableNotifications(salaoPlano);
   }
 
   async checkLembretes() {
@@ -105,7 +114,7 @@ class NotificationService {
       for (const agendamento of agendamentosAmanha) {
         const salao = saloes.find(s => s.id === agendamento.salaoId);
         
-        // ✅ VERIFICAR PLANO
+        // Verificar se o plano permite lembretes
         if (!salao || !this.canSendNotification(salao.plano, 'lembretes')) {
           console.log(`⛔ Salão ${salao?.nome || agendamento.salaoId} não pode enviar lembretes (plano: ${salao?.plano})`);
           falhas++;
@@ -195,7 +204,7 @@ class NotificationService {
       for (const agendamento of agendamentosConcluidos) {
         const salao = saloes.find(s => s.id === agendamento.salaoId);
         
-        // ✅ VERIFICAR PLANO
+        // Verificar se o plano permite avaliações
         if (!salao || !this.canSendNotification(salao.plano, 'avaliacoes')) {
           console.log(`⛔ Salão ${salao?.nome || agendamento.salaoId} não pode enviar avaliações (plano: ${salao?.plano})`);
           falhas++;
@@ -307,7 +316,7 @@ class NotificationService {
         return;
       }
 
-      // ✅ VERIFICAR PLANO PARA CONFIRMAÇÃO
+      // Verificar e enviar confirmação para cliente
       if (settings.confirmacao && cliente.email) {
         if (this.canSendNotification(salao.plano, 'confirmacao')) {
           try {
@@ -327,7 +336,7 @@ class NotificationService {
         }
       }
 
-      // ✅ VERIFICAR PLANO PARA NOTIFICAR PROFISSIONAL
+      // Verificar e enviar notificação para profissional
       if (settings.notifyProfissional && profissional.email) {
         if (this.canSendNotification(salao.plano, 'notifyProfissional')) {
           try {
@@ -378,7 +387,7 @@ class NotificationService {
         return;
       }
 
-      // ✅ VERIFICAR PLANO PARA ALTERAÇÕES
+      // Verificar se o plano permite notificações de alteração
       if (!this.canSendNotification(salao.plano, 'alteracoes')) {
         console.log(`⛔ Plano ${salao.plano} não permite notificações de alteração`);
         return;
@@ -442,7 +451,7 @@ class NotificationService {
         return false;
       }
 
-      // ✅ VERIFICAR PLANO PARA AVALIAÇÕES
+      // Verificar se o plano permite avaliações
       if (!this.canSendNotification(salao.plano, 'avaliacoes')) {
         console.log(`⛔ Plano ${salao.plano} não permite solicitar avaliações`);
         return false;
@@ -507,7 +516,7 @@ class NotificationService {
         return;
       }
 
-      // ✅ VERIFICAR PLANO PARA CANCELAMENTO
+      // Verificar se o plano permite cancelamentos
       if (!this.canSendNotification(salao.plano, 'cancelamento')) {
         console.log(`⛔ Plano ${salao.plano} não permite notificações de cancelamento`);
         return;
