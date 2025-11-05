@@ -1,10 +1,10 @@
-// src/App.jsx - CORRIGIDO
-
+// src/App.jsx - Atualizado com Landing Page
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
+import Landing from './pages/Landing';
 import Dashboard from './pages/Dashboard';
 import Agendamentos from './pages/Agendamentos';
 import Clientes from './pages/Clientes';
@@ -22,36 +22,31 @@ import notificationService from './services/notificationService';
 function App() {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
-  // Iniciar serviço de notificações
   useEffect(() => {
     const settings = notificationService.getSettings();
     if (settings.autoStart) {
       notificationService.start();
     }
-
-    return () => {
-      notificationService.stop();
-    };
+    return () => notificationService.stop();
   }, []);
 
   return (
     <SalaoProvider>
       <Router>
         <Routes>
-          {/* Rotas públicas (sem layout) */}
+          {/* Landing Page (rota pública) */}
+          <Route path="/" element={<Landing />} />
+          
+          {/* Rotas públicas */}
           <Route path="/agenda/:salaoId" element={<AgendaOnline />} />
           <Route path="/avaliacao/:salaoId/:token" element={<Avaliacao />} />
 
           {/* Rotas protegidas com layout */}
           <Route path="/*" element={
             <div className="flex h-screen bg-gray-50 overflow-hidden">
-              <Sidebar 
-                expanded={sidebarExpanded} 
-                setExpanded={setSidebarExpanded} 
-              />
+              <Sidebar expanded={sidebarExpanded} setExpanded={setSidebarExpanded} />
               
               <div className="flex-1 flex flex-col overflow-hidden w-full">
-                {/* Mobile Menu Button */}
                 <button
                   onClick={() => setSidebarExpanded(true)}
                   className="lg:hidden fixed top-4 left-4 z-20 p-2 bg-purple-600 text-white rounded-lg shadow-lg hover:bg-purple-700 transition-colors"
@@ -63,7 +58,6 @@ function App() {
                 
                 <main className="flex-1 overflow-y-auto p-4 lg:p-6">
                   <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/agendamentos" element={<Agendamentos />} />
                     <Route path="/clientes" element={<Clientes />} />
