@@ -1,12 +1,13 @@
-// src/services/notificationService.js - CORRIGIDO: Duplicação de lembretes
+// src/services/notificationService.js - ATUALIZADO: Controle por plano
 
 import mailgunService from './mailgunService';
+import { hasNotificationAccess, getAvailableNotifications } from '../utils/planRestrictions';
 
 class NotificationService {
   constructor() {
     this.checkInterval = null;
     this.isRunning = false;
-    this.lastCheckTime = null; // ✅ NOVO: Controlar última verificação
+    this.lastCheckTime = null;
   }
 
   start() {
@@ -18,14 +19,11 @@ class NotificationService {
     this.isRunning = true;
     console.log('🔔 Serviço de notificações iniciado');
 
-    // Verificar lembretes a cada 1 hora
     this.checkInterval = setInterval(() => {
       this.checkLembretes();
       this.checkAvaliacoesPendentes();
     }, 60 * 60 * 1000); // 1 hora
 
-    // ✅ IMPORTANTE: Não executar imediatamente no start para evitar duplicação
-    // Apenas agendar para próxima execução
     console.log('⏰ Próxima verificação em 1 hora');
   }
 
@@ -39,11 +37,21 @@ class NotificationService {
     console.log('🔕 Serviço de notificações parado');
   }
 
+  // ✅ NOVO: Verificar se o plano permite enviar uma notificação
+  canSendNotification(salaoPlano, tipoNotificacao) {
+    const hasAccess = hasNotificationAccess(salaoPlano, tipoNotificacao);
+    
+    if (!hasAccess) {
+      console.log(`⛔ Plano ${salaoPlano} não permite notificação: ${tipoNotificacao}`);
+    }
+    
+    return hasAccess;
+  }
+
   async checkLembretes() {
     try {
-      // ✅ NOVO: Prevenir execuções múltiplas simultâneas
       const now = Date.now();
-      if (this.lastCheckTime && (now - this.lastCheckTime) < 30000) { // 30 segundos
+      if (this.lastCheckTime && (now - this.lastCheckTime) < 30000) {
         console.log('⏭️ Verificação de lembretes executada recentemente, pulando...');
         return;
       }
@@ -66,17 +74,15 @@ class NotificationService {
       amanha.setDate(amanha.getDate() + 1);
       const amanhaStr = amanha.toLocaleDateString('pt-BR');
 
-      // ✅ CORRIGIDO: Filtro mais rigoroso
       const agendamentosAmanha = agendamentos.filter(ag => 
         ag.data === amanhaStr && 
         ag.status !== 'cancelado' &&
-        !ag.lembreteEnviado && // ✅ Verifica se já foi enviado
-        ag.status !== 'concluido' // ✅ Não enviar para já concluídos
+        !ag.lembreteEnviado &&
+        ag.status !== 'concluido'
       );
 
       console.log(`📅 [${new Date().toLocaleTimeString()}] Verificando lembretes: ${agendamentosAmanha.length} agendamentos para amanhã`);
 
-      // ✅ NOVO: Marcar ANTES de enviar para evitar race condition
       const idsParaEnviar = agendamentosAmanha.map(ag => ag.id);
       
       if (idsParaEnviar.length === 0) {
@@ -84,7 +90,6 @@ class NotificationService {
         return;
       }
 
-      // Marcar como enviados ANTES de tentar enviar
       const agendamentosAtualizados = agendamentos.map(ag => 
         idsParaEnviar.includes(ag.id)
           ? { ...ag, lembreteEnviado: true, lembreteEnviadoEm: new Date().toISOString() }
@@ -94,15 +99,22 @@ class NotificationService {
 
       console.log(`🔒 ${idsParaEnviar.length} agendamento(s) marcado(s) como lembrete enviado`);
 
-      // Agora enviar os emails
       let sucessos = 0;
       let falhas = 0;
 
       for (const agendamento of agendamentosAmanha) {
+        const salao = saloes.find(s => s.id === agendamento.salaoId);
+        
+        // ✅ VERIFICAR PLANO
+        if (!salao || !this.canSendNotification(salao.plano, 'lembretes')) {
+          console.log(`⛔ Salão ${salao?.nome || agendamento.salaoId} não pode enviar lembretes (plano: ${salao?.plano})`);
+          falhas++;
+          continue;
+        }
+
         const cliente = clientes.find(c => c.id === agendamento.clienteId);
         const servico = servicos.find(s => s.id === agendamento.servicoId);
         const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
-        const salao = saloes.find(s => s.id === agendamento.salaoId);
 
         if (cliente && servico && profissional && salao && cliente.email) {
           try {
@@ -117,7 +129,6 @@ class NotificationService {
             console.log(`✅ [${sucessos + 1}/${agendamentosAmanha.length}] Lembrete enviado para ${cliente.email} (ID: ${agendamento.id})`);
             sucessos++;
             
-            // ✅ NOVO: Delay entre envios para evitar rate limit
             await new Promise(resolve => setTimeout(resolve, 1000));
             
           } catch (error) {
@@ -134,13 +145,12 @@ class NotificationService {
 
     } catch (error) {
       console.error('❌ Erro ao verificar lembretes:', error);
-      this.lastCheckTime = null; // Reset para permitir nova tentativa
+      this.lastCheckTime = null;
     }
   }
 
   async checkAvaliacoesPendentes() {
     try {
-      // ✅ NOVO: Prevenir execuções múltiplas
       const settings = this.getSettings();
       if (!settings.avaliacoes) {
         console.log('⏭️ Solicitação de avaliações desabilitada');
@@ -156,12 +166,11 @@ class NotificationService {
       const hoje = new Date();
       const hojeStr = hoje.toLocaleDateString('pt-BR');
 
-      // ✅ CORRIGIDO: Filtro mais rigoroso
       const agendamentosConcluidos = agendamentos.filter(ag => 
         ag.status === 'concluido' &&
         ag.data === hojeStr &&
-        !ag.avaliacaoSolicitada && // ✅ Verifica se já foi solicitado
-        !ag.avaliacaoRealizada // ✅ Não enviar se já foi avaliado
+        !ag.avaliacaoSolicitada &&
+        !ag.avaliacaoRealizada
       );
 
       console.log(`⭐ [${new Date().toLocaleTimeString()}] Verificando avaliações: ${agendamentosConcluidos.length} agendamentos concluídos hoje`);
@@ -170,7 +179,6 @@ class NotificationService {
         return;
       }
 
-      // ✅ Marcar ANTES de enviar
       const idsParaEnviar = agendamentosConcluidos.map(ag => ag.id);
       const agendamentosAtualizados = agendamentos.map(ag => 
         idsParaEnviar.includes(ag.id)
@@ -185,10 +193,18 @@ class NotificationService {
       let falhas = 0;
 
       for (const agendamento of agendamentosConcluidos) {
+        const salao = saloes.find(s => s.id === agendamento.salaoId);
+        
+        // ✅ VERIFICAR PLANO
+        if (!salao || !this.canSendNotification(salao.plano, 'avaliacoes')) {
+          console.log(`⛔ Salão ${salao?.nome || agendamento.salaoId} não pode enviar avaliações (plano: ${salao?.plano})`);
+          falhas++;
+          continue;
+        }
+
         const cliente = clientes.find(c => c.id === agendamento.clienteId);
         const servico = servicos.find(s => s.id === agendamento.servicoId);
         const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
-        const salao = saloes.find(s => s.id === agendamento.salaoId);
 
         if (cliente && servico && profissional && salao && cliente.email) {
           try {
@@ -203,7 +219,6 @@ class NotificationService {
             console.log(`✅ [${sucessos + 1}/${agendamentosConcluidos.length}] Avaliação enviada para ${cliente.email} (ID: ${agendamento.id})`);
             sucessos++;
             
-            // ✅ Delay entre envios
             await new Promise(resolve => setTimeout(resolve, 1000));
             
           } catch (error) {
@@ -219,225 +234,6 @@ class NotificationService {
 
     } catch (error) {
       console.error('❌ Erro ao verificar avaliações pendentes:', error);
-    }
-  }
-
-  async notifyNovoAgendamento(agendamentoId) {
-    try {
-      const settings = this.getSettings();
-      
-      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
-      const profissionais = JSON.parse(localStorage.getItem('profissionais') || '[]');
-      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
-
-      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
-      if (!agendamento) {
-        console.warn('⚠️ Agendamento não encontrado:', agendamentoId);
-        return;
-      }
-
-      const cliente = clientes.find(c => c.id === agendamento.clienteId);
-      const servico = servicos.find(s => s.id === agendamento.servicoId);
-      const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
-      const salao = saloes.find(s => s.id === agendamento.salaoId);
-
-      if (!cliente || !servico || !profissional || !salao) {
-        console.warn('⚠️ Dados incompletos para notificação');
-        return;
-      }
-
-      if (settings.confirmacao && cliente.email) {
-        try {
-          await mailgunService.sendConfirmacaoAgendamento({
-            cliente,
-            servico,
-            profissional,
-            salao,
-            agendamento
-          });
-          console.log(`✅ Confirmação enviada para cliente: ${cliente.email}`);
-        } catch (error) {
-          console.error(`❌ Erro ao enviar confirmação para cliente ${cliente.email}:`, error);
-        }
-      }
-
-      if (settings.notifyProfissional && profissional.email) {
-        try {
-          await mailgunService.sendNovoAgendamentoProfissional({
-            cliente,
-            servico,
-            profissional,
-            salao,
-            agendamento
-          });
-          console.log(`✅ Notificação enviada para profissional: ${profissional.email}`);
-        } catch (error) {
-          console.error(`❌ Erro ao enviar notificação para profissional ${profissional.email}:`, error);
-        }
-      }
-
-    } catch (error) {
-      console.error('Erro ao notificar novo agendamento:', error);
-    }
-  }
-
-  async notifyAlteracaoAgendamento(agendamentoId, dadosAntigos, motivoAlteracao = '') {
-    try {
-      const settings = this.getSettings();
-      if (!settings.alteracoes) {
-        console.log('⏭️ Notificações de alteração desabilitadas');
-        return;
-      }
-
-      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
-      const profissionais = JSON.parse(localStorage.getItem('profissionais') || '[]');
-      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
-
-      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
-      if (!agendamento) return;
-
-      const cliente = clientes.find(c => c.id === agendamento.clienteId);
-      const servico = servicos.find(s => s.id === agendamento.servicoId);
-      const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
-      const salao = saloes.find(s => s.id === agendamento.salaoId);
-
-      if (cliente && cliente.email && servico && profissional && salao) {
-        try {
-          await mailgunService.sendAlteracaoAgendamento({
-            cliente,
-            servico,
-            profissional,
-            salao,
-            agendamento,
-            dadosAntigos,
-            motivoAlteracao
-          });
-          console.log(`✅ Notificação de alteração enviada para ${cliente.email}`);
-        } catch (error) {
-          console.error(`❌ Erro ao enviar alteração para ${cliente.email}:`, error);
-        }
-      }
-
-    } catch (error) {
-      console.error('Erro ao notificar alteração:', error);
-    }
-  }
-
-  async solicitarAvaliacao(agendamentoId) {
-    try {
-      console.log('🎯 Iniciando solicitação de avaliação para ID:', agendamentoId);
-      
-      const settings = this.getSettings();
-      if (!settings.avaliacoes) {
-        console.log('⏭️ Avaliações desabilitadas nas configurações');
-        return false;
-      }
-
-      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
-      
-      if (!agendamento) {
-        console.warn('⚠️ Agendamento não encontrado:', agendamentoId);
-        return false;
-      }
-
-      // ✅ NOVO: Verificar se já foi solicitado
-      if (agendamento.avaliacaoSolicitada) {
-        console.log('⏭️ Avaliação já foi solicitada anteriormente para este agendamento');
-        return false;
-      }
-
-      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
-      const profissionais = JSON.parse(localStorage.getItem('profissionais') || '[]');
-      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
-
-      const cliente = clientes.find(c => c.id === agendamento.clienteId);
-      const servico = servicos.find(s => s.id === agendamento.servicoId);
-      const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
-      const salao = saloes.find(s => s.id === agendamento.salaoId);
-
-      if (!cliente || !servico || !profissional || !salao || !cliente.email) {
-        console.warn('⚠️ Dados incompletos ou cliente sem email');
-        return false;
-      }
-
-      try {
-        console.log('📧 Enviando email de avaliação...');
-        
-        await mailgunService.sendAvaliacaoAgendamento({
-          cliente,
-          servico,
-          profissional,
-          salao,
-          agendamento
-        });
-
-        console.log('✅ Email de avaliação enviado com sucesso!');
-
-        // ✅ Marcar como enviado
-        const agendamentosAtualizados = agendamentos.map(ag => 
-          ag.id === agendamentoId 
-            ? { ...ag, avaliacaoSolicitada: true, avaliacaoSolicitadaEm: new Date().toISOString() }
-            : ag
-        );
-        
-        localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
-
-        console.log(`✅ Avaliação solicitada e marcada para ${cliente.email}`);
-        return true;
-
-      } catch (error) {
-        console.error(`❌ Erro ao enviar email de avaliação:`, error);
-        return false;
-      }
-
-    } catch (error) {
-      console.error('❌ Erro geral ao solicitar avaliação:', error);
-      return false;
-    }
-  }
-
-  async notifyCancelamento(agendamentoId) {
-    try {
-      const settings = this.getSettings();
-      if (!settings.cancelamento) {
-        console.log('⏭️ Notificações de cancelamento desabilitadas');
-        return;
-      }
-
-      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
-      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
-      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
-      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
-
-      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
-      if (!agendamento) return;
-
-      const cliente = clientes.find(c => c.id === agendamento.clienteId);
-      const servico = servicos.find(s => s.id === agendamento.servicoId);
-      const salao = saloes.find(s => s.id === agendamento.salaoId);
-
-      if (cliente && cliente.email && servico && salao) {
-        try {
-          await mailgunService.sendCancelamentoAgendamento({
-            cliente,
-            servico,
-            salao,
-            agendamento
-          });
-          console.log(`✅ Notificação de cancelamento enviada para ${cliente.email}`);
-        } catch (error) {
-          console.error(`❌ Erro ao enviar cancelamento para ${cliente.email}:`, error);
-        }
-      }
-
-    } catch (error) {
-      console.error('Erro ao notificar cancelamento:', error);
     }
   }
 
@@ -482,6 +278,255 @@ class NotificationService {
     } catch (error) {
       console.error('❌ Erro ao enviar email de teste:', error);
       return false;
+    }
+  }
+
+  async notifyNovoAgendamento(agendamentoId) {
+    try {
+      const settings = this.getSettings();
+      
+      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
+      const profissionais = JSON.parse(localStorage.getItem('profissionais') || '[]');
+      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
+
+      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
+      if (!agendamento) {
+        console.warn('⚠️ Agendamento não encontrado:', agendamentoId);
+        return;
+      }
+
+      const cliente = clientes.find(c => c.id === agendamento.clienteId);
+      const servico = servicos.find(s => s.id === agendamento.servicoId);
+      const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
+      const salao = saloes.find(s => s.id === agendamento.salaoId);
+
+      if (!cliente || !servico || !profissional || !salao) {
+        console.warn('⚠️ Dados incompletos para notificação');
+        return;
+      }
+
+      // ✅ VERIFICAR PLANO PARA CONFIRMAÇÃO
+      if (settings.confirmacao && cliente.email) {
+        if (this.canSendNotification(salao.plano, 'confirmacao')) {
+          try {
+            await mailgunService.sendConfirmacaoAgendamento({
+              cliente,
+              servico,
+              profissional,
+              salao,
+              agendamento
+            });
+            console.log(`✅ Confirmação enviada para cliente: ${cliente.email}`);
+          } catch (error) {
+            console.error(`❌ Erro ao enviar confirmação para cliente ${cliente.email}:`, error);
+          }
+        } else {
+          console.log(`⛔ Plano ${salao.plano} não permite confirmações`);
+        }
+      }
+
+      // ✅ VERIFICAR PLANO PARA NOTIFICAR PROFISSIONAL
+      if (settings.notifyProfissional && profissional.email) {
+        if (this.canSendNotification(salao.plano, 'notifyProfissional')) {
+          try {
+            await mailgunService.sendNovoAgendamentoProfissional({
+              cliente,
+              servico,
+              profissional,
+              salao,
+              agendamento
+            });
+            console.log(`✅ Notificação enviada para profissional: ${profissional.email}`);
+          } catch (error) {
+            console.error(`❌ Erro ao enviar notificação para profissional ${profissional.email}:`, error);
+          }
+        } else {
+          console.log(`⛔ Plano ${salao.plano} não permite notificar profissional`);
+        }
+      }
+
+    } catch (error) {
+      console.error('Erro ao notificar novo agendamento:', error);
+    }
+  }
+
+  async notifyAlteracaoAgendamento(agendamentoId, dadosAntigos, motivoAlteracao = '') {
+    try {
+      const settings = this.getSettings();
+      if (!settings.alteracoes) {
+        console.log('⏭️ Notificações de alteração desabilitadas');
+        return;
+      }
+
+      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
+      const profissionais = JSON.parse(localStorage.getItem('profissionais') || '[]');
+      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
+
+      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
+      if (!agendamento) return;
+
+      const cliente = clientes.find(c => c.id === agendamento.clienteId);
+      const servico = servicos.find(s => s.id === agendamento.servicoId);
+      const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
+      const salao = saloes.find(s => s.id === agendamento.salaoId);
+
+      if (!cliente || !cliente.email || !servico || !profissional || !salao) {
+        return;
+      }
+
+      // ✅ VERIFICAR PLANO PARA ALTERAÇÕES
+      if (!this.canSendNotification(salao.plano, 'alteracoes')) {
+        console.log(`⛔ Plano ${salao.plano} não permite notificações de alteração`);
+        return;
+      }
+
+      try {
+        await mailgunService.sendAlteracaoAgendamento({
+          cliente,
+          servico,
+          profissional,
+          salao,
+          agendamento,
+          dadosAntigos,
+          motivoAlteracao
+        });
+        console.log(`✅ Notificação de alteração enviada para ${cliente.email}`);
+      } catch (error) {
+        console.error(`❌ Erro ao enviar alteração para ${cliente.email}:`, error);
+      }
+
+    } catch (error) {
+      console.error('Erro ao notificar alteração:', error);
+    }
+  }
+
+  async solicitarAvaliacao(agendamentoId) {
+    try {
+      console.log('🎯 Iniciando solicitação de avaliação para ID:', agendamentoId);
+      
+      const settings = this.getSettings();
+      if (!settings.avaliacoes) {
+        console.log('⏭️ Avaliações desabilitadas nas configurações');
+        return false;
+      }
+
+      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
+      
+      if (!agendamento) {
+        console.warn('⚠️ Agendamento não encontrado:', agendamentoId);
+        return false;
+      }
+
+      if (agendamento.avaliacaoSolicitada) {
+        console.log('⏭️ Avaliação já foi solicitada anteriormente para este agendamento');
+        return false;
+      }
+
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
+      const profissionais = JSON.parse(localStorage.getItem('profissionais') || '[]');
+      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
+
+      const cliente = clientes.find(c => c.id === agendamento.clienteId);
+      const servico = servicos.find(s => s.id === agendamento.servicoId);
+      const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
+      const salao = saloes.find(s => s.id === agendamento.salaoId);
+
+      if (!cliente || !servico || !profissional || !salao || !cliente.email) {
+        console.warn('⚠️ Dados incompletos ou cliente sem email');
+        return false;
+      }
+
+      // ✅ VERIFICAR PLANO PARA AVALIAÇÕES
+      if (!this.canSendNotification(salao.plano, 'avaliacoes')) {
+        console.log(`⛔ Plano ${salao.plano} não permite solicitar avaliações`);
+        return false;
+      }
+
+      try {
+        console.log('📧 Enviando email de avaliação...');
+        
+        await mailgunService.sendAvaliacaoAgendamento({
+          cliente,
+          servico,
+          profissional,
+          salao,
+          agendamento
+        });
+
+        console.log('✅ Email de avaliação enviado com sucesso!');
+
+        const agendamentosAtualizados = agendamentos.map(ag => 
+          ag.id === agendamentoId 
+            ? { ...ag, avaliacaoSolicitada: true, avaliacaoSolicitadaEm: new Date().toISOString() }
+            : ag
+        );
+        
+        localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
+
+        console.log(`✅ Avaliação solicitada e marcada para ${cliente.email}`);
+        return true;
+
+      } catch (error) {
+        console.error(`❌ Erro ao enviar email de avaliação:`, error);
+        return false;
+      }
+
+    } catch (error) {
+      console.error('❌ Erro geral ao solicitar avaliação:', error);
+      return false;
+    }
+  }
+
+  async notifyCancelamento(agendamentoId) {
+    try {
+      const settings = this.getSettings();
+      if (!settings.cancelamento) {
+        console.log('⏭️ Notificações de cancelamento desabilitadas');
+        return;
+      }
+
+      const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
+      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
+
+      const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
+      if (!agendamento) return;
+
+      const cliente = clientes.find(c => c.id === agendamento.clienteId);
+      const servico = servicos.find(s => s.id === agendamento.servicoId);
+      const salao = saloes.find(s => s.id === agendamento.salaoId);
+
+      if (!cliente || !cliente.email || !servico || !salao) {
+        return;
+      }
+
+      // ✅ VERIFICAR PLANO PARA CANCELAMENTO
+      if (!this.canSendNotification(salao.plano, 'cancelamento')) {
+        console.log(`⛔ Plano ${salao.plano} não permite notificações de cancelamento`);
+        return;
+      }
+
+      try {
+        await mailgunService.sendCancelamentoAgendamento({
+          cliente,
+          servico,
+          salao,
+          agendamento
+        });
+        console.log(`✅ Notificação de cancelamento enviada para ${cliente.email}`);
+      } catch (error) {
+        console.error(`❌ Erro ao enviar cancelamento para ${cliente.email}:`, error);
+      }
+
+    } catch (error) {
+      console.error('Erro ao notificar cancelamento:', error);
     }
   }
 }

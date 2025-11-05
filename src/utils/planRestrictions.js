@@ -1,6 +1,6 @@
-// src/utils/planRestrictions.js - VERIFICADO E AJUSTADO
+// src/utils/planRestrictions.js - ATUALIZADO: Notificações por plano
 
-// Definição de limites por plano (conforme descrições em Configuracoes.jsx)
+// Definição de limites por plano
 export const PLAN_LIMITS = {
   inicial: {
     saloes: 1,
@@ -14,7 +14,7 @@ export const PLAN_LIMITS = {
     relatorios: false,
     exportacao: false,
     agendamentoOnline: false,
-    notificacoes: false,
+    notificacoes: 'confirmacao', // ✅ NOVO: Apenas confirmações
     comissoes: false
   },
   essencial: {
@@ -26,10 +26,10 @@ export const PLAN_LIMITS = {
     fornecedores: 2,
     produtos: 5,
     financeiro: false,
-    relatorios: 'basico', // Relatórios de agendamentos
+    relatorios: 'basico',
     exportacao: false,
-    agendamentoOnline: true, // Agenda online
-    notificacoes: 'basico', // Notificações básicas
+    agendamentoOnline: true,
+    notificacoes: 'basico', // ✅ NOVO: Confirmações + Cancelamentos
     comissoes: false
   },
   plus: {
@@ -40,67 +40,96 @@ export const PLAN_LIMITS = {
     servicosPorCategoria: 5,
     fornecedores: 5,
     produtos: 15,
-    financeiro: 'simples', // Controle financeiro simples
-    relatorios: 'basico', // Relatórios básicos
+    financeiro: 'simples',
+    relatorios: 'basico',
     exportacao: false,
-    agendamentoOnline: true, // Agendamento avançado
-    notificacoes: 'basico',
+    agendamentoOnline: true,
+    notificacoes: 'basico', // ✅ Confirmações + Cancelamentos
     comissoes: true
   },
   profissional: {
     saloes: 2,
-    profissionais: 10, // 10 por salão
-    clientes: 300, // 300 por salão
-    categorias: Infinity, // Categorias e serviços ilimitados
+    profissionais: 10,
+    clientes: 300,
+    categorias: Infinity,
     servicosPorCategoria: Infinity,
     fornecedores: 10,
     produtos: 30,
-    financeiro: 'completo', // Financeiro completo
-    relatorios: 'completo', // Relatórios detalhados
-    exportacao: true, // Exportação de dados
-    agendamentoOnline: true, // Link de agendamento
-    notificacoes: 'completo',
+    financeiro: 'completo',
+    relatorios: 'completo',
+    exportacao: true,
+    agendamentoOnline: true,
+    notificacoes: 'avancado', // ✅ NOVO: Confirmações + Alterações + Cancelamentos
     comissoes: true,
-    appProfissionais: true // App para profissionais
+    appProfissionais: true
   },
   premium: {
     saloes: 5,
-    profissionais: 10, // 10 por salão
-    clientes: 500, // 500 por salão
-    categorias: Infinity, // Categorias e serviços ilimitados
+    profissionais: 10,
+    clientes: 500,
+    categorias: Infinity,
     servicosPorCategoria: Infinity,
     fornecedores: 30,
     produtos: 100,
-    financeiro: 'completo', // Financeiro completo
-    relatorios: 'completo', // Relatórios detalhados
-    exportacao: true, // Exportação de dados
-    agendamentoOnline: true, // Link de agendamento
-    notificacoes: 'completo',
+    financeiro: 'completo',
+    relatorios: 'completo',
+    exportacao: true,
+    agendamentoOnline: true,
+    notificacoes: 'completo', // ✅ NOVO: Todas + Feedback
     comissoes: true,
-    appProfissionais: true // App para profissionais
+    appProfissionais: true
   },
   master: {
-    saloes: Infinity, // Salões ilimitados
-    profissionais: Infinity, // Profissionais ilimitados
-    clientes: Infinity, // Clientes ilimitados
-    categorias: Infinity, // Todos recursos liberados
+    saloes: Infinity,
+    profissionais: Infinity,
+    clientes: Infinity,
+    categorias: Infinity,
     servicosPorCategoria: Infinity,
     fornecedores: Infinity,
     produtos: Infinity,
-    financeiro: 'completo', // Todos os recursos financeiros
-    relatorios: 'avancado', // Relatórios avançados customizáveis
+    financeiro: 'completo',
+    relatorios: 'avancado',
     exportacao: true,
     agendamentoOnline: true,
-    notificacoes: 'avancado',
+    notificacoes: 'completo', // ✅ NOVO: Todas + Feedback
     comissoes: true,
     appProfissionais: true,
-    appPersonalizado: true, // App personalizado
-    integracoesExternas: true, // Integrações externas
-    marketing: true, // Marketing e campanhas
-    fiscal: true, // NFe e fiscal
-    backupNuvem: true, // Backup em nuvem
-    suportePrioritario: true // Prioridade no suporte
+    appPersonalizado: true,
+    integracoesExternas: true,
+    marketing: true,
+    fiscal: true,
+    backupNuvem: true,
+    suportePrioritario: true
   }
+};
+
+// ✅ NOVO: Mapeamento de recursos de notificação por nível
+export const NOTIFICATION_FEATURES = {
+  confirmacao: ['confirmacao'],
+  basico: ['confirmacao', 'cancelamento'],
+  avancado: ['confirmacao', 'alteracoes', 'cancelamento'],
+  completo: ['confirmacao', 'alteracoes', 'cancelamento', 'avaliacoes', 'lembretes', 'notifyProfissional']
+};
+
+// ✅ NOVO: Verificar se o plano permite um tipo específico de notificação
+export const hasNotificationAccess = (plano, tipoNotificacao) => {
+  const limits = PLAN_LIMITS[plano] || PLAN_LIMITS.inicial;
+  const nivelNotificacoes = limits.notificacoes;
+  
+  if (!nivelNotificacoes || nivelNotificacoes === false) return false;
+  
+  const features = NOTIFICATION_FEATURES[nivelNotificacoes] || [];
+  return features.includes(tipoNotificacao);
+};
+
+// ✅ NOVO: Obter recursos de notificação disponíveis para o plano
+export const getAvailableNotifications = (plano) => {
+  const limits = PLAN_LIMITS[plano] || PLAN_LIMITS.inicial;
+  const nivelNotificacoes = limits.notificacoes;
+  
+  if (!nivelNotificacoes || nivelNotificacoes === false) return [];
+  
+  return NOTIFICATION_FEATURES[nivelNotificacoes] || [];
 };
 
 // Verificar se o plano permite adicionar mais itens
@@ -119,7 +148,7 @@ export const hasAccess = (plano, recurso) => {
   const access = limits[recurso];
   
   if (typeof access === 'boolean') return access;
-  if (typeof access === 'string') return true; // qualquer nível de acesso
+  if (typeof access === 'string') return true;
   return false;
 };
 
@@ -157,6 +186,19 @@ export const getMinimumPlan = (recurso) => {
   return 'master';
 };
 
+// ✅ NOVO: Obter plano mínimo para tipo de notificação
+export const getMinimumPlanForNotification = (tipoNotificacao) => {
+  const planos = ['inicial', 'essencial', 'plus', 'profissional', 'premium', 'master'];
+  
+  for (const plano of planos) {
+    if (hasNotificationAccess(plano, tipoNotificacao)) {
+      return plano;
+    }
+  }
+  
+  return 'master';
+};
+
 // Mensagens de upgrade
 export const getUpgradeMessage = (currentPlan, feature) => {
   const minPlan = getMinimumPlan(feature);
@@ -171,6 +213,11 @@ export const getUpgradeMessage = (currentPlan, feature) => {
       title: 'Relatórios Avançados',
       description: 'Gere relatórios detalhados e análises de performance do seu negócio.',
       minPlan: 'essencial'
+    },
+    notificacoes: {
+      title: 'Sistema de Notificações',
+      description: 'Envie notificações automáticas para clientes e profissionais.',
+      minPlan: 'inicial'
     }
   };
   
