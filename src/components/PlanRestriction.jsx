@@ -1,4 +1,4 @@
-// src/components/PlanRestriction.jsx - VERSÃO CORRIGIDA
+// src/components/PlanRestriction.jsx - ATUALIZADO: Com agenda online e notificações
 import { Lock, Crown, Check, ArrowRight } from 'lucide-react';
 import { useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,62 @@ const PlanRestriction = ({ feature, minPlan = 'essencial' }) => {
   };
 
   const features = {
+    'notificacoes': {
+      title: 'Notificações Automáticas',
+      description: 'Envie confirmações, lembretes e notificações por email automaticamente para seus clientes.',
+      minPlan: 'essencial',
+      benefits: {
+        'essencial': [
+          'Email de confirmação automático',
+          'Lembretes 24h antes do agendamento',
+          'Notificações de cancelamento',
+          'Notificações de alteração',
+          'Solicitação de avaliação pós-atendimento',
+          'Histórico de emails enviados'
+        ],
+        'plus': [
+          'Todos os recursos do Essencial',
+          'Notificações personalizadas',
+          'Templates de email customizáveis',
+          'Agendamento de lembretes flexível'
+        ],
+        'profissional': [
+          'Todos os recursos do Plus',
+          'Notificações para profissionais',
+          'Múltiplos destinatários',
+          'Relatórios de entregas',
+          'Integração com WhatsApp'
+        ]
+      }
+    },
+    'agendamentoOnline': {
+      title: 'Agenda Online',
+      description: 'Compartilhe seu link de agendamento e receba reservas 24 horas por dia, 7 dias por semana.',
+      minPlan: 'essencial',
+      benefits: {
+        'essencial': [
+          'Link de agendamento compartilhável',
+          'Página de agendamento profissional',
+          'Sincronização em tempo real',
+          'Seleção de serviços e profissionais',
+          'Confirmação automática por email',
+          'Horários disponíveis atualizados'
+        ],
+        'plus': [
+          'Todos os recursos do Essencial',
+          'Personalização de cores e logo',
+          'Múltiplos serviços no mesmo agendamento',
+          'Integração com redes sociais'
+        ],
+        'profissional': [
+          'Todos os recursos do Plus',
+          'Link personalizado (seu domínio)',
+          'Agenda online para múltiplos salões',
+          'App mobile para clientes',
+          'Analytics avançado'
+        ]
+      }
+    },
     'financeiro': {
       title: 'Controle Financeiro Completo',
       description: 'Gerencie receitas, despesas, fluxo de caixa e tenha visão completa da saúde financeira do seu salão.',
@@ -96,14 +152,11 @@ const PlanRestriction = ({ feature, minPlan = 'essencial' }) => {
 
   // Determinar qual lista de benefícios mostrar baseado no plano mínimo necessário
   const getBenefitsToShow = () => {
-    // Se o recurso tem diferentes níveis de benefícios
     if (featureInfo.benefits) {
-      // Mostrar benefícios do plano mínimo necessário
       if (featureInfo.benefits[minPlan]) {
         return featureInfo.benefits[minPlan];
       }
       
-      // Se não tem benefícios específicos, pegar o próximo plano disponível
       const planosOrdenados = ['essencial', 'plus', 'profissional', 'premium', 'master'];
       for (const plano of planosOrdenados) {
         if (planos[plano].ordem >= planoMinimoOrdem && featureInfo.benefits[plano]) {
@@ -112,7 +165,6 @@ const PlanRestriction = ({ feature, minPlan = 'essencial' }) => {
       }
     }
     
-    // Fallback para benefícios genéricos
     return featureInfo.benefits || [];
   };
 
@@ -120,17 +172,14 @@ const PlanRestriction = ({ feature, minPlan = 'essencial' }) => {
 
   const handleUpgrade = () => {
     navigate('/configuracoes');
-    // Scroll to planos tab after navigation
     setTimeout(() => {
       const planosTab = document.querySelector('[data-tab="planos"]');
       if (planosTab) planosTab.click();
     }, 100);
   };
 
-  // Determinar qual plano sugerir (baseado no recurso)
   const getPlanSuggestion = () => {
     if (feature === 'relatorios') {
-      // Para relatórios, sugerir Profissional para acesso completo
       if (planoAtualOrdem < planos['profissional'].ordem) {
         return 'profissional';
       }

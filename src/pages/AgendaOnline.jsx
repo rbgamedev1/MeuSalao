@@ -1,7 +1,8 @@
-// src/pages/AgendaOnline.jsx - COMPLETO COM SINCRONIZAÇÃO EM TEMPO REAL
+// src/pages/AgendaOnline.jsx - CORRIGIDO: Bloqueio para plano inicial
 
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Crown, Lock } from 'lucide-react';
 import AgendaHeader from '../components/agendaOnline/AgendaHeader';
 import AgendaStepIndicator from '../components/agendaOnline/AgendaStepIndicator';
 import AgendaStepDados from '../components/agendaOnline/AgendaStepDados';
@@ -11,7 +12,7 @@ import AgendaSucesso from '../components/agendaOnline/AgendaSucesso';
 import AgendaLoading from '../components/agendaOnline/AgendaLoading';
 import AgendaErro from '../components/agendaOnline/AgendaErro';
 import mailgunService from '../services/mailgunService';
-import { canAddMore } from '../utils/planRestrictions';
+import { hasAccess } from '../utils/planRestrictions';
 import { verificarConflitoHorario } from '../utils/agendamentoUtils';
 import { useRealtimeAgendamentos } from '../hooks/useRealtimeAgendamentos';
 
@@ -28,7 +29,9 @@ const AgendaOnline = () => {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [planLimitError, setPlanLimitError] = useState(null);
 
-  // ✅ HOOK DE TEMPO REAL - Sincronização automática
+  // ✅ NOVO: Estado para verificação de acesso
+  const [hasAccessToAgenda, setHasAccessToAgenda] = useState(false);
+
   const { 
     agendamentos, 
     isUpdating, 
@@ -48,7 +51,7 @@ const AgendaOnline = () => {
 
   const [errors, setErrors] = useState({});
 
-  // Carregar dados do salão
+  // ✅ CRÍTICO: Verificar acesso do salão à agenda online
   useEffect(() => {
     loadSalaoData();
   }, [salaoId]);
@@ -62,10 +65,33 @@ const AgendaOnline = () => {
       const salaoEncontrado = saloes.find(s => s.id === parseInt(salaoId));
       
       if (!salaoEncontrado) {
-        alert('Salão não encontrado');
+        setPlanLimitError({
+          title: 'Salão não encontrado',
+          message: 'Não foi possível encontrar este salão.',
+          suggestion: 'Verifique o link e tente novamente.',
+          showPhone: false
+        });
+        setLoading(false);
         return;
       }
 
+      // ✅ VERIFICAÇÃO CRÍTICA: Checar se o plano permite agenda online
+      const temAcesso = hasAccess(salaoEncontrado.plano, 'agendamentoOnline');
+      
+      if (!temAcesso) {
+        setPlanLimitError({
+          title: 'Agenda Online Indisponível',
+          message: `${salaoEncontrado.nome} ainda não ativou a Agenda Online.`,
+          suggestion: 'Esta funcionalidade está disponível a partir do Plano Essencial.',
+          showPhone: true,
+          planoAtual: salaoEncontrado.plano
+        });
+        setSalao(salaoEncontrado);
+        setLoading(false);
+        return;
+      }
+
+      setHasAccessToAgenda(true);
       setSalao(salaoEncontrado);
       setServicos(servicosAll.filter(s => s.salaoId === parseInt(salaoId) && s.ativo));
       setProfissionais(profissionaisAll.filter(p => p.salaoId === parseInt(salaoId)));
@@ -84,7 +110,6 @@ const AgendaOnline = () => {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
 
-    // Resetar horário quando data ou profissional mudar
     if (name === 'data' || name === 'profissionalId') {
       setFormData(prev => ({ ...prev, horario: '' }));
     }
@@ -126,7 +151,6 @@ const AgendaOnline = () => {
     if (!formData.data) newErrors.data = 'Selecione uma data';
     if (!formData.horario) newErrors.horario = 'Selecione um horário';
 
-    // ✅ VERIFICAÇÃO FINAL: Usar função que considera duração
     if (formData.profissionalId && formData.data && formData.horario && formData.servicoId) {
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
       
@@ -158,10 +182,8 @@ const AgendaOnline = () => {
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       
-      // ✅ RECARREGAR agendamentos atualizados
       const agendamentosAtualizados = agendamentosAll.filter(a => a.salaoId === parseInt(salaoId));
       
-      // ✅ VERIFICAÇÃO FINAL DE CONFLITO antes de salvar
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
       
       if (servico) {
@@ -183,26 +205,9 @@ const AgendaOnline = () => {
         }
       }
 
-      // Verificar se cliente já existe
       let cliente = clientes.find(c => c.email === formData.email && c.salaoId === parseInt(salaoId));
 
       if (!cliente) {
-        // Verificar limite de clientes do plano
-        const clientesSalao = clientes.filter(c => c.salaoId === parseInt(salaoId));
-        const canAdd = canAddMore(salao.plano, 'clientes', clientesSalao.length);
-        
-        if (!canAdd) {
-          setPlanLimitError({
-            title: 'Agenda Cheia no Momento',
-            message: 'Desculpe, não estamos aceitando novos agendamentos online no momento devido à alta demanda.',
-            suggestion: 'Entre em contato diretamente conosco por telefone para verificar disponibilidade.',
-            showPhone: true
-          });
-          setSendingEmail(false);
-          return;
-        }
-
-        // Criar novo cliente
         cliente = {
           id: Math.max(...clientes.map(c => c.id), 0) + 1,
           nome: formData.nome,
@@ -219,7 +224,6 @@ const AgendaOnline = () => {
         localStorage.setItem('clientes', JSON.stringify(clientes));
       }
 
-      // Criar agendamento
       const novoAgendamento = {
         id: Math.max(...agendamentosAll.map(a => a.id), 0) + 1,
         clienteId: cliente.id,
@@ -236,7 +240,6 @@ const AgendaOnline = () => {
       agendamentosAll.push(novoAgendamento);
       localStorage.setItem('agendamentos', JSON.stringify(agendamentosAll));
 
-      // ✅ DISPARAR EVENTO STORAGE para sincronização em tempo real
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'agendamentos',
         newValue: JSON.stringify(agendamentosAll),
@@ -245,7 +248,6 @@ const AgendaOnline = () => {
 
       console.log('✅ Novo agendamento criado:', novoAgendamento);
 
-      // Enviar email de confirmação
       try {
         const profissional = profissionais.find(p => p.id === parseInt(formData.profissionalId));
         
@@ -260,7 +262,6 @@ const AgendaOnline = () => {
         console.log('✅ Email de confirmação enviado com sucesso!');
       } catch (emailError) {
         console.error('❌ Erro ao enviar email:', emailError);
-        // Não bloquear o agendamento se o email falhar
       }
 
       setSuccess(true);
@@ -276,18 +277,96 @@ const AgendaOnline = () => {
     return <AgendaLoading />;
   }
 
-  if (!salao) {
-    return <AgendaErro onVoltar={() => navigate('/')} />;
+  // ✅ TELA DE BLOQUEIO: Agenda online indisponível para este plano
+  if (!hasAccessToAgenda && planLimitError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-2xl w-full">
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Lock size={48} className="text-yellow-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">
+              {planLimitError.title}
+            </h2>
+            <p className="text-gray-600 mb-4">
+              {planLimitError.message}
+            </p>
+            {planLimitError.planoAtual && (
+              <div className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg mb-4">
+                <span className="text-sm text-gray-600">Plano Atual:</span>
+                <span className="text-sm font-bold text-gray-800 capitalize">{planLimitError.planoAtual}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+            <div className="flex items-start space-x-3">
+              <Crown className="text-blue-600 flex-shrink-0 mt-1" size={24} />
+              <div>
+                <p className="text-sm font-medium text-blue-900 mb-2">
+                  💡 {planLimitError.suggestion}
+                </p>
+                <p className="text-sm text-blue-800">
+                  A <strong>Agenda Online</strong> está disponível a partir do <strong>Plano Essencial (R$ 29,90/mês)</strong> e permite:
+                </p>
+                <ul className="text-sm text-blue-700 mt-2 ml-4 list-disc space-y-1">
+                  <li>Agendamentos online 24/7</li>
+                  <li>Link compartilhável</li>
+                  <li>Confirmações automáticas por email</li>
+                  <li>Sincronização em tempo real</li>
+                  <li>Até 30 clientes cadastrados</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {planLimitError.showPhone && salao && (
+              <>
+                <p className="text-center text-sm text-gray-600 font-medium mb-3">
+                  Enquanto isso, você pode entrar em contato diretamente:
+                </p>
+                <a
+                  href={`tel:${salao.telefone.replace(/\D/g, '')}`}
+                  className="block w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 text-center font-medium"
+                >
+                  📞 Ligar para {salao.nome}
+                </a>
+                <a
+                  href={`https://wa.me/55${salao.telefone.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 text-center font-medium"
+                >
+                  💬 Chamar no WhatsApp
+                </a>
+              </>
+            )}
+          </div>
+
+          {salao && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="text-center text-sm text-gray-600">
+                <p className="font-medium text-gray-800">{salao.nome}</p>
+                <p className="mt-1">{salao.endereco}</p>
+                <p className="mt-1">{salao.telefone}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-center text-xs text-gray-500">
+              Proprietário do salão? <a href="/configuracoes" className="text-purple-600 underline hover:text-purple-700">Faça upgrade do seu plano</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  if (planLimitError) {
-    return (
-      <AgendaErro 
-        error={planLimitError}
-        salao={salao}
-        onVoltar={() => window.location.reload()}
-      />
-    );
+  if (!salao) {
+    return <AgendaErro onVoltar={() => navigate('/')} />;
   }
 
   if (success) {
@@ -309,7 +388,6 @@ const AgendaOnline = () => {
         
         <AgendaStepIndicator currentStep={step} />
 
-        {/* ✅ Indicador de Sincronização em Tempo Real */}
         <div className={`mb-4 rounded-lg p-3 transition-all ${
           isUpdating 
             ? 'bg-blue-50 border border-blue-200' 
@@ -357,7 +435,6 @@ const AgendaOnline = () => {
             />
           )}
 
-          {/* Botões de Navegação */}
           <div className="mt-8 flex space-x-4">
             {step > 1 && (
               <button

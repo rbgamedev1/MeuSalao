@@ -65,7 +65,7 @@ const Configuracoes = () => {
   const canAddProfissional = canAddMore(salaoAtual.plano, 'profissionais', profissionaisSalao.length);
   const limiteProfissionais = getLimitMessage(salaoAtual.plano, 'profissionais');
 
-  // Definição dos planos
+   // Definição dos planos - ✅ CORRIGIDO: Plano Inicial sem recursos premium
   const planos = [
     {
       id: 'inicial',
@@ -78,8 +78,11 @@ const Configuracoes = () => {
         'Até 10 clientes',
         '2 categorias, 2 serviços por categoria',
         '1 fornecedor, 3 produtos',
-        'Agendamento simples',
-        'Sem financeiro ou relatórios'
+        'Agendamento básico (sistema)',
+        '❌ Sem agenda online',
+        '❌ Sem notificações automáticas',
+        '❌ Sem financeiro',
+        '❌ Sem relatórios'
       ]
     },
     {
@@ -93,9 +96,10 @@ const Configuracoes = () => {
         'Até 30 clientes',
         '3 categorias, 3 serviços por categoria',
         '2 fornecedores, 5 produtos',
-        'Agenda online',
-        'Notificações básicas',
-        'Relatórios de agendamentos'
+        '✅ Agenda online (link compartilhável)',
+        '✅ Notificações básicas por email',
+        '✅ Relatórios de agendamentos',
+        'Confirmações e lembretes automáticos'
       ]
     },
     {
@@ -109,9 +113,10 @@ const Configuracoes = () => {
         'Até 100 clientes',
         '5 categorias, 5 serviços por categoria',
         '5 fornecedores, 15 produtos',
-        'Controle financeiro simples',
-        'Agendamento avançado',
-        'Relatórios básicos'
+        '✅ Controle financeiro simples',
+        '✅ Agendamento online avançado',
+        '✅ Notificações completas',
+        '✅ Relatórios básicos de faturamento'
       ]
     },
     {
@@ -125,11 +130,11 @@ const Configuracoes = () => {
         'Até 300 clientes por salão',
         'Categorias e serviços ilimitados',
         '10 fornecedores, 30 produtos',
-        'Financeiro completo',
-        'Link de agendamento',
-        'App para profissionais',
-        'Relatórios detalhados',
-        'Exportação de dados'
+        '✅ Financeiro completo',
+        '✅ Link de agendamento personalizado',
+        '✅ App para profissionais',
+        '✅ Relatórios detalhados e exportação',
+        'Análise de comissões e performance'
       ]
     },
     {
@@ -143,11 +148,11 @@ const Configuracoes = () => {
         'Até 500 clientes por salão',
         'Categorias e serviços ilimitados',
         '30 fornecedores, 100 produtos',
-        'Financeiro completo',
-        'Link de agendamento',
-        'App para profissionais',
-        'Relatórios detalhados',
-        'Exportação de dados'
+        '✅ Financeiro completo',
+        '✅ Relatórios multi-salão',
+        '✅ Análises comparativas',
+        '✅ Previsões e projeções',
+        'Relatórios automáticos por email'
       ]
     },
     {
