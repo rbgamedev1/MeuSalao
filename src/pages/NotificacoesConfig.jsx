@@ -1,7 +1,7 @@
-// src/pages/NotificacoesConfig.jsx - Configurações e Histórico com Mailgun
+// src/pages/NotificacoesConfig.jsx - ATUALIZADO COM NOVOS TIPOS DE NOTIFICAÇÃO
 
 import { useState, useEffect, useContext } from 'react';
-import { Bell, Mail, Clock, Check, X, Copy, ExternalLink, Trash2, Send, AlertCircle } from 'lucide-react';
+import { Bell, Mail, Clock, Check, X, Copy, ExternalLink, Trash2, Send, AlertCircle, RefreshCw, Star } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import notificationService from '../services/notificationService';
 import mailgunService from '../services/mailgunService';
@@ -110,7 +110,7 @@ const NotificacoesConfig = () => {
         </div>
       )}
 
-      {/* Sandbox Warning (se usando sandbox) */}
+      {/* Sandbox Warning */}
       {mailgunService.isConfigured && mailgunService.mailgunConfig?.domain?.includes('sandbox') && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
           <div className="flex items-start">
@@ -266,6 +266,28 @@ const NotificacoesConfig = () => {
             </label>
           </div>
 
+          {/* ✨ NOVO: Alterações */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="bg-orange-100 p-2 rounded-lg">
+                <RefreshCw className="text-orange-600" size={20} />
+              </div>
+              <div>
+                <p className="font-medium text-gray-800">Notificação de Alteração</p>
+                <p className="text-sm text-gray-600">Informar sobre mudanças de data, horário ou profissional</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.alteracoes}
+                onChange={() => handleSettingChange('alteracoes')}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
           {/* Lembretes */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-3">
@@ -304,6 +326,28 @@ const NotificacoesConfig = () => {
                 type="checkbox"
                 checked={settings.cancelamento}
                 onChange={() => handleSettingChange('cancelamento')}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+            </label>
+          </div>
+
+          {/* ✨ NOVO: Avaliações */}
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            <div className="flex items-center space-x-3">
+              <div className="bg-yellow-100 p-2 rounded-lg">
+                <Star className="text-yellow-600" size={20} />
+              </div>
+              <div>
+                <p className="font-medium text-gray-800">Solicitação de Avaliação</p>
+                <p className="text-sm text-gray-600">Pedir feedback após atendimento concluído</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={settings.avaliacoes}
+                onChange={() => handleSettingChange('avaliacoes')}
                 className="sr-only peer"
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
@@ -422,13 +466,12 @@ const NotificacoesConfig = () => {
         <div className="flex items-start space-x-3">
           <Bell className="text-blue-600 flex-shrink-0 mt-1" size={20} />
           <div>
-            <p className="font-semibold text-blue-900">💡 Como funciona:</p>
+            <p className="font-semibold text-blue-900">💡 Novos Recursos de Notificação:</p>
             <ul className="text-sm text-blue-700 mt-2 space-y-1 list-disc list-inside">
-              <li>Configure suas credenciais do Mailgun no arquivo .env</li>
-              <li>Use um domínio sandbox para testes (apenas emails autorizados)</li>
-              <li>Para produção, configure um domínio verificado no Mailgun</li>
-              <li>Emails HTML formatados são enviados automaticamente</li>
-              <li>Histórico completo de emails enviados</li>
+              <li><strong>Notificação de Alteração:</strong> Avisa cliente quando data/horário/profissional muda</li>
+              <li><strong>Solicitação de Avaliação:</strong> Pede feedback automaticamente após atendimento concluído</li>
+              <li><strong>Link de Avaliação:</strong> Cliente recebe link para avaliar com estrelas e comentário</li>
+              <li><strong>Histórico Completo:</strong> Todas as avaliações são armazenadas no sistema</li>
             </ul>
           </div>
         </div>

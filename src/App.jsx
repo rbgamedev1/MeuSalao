@@ -1,3 +1,5 @@
+// src/App.jsx - ATUALIZADO COM ROTA DE AVALIAÇÃO
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Menu } from 'lucide-react';
@@ -12,6 +14,7 @@ import Financeiro from './pages/Financeiro';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
 import AgendaOnline from './pages/AgendaOnline';
+import Avaliacao from './pages/Avaliacao';
 import NotificacoesConfig from './pages/NotificacoesConfig';
 import { SalaoProvider } from './contexts/SalaoContext';
 import notificationService from './services/notificationService';
@@ -35,8 +38,9 @@ function App() {
     <SalaoProvider>
       <Router>
         <Routes>
-          {/* Rota pública da agenda online (sem layout) */}
+          {/* Rotas públicas (sem layout) */}
           <Route path="/agenda/:salaoId" element={<AgendaOnline />} />
+          <Route path="/avaliacao/:salaoId/:token" element={<Avaliacao />} />
 
           {/* Rotas protegidas com layout */}
           <Route path="/*" element={

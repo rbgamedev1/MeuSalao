@@ -1,4 +1,4 @@
-// src/services/mailgunService.js - Serviço de Email com Mailgun REAL
+// src/services/mailgunService.js - ATUALIZADO COM NOVOS TEMPLATES
 
 import { 
   mailgunConfig, 
@@ -11,12 +11,10 @@ class MailgunService {
   constructor() {
     this.emailQueue = this.loadQueue();
     this.isConfigured = false;
+    this.mailgunConfig = mailgunConfig;
     this.checkConfiguration();
   }
 
-  /**
-   * Verificar se está configurado
-   */
   checkConfiguration() {
     const validation = validateMailgunConfig();
     
@@ -31,9 +29,6 @@ class MailgunService {
     return true;
   }
 
-  /**
-   * Carregar fila de emails do localStorage
-   */
   loadQueue() {
     try {
       const saved = localStorage.getItem('emailQueue');
@@ -43,9 +38,6 @@ class MailgunService {
     }
   }
 
-  /**
-   * Salvar fila no localStorage
-   */
   saveQueue() {
     try {
       localStorage.setItem('emailQueue', JSON.stringify(this.emailQueue));
@@ -54,30 +46,23 @@ class MailgunService {
     }
   }
 
-  /**
-   * ENVIAR EMAIL REAL COM MAILGUN
-   */
   async sendEmail(to, subject, body, htmlBody = null) {
-    // Se não estiver configurado, usar simulação
     if (!this.isConfigured) {
       console.warn('⚠️ Mailgun não configurado. Usando modo simulação.');
       return this.sendEmailSimulado(to, subject, body);
     }
 
     try {
-      // Preparar dados do email
       const formData = new URLSearchParams();
       formData.append('from', `${mailgunConfig.fromName} <${mailgunConfig.fromEmail}>`);
       formData.append('to', to);
       formData.append('subject', subject);
       formData.append('text', body);
       
-      // Se tiver HTML, adicionar
       if (htmlBody) {
         formData.append('html', htmlBody);
       }
 
-      // Fazer requisição para Mailgun
       const response = await fetch(getMailgunAPIUrl(), {
         method: 'POST',
         headers: getMailgunHeaders(),
@@ -91,7 +76,6 @@ class MailgunService {
 
       const result = await response.json();
 
-      // Salvar no histórico
       const email = {
         id: result.id || Date.now(),
         to,
@@ -118,7 +102,6 @@ class MailgunService {
     } catch (error) {
       console.error('❌ Erro ao enviar email com Mailgun:', error);
       
-      // Salvar como falha
       const email = {
         id: Date.now(),
         to,
@@ -138,9 +121,6 @@ class MailgunService {
     }
   }
 
-  /**
-   * FALLBACK: Enviar email simulado (desenvolvimento)
-   */
   async sendEmailSimulado(to, subject, body) {
     return new Promise((resolve) => {
       setTimeout(() => {
@@ -168,9 +148,6 @@ class MailgunService {
     });
   }
 
-  /**
-   * Templates de email (mesma estrutura)
-   */
   templates = {
     confirmacao: {
       subject: '✅ Agendamento Confirmado - {salaoNome}',
@@ -203,7 +180,6 @@ Equipe {salaoNome}
     .content { background: #f9fafb; padding: 30px; border-radius: 0 0 10px 10px; }
     .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #9333ea; }
     .info-item { margin: 10px 0; }
-    .icon { display: inline-block; width: 20px; }
     .footer { text-align: center; margin-top: 30px; color: #666; font-size: 14px; }
   </style>
 </head>
@@ -236,6 +212,158 @@ Equipe {salaoNome}
 </html>
       `
     },
+
+    // ✨ NOVO: Template para alteração de agendamento
+    alteracao: {
+      subject: '🔄 Agendamento Alterado - {salaoNome}',
+      body: `
+Olá {clienteNome}!
+
+Informamos que seu agendamento foi alterado. 🔄
+
+📅 NOVA DATA: {novaData}
+🕐 NOVO HORÁRIO: {novoHorario}
+✂️ Serviço: {servico}
+💇 NOVO PROFISSIONAL: {novoProfissional}
+📍 Local: {salaoEndereco}
+
+{motivoAlteracao}
+
+📞 Em caso de dúvidas, entre em contato: {salaoTelefone}
+
+Equipe {salaoNome}
+      `,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #fffbeb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+    .old-info { text-decoration: line-through; color: #999; }
+    .new-info { color: #f59e0b; font-weight: bold; }
+    .alert { background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🔄 Agendamento Alterado</h1>
+    </div>
+    <div class="content">
+      <p>Olá <strong>{clienteNome}</strong>!</p>
+      <p>Informamos que seu agendamento foi <strong>alterado</strong>. 🔄</p>
+      
+      <div class="alert">
+        <p style="margin: 0;"><strong>⚠️ Atenção:</strong> Confira as novas informações abaixo</p>
+      </div>
+      
+      <div class="info-box">
+        <div style="margin: 10px 0;">
+          <span class="old-info">📅 Data Anterior: {dataAntiga}</span><br>
+          <span class="new-info">📅 NOVA DATA: {novaData}</span>
+        </div>
+        <div style="margin: 10px 0;">
+          <span class="old-info">🕐 Horário Anterior: {horarioAntigo}</span><br>
+          <span class="new-info">🕐 NOVO HORÁRIO: {novoHorario}</span>
+        </div>
+        <div style="margin: 10px 0;">✂️ <strong>Serviço:</strong> {servico}</div>
+        <div style="margin: 10px 0;">
+          <span class="old-info">💇 Profissional Anterior: {profissionalAntigo}</span><br>
+          <span class="new-info">💇 NOVO PROFISSIONAL: {novoProfissional}</span>
+        </div>
+        <div style="margin: 10px 0;">📍 <strong>Local:</strong> {salaoEndereco}</div>
+      </div>
+      
+      {motivoAlteracaoHtml}
+      
+      <p>📞 Em caso de dúvidas, entre em contato: <strong>{salaoTelefone}</strong></p>
+      
+      <p><strong>Equipe {salaoNome}</strong></p>
+    </div>
+  </div>
+</body>
+</html>
+      `
+    },
+
+    // ✨ NOVO: Template para avaliação pós-atendimento
+    avaliacao: {
+      subject: '⭐ Como foi sua experiência? - {salaoNome}',
+      body: `
+Olá {clienteNome}!
+
+Esperamos que tenha gostado do seu atendimento! ✨
+
+📅 Data: {data}
+✂️ Serviço: {servico}
+💇 Profissional: {profissional}
+
+Sua opinião é muito importante para nós! 
+Clique no link abaixo para avaliar seu atendimento:
+
+{linkAvaliacao}
+
+⭐⭐⭐⭐⭐
+
+Agradecemos sua preferência!
+Equipe {salaoNome}
+      `,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #f0fdf4; padding: 30px; border-radius: 0 0 10px 10px; }
+    .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }
+    .stars { text-align: center; font-size: 32px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⭐ Como foi sua experiência?</h1>
+    </div>
+    <div class="content">
+      <p>Olá <strong>{clienteNome}</strong>!</p>
+      <p>Esperamos que tenha gostado do seu atendimento! ✨</p>
+      
+      <div class="info-box">
+        <div style="margin: 10px 0;">📅 <strong>Data:</strong> {data}</div>
+        <div style="margin: 10px 0;">✂️ <strong>Serviço:</strong> {servico}</div>
+        <div style="margin: 10px 0;">💇 <strong>Profissional:</strong> {profissional}</div>
+      </div>
+      
+      <p style="text-align: center;">Sua opinião é <strong>muito importante</strong> para nós!</p>
+      
+      <div class="stars">⭐⭐⭐⭐⭐</div>
+      
+      <div style="text-align: center;">
+        <a href="{linkAvaliacao}" class="btn">Avaliar Atendimento</a>
+      </div>
+      
+      <p style="text-align: center; margin-top: 20px;">Leva menos de 1 minuto! 😊</p>
+      
+      <div style="text-align: center; margin-top: 30px;">
+        <p><strong>Agradecemos sua preferência!</strong></p>
+        <p>Equipe {salaoNome}</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+      `
+    },
+
     lembrete: {
       subject: '⏰ Lembrete: Agendamento Amanhã - {salaoNome}',
       body: `
@@ -295,6 +423,7 @@ Equipe {salaoNome}
 </html>
       `
     },
+
     cancelamento: {
       subject: '❌ Agendamento Cancelado - {salaoNome}',
       body: `
@@ -355,6 +484,7 @@ Equipe {salaoNome}
 </html>
       `
     },
+
     novoAgendamento: {
       subject: '🔔 Novo Agendamento - {salaoNome}',
       body: `
@@ -413,9 +543,6 @@ Equipe {salaoNome}
     }
   };
 
-  /**
-   * Substituir variáveis no template
-   */
   replaceVariables(text, variables) {
     let result = text;
     Object.keys(variables).forEach(key => {
@@ -425,9 +552,6 @@ Equipe {salaoNome}
     return result;
   }
 
-  /**
-   * Enviar confirmação de agendamento
-   */
   async sendConfirmacaoAgendamento(data) {
     const { cliente, servico, profissional, salao, agendamento } = data;
 
@@ -449,9 +573,57 @@ Equipe {salaoNome}
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Enviar lembrete
-   */
+  // ✨ NOVO: Enviar notificação de alteração
+  async sendAlteracaoAgendamento(data) {
+    const { cliente, servico, profissional, salao, agendamento, dadosAntigos, motivoAlteracao } = data;
+
+    const variables = {
+      clienteNome: cliente.nome,
+      novaData: agendamento.data,
+      novoHorario: agendamento.horario,
+      servico: servico.nome,
+      novoProfissional: profissional.nome,
+      salaoEndereco: salao.endereco,
+      salaoTelefone: salao.telefone,
+      salaoNome: salao.nome,
+      dataAntiga: dadosAntigos.data || agendamento.data,
+      horarioAntigo: dadosAntigos.horario || agendamento.horario,
+      profissionalAntigo: dadosAntigos.profissionalNome || profissional.nome,
+      motivoAlteracao: motivoAlteracao ? `\nMotivo: ${motivoAlteracao}` : '',
+      motivoAlteracaoHtml: motivoAlteracao ? `<div class="alert"><p style="margin: 0;"><strong>Motivo:</strong> ${motivoAlteracao}</p></div>` : ''
+    };
+
+    const subject = this.replaceVariables(this.templates.alteracao.subject, variables);
+    const body = this.replaceVariables(this.templates.alteracao.body, variables);
+    const html = this.replaceVariables(this.templates.alteracao.html, variables);
+
+    return this.sendEmail(cliente.email, subject, body, html);
+  }
+
+  // ✨ NOVO: Enviar solicitação de avaliação
+  async sendAvaliacaoAgendamento(data) {
+    const { cliente, servico, profissional, salao, agendamento } = data;
+
+    // Gerar link de avaliação único
+    const avaliacaoToken = `${agendamento.id}-${Date.now()}`;
+    const linkAvaliacao = `${window.location.origin}/avaliacao/${salao.id}/${avaliacaoToken}`;
+
+    const variables = {
+      clienteNome: cliente.nome,
+      data: agendamento.data,
+      servico: servico.nome,
+      profissional: profissional.nome,
+      salaoNome: salao.nome,
+      linkAvaliacao
+    };
+
+    const subject = this.replaceVariables(this.templates.avaliacao.subject, variables);
+    const body = this.replaceVariables(this.templates.avaliacao.body, variables);
+    const html = this.replaceVariables(this.templates.avaliacao.html, variables);
+
+    return this.sendEmail(cliente.email, subject, body, html);
+  }
+
   async sendLembreteAgendamento(data) {
     const { cliente, servico, profissional, salao, agendamento } = data;
 
@@ -473,9 +645,6 @@ Equipe {salaoNome}
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Enviar notificação de cancelamento
-   */
   async sendCancelamentoAgendamento(data) {
     const { cliente, servico, salao, agendamento } = data;
 
@@ -496,9 +665,6 @@ Equipe {salaoNome}
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Notificar profissional
-   */
   async sendNovoAgendamentoProfissional(data) {
     const { cliente, servico, profissional, salao, agendamento } = data;
 
@@ -519,26 +685,17 @@ Equipe {salaoNome}
     return this.sendEmail(profissional.email, subject, body, html);
   }
 
-  /**
-   * Obter histórico de emails
-   */
   getEmailHistory() {
     return this.emailQueue.sort((a, b) => 
       new Date(b.sentAt) - new Date(a.sentAt)
     );
   }
 
-  /**
-   * Limpar histórico
-   */
   clearHistory() {
     this.emailQueue = [];
     this.saveQueue();
   }
 
-  /**
-   * Testar envio de email
-   */
   async testEmail(toEmail) {
     try {
       await this.sendEmail(
@@ -575,6 +732,5 @@ Equipe {salaoNome}
   }
 }
 
-// Exportar instância única
 export const mailgunService = new MailgunService();
 export default mailgunService;
