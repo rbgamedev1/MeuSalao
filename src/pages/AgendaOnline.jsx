@@ -1,6 +1,6 @@
-// src/pages/AgendaOnline.jsx - CORRIGIDO: Bloqueio para plano inicial
+// src/pages/AgendaOnline.jsx - CORRIGIDO: Sincronização em tempo real
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Crown, Lock } from 'lucide-react';
 import AgendaHeader from '../components/agendaOnline/AgendaHeader';
@@ -28,12 +28,11 @@ const AgendaOnline = () => {
   const [loading, setLoading] = useState(true);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [planLimitError, setPlanLimitError] = useState(null);
-
-  // ✅ NOVO: Estado para verificação de acesso
   const [hasAccessToAgenda, setHasAccessToAgenda] = useState(false);
 
+  // ✅ CORREÇÃO: Usar hook de tempo real
   const { 
-    agendamentos, 
+    agendamentos: agendamentosRealtime, 
     isUpdating, 
     lastUpdate,
     forceRefresh 
@@ -51,7 +50,6 @@ const AgendaOnline = () => {
 
   const [errors, setErrors] = useState({});
 
-  // ✅ CRÍTICO: Verificar acesso do salão à agenda online
   useEffect(() => {
     loadSalaoData();
   }, [salaoId]);
@@ -75,7 +73,6 @@ const AgendaOnline = () => {
         return;
       }
 
-      // ✅ VERIFICAÇÃO CRÍTICA: Checar se o plano permite agenda online
       const temAcesso = hasAccess(salaoEncontrado.plano, 'agendamentoOnline');
       
       if (!temAcesso) {
@@ -155,10 +152,11 @@ const AgendaOnline = () => {
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
       
       if (servico) {
+        // ✅ CORREÇÃO: Usar agendamentos em tempo real
         const resultado = verificarConflitoHorario(
           formData.horario,
           servico.duracao,
-          agendamentos,
+          agendamentosRealtime,
           servicos,
           parseInt(formData.profissionalId),
           formData.data
@@ -182,15 +180,14 @@ const AgendaOnline = () => {
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       
-      const agendamentosAtualizados = agendamentosAll.filter(a => a.salaoId === parseInt(salaoId));
-      
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
       
       if (servico) {
+        // ✅ CORREÇÃO: Verificar conflito com dados atualizados
         const resultado = verificarConflitoHorario(
           formData.horario,
           servico.duracao,
-          agendamentosAtualizados,
+          agendamentosRealtime,
           servicos,
           parseInt(formData.profissionalId),
           formData.data
@@ -240,6 +237,7 @@ const AgendaOnline = () => {
       agendamentosAll.push(novoAgendamento);
       localStorage.setItem('agendamentos', JSON.stringify(agendamentosAll));
 
+      // ✅ CORREÇÃO: Disparar evento storage para sincronização
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'agendamentos',
         newValue: JSON.stringify(agendamentosAll),
@@ -273,11 +271,13 @@ const AgendaOnline = () => {
     }
   };
 
+  // ✅ Memoizar agendamentos para performance
+  const agendamentos = useMemo(() => agendamentosRealtime, [agendamentosRealtime]);
+
   if (loading) {
     return <AgendaLoading />;
   }
 
-  // ✅ TELA DE BLOQUEIO: Agenda online indisponível para este plano
   if (!hasAccessToAgenda && planLimitError) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center p-4">
@@ -308,15 +308,8 @@ const AgendaOnline = () => {
                   💡 {planLimitError.suggestion}
                 </p>
                 <p className="text-sm text-blue-800">
-                  A <strong>Agenda Online</strong> está disponível a partir do <strong>Plano Essencial (R$ 29,90/mês)</strong> e permite:
+                  A <strong>Agenda Online</strong> está disponível a partir do <strong>Plano Essencial (R$ 29,90/mês)</strong>
                 </p>
-                <ul className="text-sm text-blue-700 mt-2 ml-4 list-disc space-y-1">
-                  <li>Agendamentos online 24/7</li>
-                  <li>Link compartilhável</li>
-                  <li>Confirmações automáticas por email</li>
-                  <li>Sincronização em tempo real</li>
-                  <li>Até 30 clientes cadastrados</li>
-                </ul>
               </div>
             </div>
           </div>
@@ -354,12 +347,6 @@ const AgendaOnline = () => {
               </div>
             </div>
           )}
-
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-center text-xs text-gray-500">
-              Proprietário do salão? <a href="/configuracoes" className="text-purple-600 underline hover:text-purple-700">Faça upgrade do seu plano</a>
-            </p>
-          </div>
         </div>
       </div>
     );
@@ -388,6 +375,7 @@ const AgendaOnline = () => {
         
         <AgendaStepIndicator currentStep={step} />
 
+        {/* ✅ CORREÇÃO: Indicador de sincronização em tempo real */}
         <div className={`mb-4 rounded-lg p-3 transition-all ${
           isUpdating 
             ? 'bg-blue-50 border border-blue-200' 

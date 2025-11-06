@@ -1,16 +1,25 @@
-// src/components/layout/Header.jsx - COM NOTIFICAÇÕES DE AGENDAMENTOS ONLINE
+// src/components/layout/Header.jsx - COM NOTIFICAÇÕES EM TEMPO REAL
 
-import { useState, useContext, useEffect } from 'react';
-import { Bell, ChevronDown, Plus, LogOut, User, Calendar, Clock, X } from 'lucide-react';
+import { useState, useContext, useEffect, useMemo } from 'react';
+import { Bell, ChevronDown, Plus, LogOut, User, Calendar, Clock, X, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from "../../contexts/SalaoContext";
 import { AuthContext } from "../../contexts/AuthContext";
+import { useRealtimeAgendamentos } from '../../hooks/useRealtimeAgendamentos';
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
 
 const Header = () => {
   const navigate = useNavigate();
-  const { salaoAtual, saloes, setSalaoAtual, adicionarSalao, agendamentos, clientes, servicos, profissionais } = useContext(SalaoContext);
+  const { 
+    salaoAtual, 
+    saloes, 
+    setSalaoAtual, 
+    adicionarSalao, 
+    clientes, 
+    servicos, 
+    profissionais 
+  } = useContext(SalaoContext);
   const { currentUser, logout } = useContext(AuthContext);
   
   const [showSaloes, setShowSaloes] = useState(false);
@@ -30,17 +39,30 @@ const Header = () => {
     plano: 'inicial'
   });
 
-  // Obter agendamentos online não lidos
-  const agendamentosOnline = agendamentos.filter(ag => 
-    ag.salaoId === salaoAtual.id && 
-    ag.origemAgendamento === 'online' &&
-    !notificacoesLidas.includes(ag.id)
-  ).sort((a, b) => {
-    // Ordenar por data/hora mais recentes
-    const dateA = new Date(ag.criadoEm || 0);
-    const dateB = new Date(ag.criadoEm || 0);
-    return dateB - dateA;
-  });
+  // ✅ CORREÇÃO: Usar hook de tempo real para notificações
+  const { 
+    agendamentos: agendamentosRealtime, 
+    isUpdating, 
+    lastUpdate,
+    forceRefresh 
+  } = useRealtimeAgendamentos(salaoAtual?.id, 2000);
+
+  // ✅ Calcular agendamentos online não lidos em tempo real
+  const agendamentosOnline = useMemo(() => {
+    if (!salaoAtual) return [];
+    
+    return agendamentosRealtime
+      .filter(ag => 
+        ag.salaoId === salaoAtual.id && 
+        ag.origemAgendamento === 'online' &&
+        !notificacoesLidas.includes(ag.id)
+      )
+      .sort((a, b) => {
+        const dateA = new Date(ag.criadoEm || 0);
+        const dateB = new Date(ag.criadoEm || 0);
+        return dateB - dateA;
+      });
+  }, [agendamentosRealtime, salaoAtual, notificacoesLidas]);
 
   const notificacoesNaoLidas = agendamentosOnline.length;
 
@@ -48,6 +70,18 @@ const Header = () => {
   useEffect(() => {
     localStorage.setItem('notificacoesLidas', JSON.stringify(notificacoesLidas));
   }, [notificacoesLidas]);
+
+  // ✅ NOVO: Som de notificação quando chega novo agendamento
+  useEffect(() => {
+    const previousCount = parseInt(localStorage.getItem('previousNotificationCount') || '0');
+    
+    if (notificacoesNaoLidas > previousCount && previousCount > 0) {
+      // Novo agendamento detectado - reproduzir som (opcional)
+      console.log('🔔 Novo agendamento online recebido!');
+    }
+    
+    localStorage.setItem('previousNotificationCount', notificacoesNaoLidas.toString());
+  }, [notificacoesNaoLidas]);
 
   const marcarComoLida = (agendamentoId) => {
     setNotificacoesLidas(prev => [...prev, agendamentoId]);
@@ -245,9 +279,15 @@ const Header = () => {
               >
                 <Bell size={22} className="text-gray-600" />
                 {notificacoesNaoLidas > 0 && (
-                  <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                  <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold animate-pulse">
                     {notificacoesNaoLidas > 9 ? '9+' : notificacoesNaoLidas}
                   </span>
+                )}
+                {/* ✅ NOVO: Indicador de sincronização */}
+                {isUpdating && (
+                  <div className="absolute -bottom-1 -right-1">
+                    <RefreshCw size={12} className="text-blue-500 animate-spin" />
+                  </div>
                 )}
               </button>
 
@@ -255,18 +295,37 @@ const Header = () => {
               {showNotifications && (
                 <div className="absolute top-full right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden">
                   {/* Header */}
-                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-                    <h3 className="font-semibold text-gray-800">
-                      Notificações {notificacoesNaoLidas > 0 && `(${notificacoesNaoLidas})`}
-                    </h3>
-                    {notificacoesNaoLidas > 0 && (
-                      <button
-                        onClick={marcarTodasComoLidas}
-                        className="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                      >
-                        Marcar todas como lidas
-                      </button>
-                    )}
+                  <div className="p-4 border-b border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-gray-800">
+                        Notificações {notificacoesNaoLidas > 0 && `(${notificacoesNaoLidas})`}
+                      </h3>
+                      {notificacoesNaoLidas > 0 && (
+                        <button
+                          onClick={marcarTodasComoLidas}
+                          className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                        >
+                          Marcar todas como lidas
+                        </button>
+                      )}
+                    </div>
+                    
+                    {/* ✅ NOVO: Status de sincronização */}
+                    <div className={`flex items-center space-x-2 text-xs ${
+                      isUpdating ? 'text-blue-600' : 'text-green-600'
+                    }`}>
+                      {isUpdating ? (
+                        <>
+                          <RefreshCw size={12} className="animate-spin" />
+                          <span>Atualizando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                          <span>Sincronizado • {lastUpdate.toLocaleTimeString('pt-BR')}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Lista de Notificações */}
@@ -275,7 +334,9 @@ const Header = () => {
                       agendamentosOnline.map(ag => (
                         <div 
                           key={ag.id}
-                          className="p-4 hover:bg-gray-50 border-b border-gray-100 transition-colors"
+                          className={`p-4 hover:bg-gray-50 border-b border-gray-100 transition-all ${
+                            isUpdating ? 'opacity-50' : 'opacity-100'
+                          }`}
                         >
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center space-x-2">
@@ -334,24 +395,37 @@ const Header = () => {
                         <p className="text-xs mt-2">
                           Agendamentos online aparecerão aqui
                         </p>
+                        {isUpdating && (
+                          <div className="mt-3 flex items-center justify-center space-x-2 text-xs text-blue-600">
+                            <RefreshCw size={12} className="animate-spin" />
+                            <span>Verificando novos agendamentos...</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
 
                   {/* Footer */}
                   {agendamentosOnline.length > 0 && (
-                    <div className="p-3 border-t border-gray-200 text-center">
+                    <div className="p-3 border-t border-gray-200">
                       <button
                         onClick={() => {
                           setShowNotifications(false);
                           navigate('/agendamentos');
                         }}
-                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                        className="w-full text-sm text-purple-600 hover:text-purple-700 font-medium"
                       >
                         Ver todos os agendamentos
                       </button>
                     </div>
                   )}
+                  
+                  {/* ✅ NOVO: Info de atualização automática */}
+                  <div className="px-3 pb-3">
+                    <p className="text-xs text-center text-gray-500">
+                      🔄 Atualização automática a cada 2 segundos
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
