@@ -1,4 +1,4 @@
-// src/components/auth/RegisterModal.jsx - Modal de Cadastro
+// src/components/auth/RegisterModal.jsx - CORRIGIDO: Permitir fechar modal
 
 import { useState } from 'react';
 import { X, User, Mail, Lock, Phone, Building2, AlertCircle } from 'lucide-react';
@@ -29,8 +29,6 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
       ...prev,
       [name]: processedValue
     }));
-
-   
 
     // Limpar erro do campo
     if (errors[name]) {
@@ -87,23 +85,68 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
     setIsLoading(false);
 
     if (result.success) {
-      // Cadastro bem-sucedido
-      onClose();
+      // Limpar formulário
+      setFormData({
+        nome: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        telefone: '',
+        nomeSalao: ''
+      });
+      setErrors({});
+      // Modal será fechado pelo componente pai
     } else {
       // Mostrar erro
       setErrors({ submit: result.error });
     }
   };
 
+  const handleClose = () => {
+    // Limpar formulário ao fechar
+    setFormData({
+      nome: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      telefone: '',
+      nomeSalao: ''
+    });
+    setErrors({});
+    setIsLoading(false);
+    onClose();
+  };
+
+  // Fechar ao clicar fora do modal
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
+  // Fechar com tecla ESC
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      handleClose();
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4"
+      onClick={handleOverlayClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
+    >
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative">
         {/* Botão Fechar */}
         <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          onClick={handleClose}
+          disabled={isLoading}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+          aria-label="Fechar"
         >
           <X size={24} />
         </button>
@@ -143,7 +186,8 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
                 name="nome"
                 value={formData.nome}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="João Silva"
               />
             </div>
@@ -162,7 +206,8 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="seu@email.com"
               />
             </div>
@@ -181,7 +226,8 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
                 name="telefone"
                 value={formData.telefone}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="(11) 98765-4321"
               />
             </div>
@@ -200,7 +246,8 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
                 name="nomeSalao"
                 value={formData.nomeSalao}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Salão Beleza Total"
               />
             </div>
@@ -219,7 +266,8 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Mínimo 6 caracteres"
               />
             </div>
@@ -238,7 +286,8 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
                 name="confirmPassword"
                 value={formData.confirmPassword}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Digite a senha novamente"
               />
             </div>

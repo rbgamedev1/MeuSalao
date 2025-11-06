@@ -1,7 +1,7 @@
-// src/components/layout/Header.jsx - ATUALIZADO COM LOGOUT
+// src/components/layout/Header.jsx - COM NOTIFICAÇÕES DE AGENDAMENTOS ONLINE
 
-import { useState, useContext } from 'react';
-import { Bell, Search, ChevronDown, Plus, LogOut, User } from 'lucide-react';
+import { useState, useContext, useEffect } from 'react';
+import { Bell, ChevronDown, Plus, LogOut, User, Calendar, Clock, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from "../../contexts/SalaoContext";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -10,12 +10,17 @@ import MaskedInput from '../MaskedInput';
 
 const Header = () => {
   const navigate = useNavigate();
-  const { salaoAtual, saloes, setSalaoAtual, adicionarSalao } = useContext(SalaoContext);
+  const { salaoAtual, saloes, setSalaoAtual, adicionarSalao, agendamentos, clientes, servicos, profissionais } = useContext(SalaoContext);
   const { currentUser, logout } = useContext(AuthContext);
   
   const [showSaloes, setShowSaloes] = useState(false);
   const [showNovoSalaoModal, setShowNovoSalaoModal] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notificacoesLidas, setNotificacoesLidas] = useState(() => {
+    const saved = localStorage.getItem('notificacoesLidas');
+    return saved ? JSON.parse(saved) : [];
+  });
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -24,6 +29,34 @@ const Header = () => {
     email: '',
     plano: 'inicial'
   });
+
+  // Obter agendamentos online não lidos
+  const agendamentosOnline = agendamentos.filter(ag => 
+    ag.salaoId === salaoAtual.id && 
+    ag.origemAgendamento === 'online' &&
+    !notificacoesLidas.includes(ag.id)
+  ).sort((a, b) => {
+    // Ordenar por data/hora mais recentes
+    const dateA = new Date(ag.criadoEm || 0);
+    const dateB = new Date(ag.criadoEm || 0);
+    return dateB - dateA;
+  });
+
+  const notificacoesNaoLidas = agendamentosOnline.length;
+
+  // Salvar notificações lidas
+  useEffect(() => {
+    localStorage.setItem('notificacoesLidas', JSON.stringify(notificacoesLidas));
+  }, [notificacoesLidas]);
+
+  const marcarComoLida = (agendamentoId) => {
+    setNotificacoesLidas(prev => [...prev, agendamentoId]);
+  };
+
+  const marcarTodasComoLidas = () => {
+    const idsOnline = agendamentosOnline.map(ag => ag.id);
+    setNotificacoesLidas(prev => [...prev, ...idsOnline]);
+  };
 
   const handleOpenNovoSalaoModal = () => {
     setShowSaloes(false);
@@ -82,6 +115,43 @@ const Header = () => {
 
     const limite = planosLimites[salaoAtual.plano] || 1;
     return saloes.length < limite;
+  };
+
+  const getClienteNome = (clienteId) => {
+    const cliente = clientes.find(c => c.id === clienteId);
+    return cliente?.nome || 'Cliente';
+  };
+
+  const getServicoNome = (servicoId) => {
+    const servico = servicos.find(s => s.id === servicoId);
+    return servico?.nome || 'Serviço';
+  };
+
+  const getProfissionalNome = (profissionalId) => {
+    const profissional = profissionais.find(p => p.id === profissionalId);
+    return profissional?.nome || 'Profissional';
+  };
+
+  const formatarDataHora = (dataStr, horaStr) => {
+    return `${dataStr} às ${horaStr}`;
+  };
+
+  const getTempoDecorrido = (criadoEm) => {
+    if (!criadoEm) return 'Agora';
+    
+    const agora = new Date();
+    const criado = new Date(criadoEm);
+    const diffMs = agora - criado;
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Agora';
+    if (diffMins < 60) return `Há ${diffMins} min`;
+    
+    const diffHoras = Math.floor(diffMins / 60);
+    if (diffHoras < 24) return `Há ${diffHoras}h`;
+    
+    const diffDias = Math.floor(diffHoras / 24);
+    return `Há ${diffDias}d`;
   };
 
   return (
@@ -165,23 +235,126 @@ const Header = () => {
             )}
           </div>
 
-          {/* Busca e Ações */}
+          {/* Notificações e Menu do Usuário */}
           <div className="flex items-center space-x-4">
-            {/* Busca */}
-            <div className="relative hidden md:block">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                className="pl-10 pr-4 py-2 w-64 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
-
             {/* Notificações */}
-            <button className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <Bell size={22} className="text-gray-600" />
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setShowNotifications(!showNotifications)}
+                className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <Bell size={22} className="text-gray-600" />
+                {notificacoesNaoLidas > 0 && (
+                  <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold">
+                    {notificacoesNaoLidas > 9 ? '9+' : notificacoesNaoLidas}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown de Notificações */}
+              {showNotifications && (
+                <div className="absolute top-full right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden">
+                  {/* Header */}
+                  <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-800">
+                      Notificações {notificacoesNaoLidas > 0 && `(${notificacoesNaoLidas})`}
+                    </h3>
+                    {notificacoesNaoLidas > 0 && (
+                      <button
+                        onClick={marcarTodasComoLidas}
+                        className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                      >
+                        Marcar todas como lidas
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Lista de Notificações */}
+                  <div className="max-h-80 overflow-y-auto">
+                    {agendamentosOnline.length > 0 ? (
+                      agendamentosOnline.map(ag => (
+                        <div 
+                          key={ag.id}
+                          className="p-4 hover:bg-gray-50 border-b border-gray-100 transition-colors"
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                <Calendar size={16} className="text-green-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-semibold text-gray-800">
+                                  Novo agendamento online
+                                </p>
+                                <p className="text-xs text-gray-500">
+                                  {getTempoDecorrido(ag.criadoEm)}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => marcarComoLida(ag.id)}
+                              className="p-1 hover:bg-gray-200 rounded transition-colors"
+                              title="Marcar como lida"
+                            >
+                              <X size={14} className="text-gray-400" />
+                            </button>
+                          </div>
+
+                          <div className="ml-10 space-y-1">
+                            <p className="text-sm text-gray-700">
+                              <strong>{getClienteNome(ag.clienteId)}</strong> agendou <strong>{getServicoNome(ag.servicoId)}</strong>
+                            </p>
+                            <div className="flex items-center space-x-3 text-xs text-gray-600">
+                              <div className="flex items-center space-x-1">
+                                <Calendar size={12} />
+                                <span>{formatarDataHora(ag.data, ag.horario)}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <User size={12} />
+                                <span>{getProfissionalNome(ag.profissionalId)}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => {
+                              setShowNotifications(false);
+                              navigate('/agendamentos');
+                            }}
+                            className="ml-10 mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium"
+                          >
+                            Ver detalhes →
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-gray-500">
+                        <Bell size={48} className="mx-auto mb-4 opacity-50" />
+                        <p className="text-sm">Nenhuma notificação nova</p>
+                        <p className="text-xs mt-2">
+                          Agendamentos online aparecerão aqui
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {agendamentosOnline.length > 0 && (
+                    <div className="p-3 border-t border-gray-200 text-center">
+                      <button
+                        onClick={() => {
+                          setShowNotifications(false);
+                          navigate('/agendamentos');
+                        }}
+                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                      >
+                        Ver todos os agendamentos
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Menu do Usuário */}
             <div className="relative">

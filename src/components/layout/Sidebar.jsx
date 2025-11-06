@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.jsx - CORRIGIDO: Bloqueio de recursos premium
+// src/components/layout/Sidebar.jsx - CORRIGIDO: Removido footer duplicado
 import { Link, useLocation } from 'react-router-dom';
 import { useContext } from 'react';
 import { 
@@ -58,21 +58,21 @@ const Sidebar = ({ expanded, setExpanded }) => {
       icon: DollarSign, 
       label: 'Financeiro', 
       path: '/financeiro',
-      requiresPlan: 'financeiro', // ✅ Requer Plus ou superior
+      requiresPlan: 'financeiro',
       minPlan: 'plus'
     },
     { 
       icon: BarChart3, 
       label: 'Relatórios', 
       path: '/relatorios',
-      requiresPlan: 'relatorios', // ✅ Requer Essencial ou superior
+      requiresPlan: 'relatorios',
       minPlan: 'essencial'
     },
     { 
       icon: Bell, 
       label: 'Notificações', 
       path: '/notificacoes',
-      requiresPlan: 'notificacoes', // ✅ Requer Essencial ou superior
+      requiresPlan: 'notificacoes',
       minPlan: 'essencial'
     },
     { 
@@ -85,13 +85,11 @@ const Sidebar = ({ expanded, setExpanded }) => {
 
   const isActive = (path) => location.pathname === path;
 
-  // Verificar se o item está bloqueado
   const isLocked = (item) => {
     if (!item.requiresPlan) return false;
     return !hasAccess(salaoAtual.plano, item.requiresPlan);
   };
 
-  // Obter tooltip para item bloqueado
   const getLockedTooltip = (item) => {
     if (!isLocked(item)) return null;
     return `Disponível no plano ${item.minPlan || 'superior'}`;
@@ -185,7 +183,6 @@ const Sidebar = ({ expanded, setExpanded }) => {
                   </div>
                 )}
 
-                {/* Badge de bloqueio no modo expandido */}
                 {expanded && locked && (
                   <div className="ml-auto">
                     <Lock size={16} className="text-white/60" />
@@ -196,20 +193,7 @@ const Sidebar = ({ expanded, setExpanded }) => {
           })}
         </nav>
 
-        {/* Footer com informação do plano */}
-        <div className="p-4 border-t border-white/20">
-          <div className={`flex items-center ${expanded ? 'justify-between' : 'justify-center'}`}>
-            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold flex-shrink-0">
-              BS
-            </div>
-            {expanded && (
-              <div className="ml-3 flex-1">
-                <p className="text-sm font-medium">Bruna Vidal</p>
-                <p className="text-xs text-white/70 capitalize">{salaoAtual.plano}</p>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Footer removido - informações agora estão no header */}
       </div>
     </>
   );
