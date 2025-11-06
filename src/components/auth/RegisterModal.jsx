@@ -30,6 +30,8 @@ const RegisterModal = ({ isOpen, onClose, onRegister }) => {
       [name]: processedValue
     }));
 
+   
+
     // Limpar erro do campo
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));

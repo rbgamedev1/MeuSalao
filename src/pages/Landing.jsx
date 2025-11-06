@@ -1,6 +1,6 @@
-// src/pages/Landing.jsx - ATUALIZADO COM AUTENTICAÇÃO
+// src/pages/Landing.jsx - CORRIGIDO: Redirecionamento de autenticação
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowRight, 
@@ -28,18 +28,28 @@ const Landing = () => {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Se já está logado, redirecionar para dashboard
+  // Redirecionar usuário logado para dashboard
+  useEffect(() => {
+    if (currentUser) {
+      navigate('/dashboard');
+    }
+  }, [currentUser, navigate]);
+
+  // Não renderizar landing se estiver logado (evita flash de conteúdo)
   if (currentUser) {
-    navigate('/dashboard');
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-600"></div>
+      </div>
+    );
   }
 
   const handleRegister = async (userData) => {
     const result = await register(userData);
     
     if (result.success) {
-      // Redirecionar para dashboard
-      navigate('/dashboard');
+      // O useEffect acima cuidará do redirecionamento
+      setShowRegisterModal(false);
     }
     
     return result;
@@ -49,7 +59,8 @@ const Landing = () => {
     const result = await login(email, password);
     
     if (result.success) {
-      navigate('/dashboard');
+      // O useEffect acima cuidará do redirecionamento
+      setShowLoginModal(false);
     }
     
     return result;
@@ -460,7 +471,10 @@ const Landing = () => {
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
         onLogin={handleLogin}
-        onSwitchToRegister={() => setShowRegisterModal(true)}
+        onSwitchToRegister={() => {
+          setShowLoginModal(false);
+          setShowRegisterModal(true);
+        }}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-// src/components/auth/LoginModal.jsx - Modal de Login
+// src/components/auth/LoginModal.jsx - CORRIGIDO: Permitir fechar modal
 
 import { useState } from 'react';
 import { X, Mail, Lock, AlertCircle, Scissors } from 'lucide-react';
@@ -53,21 +53,59 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
     setIsLoading(false);
 
     if (result.success) {
-      onClose();
+      // Limpar formulário
+      setFormData({
+        email: '',
+        password: ''
+      });
+      setErrors({});
+      // Modal será fechado pelo componente pai
     } else {
       setErrors({ submit: result.error });
+    }
+  };
+
+  const handleClose = () => {
+    // Limpar formulário ao fechar
+    setFormData({
+      email: '',
+      password: ''
+    });
+    setErrors({});
+    setIsLoading(false);
+    onClose();
+  };
+
+  // Fechar ao clicar fora do modal
+  const handleOverlayClick = (e) => {
+    if (e.target === e.currentTarget) {
+      handleClose();
+    }
+  };
+
+  // Fechar com tecla ESC
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      handleClose();
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 z-50 overflow-y-auto bg-black bg-opacity-50 flex items-center justify-center p-4"
+      onClick={handleOverlayClick}
+      onKeyDown={handleKeyDown}
+      tabIndex={-1}
+    >
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 relative">
         {/* Botão Fechar */}
         <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors"
+          onClick={handleClose}
+          disabled={isLoading}
+          className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
+          aria-label="Fechar"
         >
           <X size={24} />
         </button>
@@ -107,7 +145,8 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="seu@email.com"
               />
             </div>
@@ -126,7 +165,8 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
                 name="password"
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                disabled={isLoading}
+                className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
                 placeholder="Digite sua senha"
               />
             </div>
@@ -163,10 +203,11 @@ const LoginModal = ({ isOpen, onClose, onLogin, onSwitchToRegister }) => {
             Ainda não tem conta?{' '}
             <button
               onClick={() => {
-                onClose();
+                handleClose();
                 onSwitchToRegister();
               }}
-              className="text-purple-600 font-semibold hover:underline"
+              disabled={isLoading}
+              className="text-purple-600 font-semibold hover:underline disabled:opacity-50"
             >
               Criar conta grátis
             </button>
