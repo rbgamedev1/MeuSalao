@@ -1,14 +1,22 @@
-// src/components/layout/Header.jsx
+// src/components/layout/Header.jsx - ATUALIZADO COM LOGOUT
+
 import { useState, useContext } from 'react';
-import { Bell, Search, ChevronDown, Plus } from 'lucide-react';
+import { Bell, Search, ChevronDown, Plus, LogOut, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from "../../contexts/SalaoContext";
+import { AuthContext } from "../../contexts/AuthContext";
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
 
 const Header = () => {
+  const navigate = useNavigate();
   const { salaoAtual, saloes, setSalaoAtual, adicionarSalao } = useContext(SalaoContext);
+  const { currentUser, logout } = useContext(AuthContext);
+  
   const [showSaloes, setShowSaloes] = useState(false);
   const [showNovoSalaoModal, setShowNovoSalaoModal] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  
   const [formData, setFormData] = useState({
     nome: '',
     endereco: '',
@@ -46,7 +54,8 @@ const Header = () => {
     
     const novoSalao = adicionarSalao({
       ...formData,
-      logo: null
+      logo: null,
+      userId: currentUser.id
     });
     
     setSalaoAtual(novoSalao);
@@ -54,7 +63,13 @@ const Header = () => {
     alert('Salão cadastrado com sucesso!');
   };
 
-  // Verificar se o plano permite adicionar mais salões
+  const handleLogout = () => {
+    if (confirm('Tem certeza que deseja sair?')) {
+      logout();
+      navigate('/');
+    }
+  };
+
   const podeAdicionarSalao = () => {
     const planosLimites = {
       'inicial': 1,
@@ -85,7 +100,6 @@ const Header = () => {
 
             {showSaloes && (
               <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
-                {/* Lista de Salões */}
                 <div className="max-h-80 overflow-y-auto">
                   {saloes.map((salao) => (
                     <button
@@ -120,7 +134,6 @@ const Header = () => {
                   ))}
                 </div>
 
-                {/* Botão Adicionar Novo Salão */}
                 {podeAdicionarSalao() ? (
                   <div className="border-t border-gray-200 mt-2 pt-2 px-4">
                     <button
@@ -135,13 +148,10 @@ const Header = () => {
                   <div className="border-t border-gray-200 mt-2 pt-2 px-4">
                     <div className="text-xs text-gray-600 text-center py-2">
                       Limite de salões atingido para o plano {salaoAtual.plano}.
-                      <br />
-                      Faça upgrade para adicionar mais salões.
                     </div>
                   </div>
                 )}
 
-                {/* Informação sobre o plano */}
                 <div className="border-t border-gray-200 mt-2 pt-2 px-4">
                   <div className="text-xs text-gray-500">
                     {saloes.length} de {podeAdicionarSalao() ? 
@@ -155,7 +165,7 @@ const Header = () => {
             )}
           </div>
 
-          {/* Busca e Notificações */}
+          {/* Busca e Ações */}
           <div className="flex items-center space-x-4">
             {/* Busca */}
             <div className="relative hidden md:block">
@@ -172,6 +182,52 @@ const Header = () => {
               <Bell size={22} className="text-gray-600" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
+
+            {/* Menu do Usuário */}
+            <div className="relative">
+              <button
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center space-x-2 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-600 to-pink-600 flex items-center justify-center text-white font-semibold text-sm">
+                  {currentUser?.nome?.charAt(0) || 'U'}
+                </div>
+                <ChevronDown size={16} className="text-gray-500" />
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
+                  <div className="px-4 py-3 border-b border-gray-200">
+                    <p className="font-medium text-gray-800">{currentUser?.nome}</p>
+                    <p className="text-sm text-gray-500">{currentUser?.email}</p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate('/configuracoes');
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center space-x-3"
+                  >
+                    <User size={18} className="text-gray-600" />
+                    <span className="text-gray-700">Minha Conta</span>
+                  </button>
+
+                  <div className="border-t border-gray-200 mt-2 pt-2">
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        handleLogout();
+                      }}
+                      className="w-full text-left px-4 py-3 hover:bg-red-50 transition-colors flex items-center space-x-3 text-red-600"
+                    >
+                      <LogOut size={18} />
+                      <span className="font-medium">Sair</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -256,10 +312,7 @@ const Header = () => {
             >
               <option value="inicial">Inicial (Gratuito)</option>
               <option value="essencial">Essencial (R$ 29,90)</option>
-              <option value="plus">Plus (R$ 49,50)</option>
               <option value="profissional">Profissional (R$ 79,90)</option>
-              <option value="premium">Premium (R$ 99,90)</option>
-              <option value="master">Master (R$ 149,90)</option>
             </select>
           </div>
 

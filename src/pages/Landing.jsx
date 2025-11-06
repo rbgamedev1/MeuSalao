@@ -1,6 +1,7 @@
-// src/pages/Landing.jsx - APENAS 3 PLANOS ATIVOS
+// src/pages/Landing.jsx - ATUALIZADO COM AUTENTICAÇÃO
 
-import { useState } from 'react';
+import { useState, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowRight, 
   Calendar, 
@@ -12,14 +13,47 @@ import {
   CheckCircle,
   Menu,
   X,
-  Sparkles
+  Sparkles,
+  LogIn
 } from 'lucide-react';
+import { AuthContext } from '../contexts/AuthContext';
+import RegisterModal from '../components/auth/RegisterModal';
+import LoginModal from '../components/auth/LoginModal';
 
 const Landing = () => {
-  const handleNavigation = () => {
-    window.location.href = '/dashboard';
-  };
+  const navigate = useNavigate();
+  const { currentUser, register, login } = useContext(AuthContext);
+  
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  // Se já está logado, redirecionar para dashboard
+  if (currentUser) {
+    navigate('/dashboard');
+    return null;
+  }
+
+  const handleRegister = async (userData) => {
+    const result = await register(userData);
+    
+    if (result.success) {
+      // Redirecionar para dashboard
+      navigate('/dashboard');
+    }
+    
+    return result;
+  };
+
+  const handleLogin = async (email, password) => {
+    const result = await login(email, password);
+    
+    if (result.success) {
+      navigate('/dashboard');
+    }
+    
+    return result;
+  };
 
   const features = [
     {
@@ -54,7 +88,6 @@ const Landing = () => {
     }
   ];
 
-  // APENAS 3 PLANOS DISPONÍVEIS
   const plans = [
     {
       name: 'Inicial',
@@ -126,7 +159,14 @@ const Landing = () => {
                 Contato
               </a>
               <button
-                onClick={handleNavigation}
+                onClick={() => setShowLoginModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+              >
+                <LogIn size={18} />
+                <span>Entrar</span>
+              </button>
+              <button
+                onClick={() => setShowRegisterModal(true)}
                 className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
               >
                 Começar Agora
@@ -157,7 +197,19 @@ const Landing = () => {
                 Contato
               </a>
               <button
-                onClick={handleNavigation}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setShowLoginModal(true);
+                }}
+                className="w-full px-6 py-2 text-purple-600 border border-purple-600 rounded-lg hover:bg-purple-50"
+              >
+                Entrar
+              </button>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  setShowRegisterModal(true);
+                }}
                 className="w-full px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg"
               >
                 Começar Agora
@@ -190,19 +242,22 @@ const Landing = () => {
 
             <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4">
               <button
-                onClick={handleNavigation}
+                onClick={() => setShowRegisterModal(true)}
                 className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg flex items-center justify-center space-x-2 text-lg font-semibold"
               >
                 <span>Começar Gratuitamente</span>
                 <ArrowRight size={20} />
               </button>
-              <button className="w-full sm:w-auto px-8 py-4 border-2 border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-all text-lg font-semibold">
-                Ver Demonstração
+              <button 
+                onClick={() => setShowLoginModal(true)}
+                className="w-full sm:w-auto px-8 py-4 border-2 border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-all text-lg font-semibold"
+              >
+                Já tenho conta
               </button>
             </div>
 
             <p className="text-sm text-gray-500 mt-4">
-              ✨ Sem cartão de crédito • 14 dias grátis • Cancele quando quiser
+              ✨ Sem cartão de crédito • Plano gratuito para sempre • Cancele quando quiser
             </p>
           </div>
         </div>
@@ -244,7 +299,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Pricing Section - APENAS 3 PLANOS */}
+      {/* Pricing Section */}
       <section id="pricing" className="py-20 px-4 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -304,7 +359,7 @@ const Landing = () => {
                 </ul>
 
                 <button
-                  onClick={handleNavigation}
+                  onClick={() => setShowRegisterModal(true)}
                   className={`w-full py-3 rounded-lg font-semibold transition-all ${
                     plan.highlight
                       ? 'bg-white text-purple-600 hover:bg-gray-100'
@@ -317,7 +372,6 @@ const Landing = () => {
             ))}
           </div>
 
-          {/* Aviso sobre planos futuros */}
           <div className="mt-12 text-center">
             <div className="inline-block bg-blue-50 border border-blue-200 rounded-lg px-6 py-4">
               <p className="text-sm text-blue-900">
@@ -338,7 +392,7 @@ const Landing = () => {
             Junte-se a centenas de salões que já modernizaram sua gestão
           </p>
           <button
-            onClick={handleNavigation}
+            onClick={() => setShowRegisterModal(true)}
             className="px-8 py-4 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition-all shadow-lg text-lg font-semibold inline-flex items-center space-x-2"
           >
             <span>Começar Gratuitamente</span>
@@ -366,7 +420,7 @@ const Landing = () => {
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li><a href="#features" className="hover:text-white">Recursos</a></li>
                 <li><a href="#pricing" className="hover:text-white">Planos</a></li>
-                <li><a href="#" className="hover:text-white">Demonstração</a></li>
+                <li><button onClick={() => setShowRegisterModal(true)} className="hover:text-white">Demonstração</button></li>
               </ul>
             </div>
 
@@ -394,6 +448,20 @@ const Landing = () => {
           </div>
         </div>
       </footer>
+
+      {/* Modais */}
+      <RegisterModal 
+        isOpen={showRegisterModal}
+        onClose={() => setShowRegisterModal(false)}
+        onRegister={handleRegister}
+      />
+
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onLogin={handleLogin}
+        onSwitchToRegister={() => setShowRegisterModal(true)}
+      />
     </div>
   );
 };
