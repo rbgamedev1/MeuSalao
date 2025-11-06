@@ -1,4 +1,5 @@
-// src/contexts/SalaoContext.jsx
+// src/contexts/SalaoContext.jsx - PLANO PADRÃO INICIAL
+
 import { createContext, useState, useEffect, useMemo } from 'react';
 import { getTodayBR, dateFromISO } from '../utils/masks';
 
@@ -25,7 +26,7 @@ const saveToStorage = (key, value) => {
 };
 
 export const SalaoProvider = ({ children }) => {
-  // Dados iniciais padrão
+  // Dados iniciais padrão - PLANO INICIAL COMO PADRÃO
   const defaultSaloes = [
     {
       id: 1,
@@ -34,7 +35,7 @@ export const SalaoProvider = ({ children }) => {
       telefone: '(11) 98765-4321',
       email: 'contato@belezatotal.com.br',
       logo: null,
-      plano: 'profissional'
+      plano: 'inicial' // ← PLANO PADRÃO
     }
   ];
 
@@ -361,11 +362,12 @@ export const SalaoProvider = ({ children }) => {
     return () => clearTimeout(timer);
   }, [transacoes]);
 
-  // Função para adicionar novo salão
+  // Função para adicionar novo salão - PLANO INICIAL COMO PADRÃO
   const adicionarSalao = (dadosSalao) => {
     const novoSalao = {
       ...dadosSalao,
-      id: Math.max(...saloes.map(s => s.id), 0) + 1
+      id: Math.max(...saloes.map(s => s.id), 0) + 1,
+      plano: dadosSalao.plano || 'inicial' // ← Garantir plano inicial
     };
     setSaloes([...saloes, novoSalao]);
     return novoSalao;

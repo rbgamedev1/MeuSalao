@@ -1,4 +1,5 @@
-// src/pages/Landing.jsx
+// src/pages/Landing.jsx - APENAS 3 PLANOS ATIVOS
+
 import { useState } from 'react';
 import { 
   ArrowRight, 
@@ -9,11 +10,11 @@ import {
   Bell,
   BarChart3,
   CheckCircle,
-  Crown,
   Menu,
   X,
   Sparkles
 } from 'lucide-react';
+
 const Landing = () => {
   const handleNavigation = () => {
     window.location.href = '/dashboard';
@@ -53,6 +54,7 @@ const Landing = () => {
     }
   ];
 
+  // APENAS 3 PLANOS DISPONÍVEIS
   const plans = [
     {
       name: 'Inicial',
@@ -62,6 +64,7 @@ const Landing = () => {
         '1 profissional',
         'Até 10 clientes',
         'Agendamento básico',
+        'Notificações de confirmação',
         'Suporte por email'
       ],
       highlight: false
@@ -74,9 +77,9 @@ const Landing = () => {
         '1 salão',
         'Até 2 profissionais',
         'Até 30 clientes',
-        'Agenda online',
-        'Notificações por email',
-        'Relatórios básicos'
+        'Agenda online compartilhável',
+        'Notificações automáticas',
+        'Relatórios de agendamentos'
       ],
       highlight: false
     },
@@ -91,24 +94,10 @@ const Landing = () => {
         'Financeiro completo',
         'Todas notificações',
         'Relatórios avançados',
-        'Link personalizado'
+        'Link personalizado',
+        'Análise de comissões'
       ],
       highlight: true
-    },
-    {
-      name: 'Master',
-      price: 'R$ 149,90',
-      period: '/mês',
-      features: [
-        'Salões ilimitados',
-        'Profissionais ilimitados',
-        'Clientes ilimitados',
-        'Todos recursos',
-        'Integrações externas',
-        'Suporte prioritário',
-        'App personalizado'
-      ],
-      highlight: false
     }
   ];
 
@@ -255,7 +244,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Pricing Section */}
+      {/* Pricing Section - APENAS 3 PLANOS */}
       <section id="pricing" className="py-20 px-4 bg-gray-50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
@@ -267,7 +256,7 @@ const Landing = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             {plans.map((plan, index) => (
               <div
                 key={index}
@@ -280,7 +269,7 @@ const Landing = () => {
                 {plan.highlight && (
                   <div className="text-center mb-4">
                     <span className="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full">
-                      MAIS POPULAR
+                      RECOMENDADO
                     </span>
                   </div>
                 )}
@@ -326,6 +315,15 @@ const Landing = () => {
                 </button>
               </div>
             ))}
+          </div>
+
+          {/* Aviso sobre planos futuros */}
+          <div className="mt-12 text-center">
+            <div className="inline-block bg-blue-50 border border-blue-200 rounded-lg px-6 py-4">
+              <p className="text-sm text-blue-900">
+                💡 <strong>Novos planos em breve!</strong> Estamos preparando mais opções para atender melhor seu negócio.
+              </p>
+            </div>
           </div>
         </div>
       </section>

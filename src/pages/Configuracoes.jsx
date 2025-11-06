@@ -1,4 +1,4 @@
-// src/pages/Configuracoes.jsx - MODULARIZADO
+// src/pages/Configuracoes.jsx - USANDO PLANOS_DISPONIVEIS
 
 import { useState, useContext } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
@@ -12,7 +12,7 @@ import ConfiguracoesProfissionais from '../components/configuracoes/Configuracoe
 import ConfiguracoesPlanos from '../components/configuracoes/ConfiguracoesPlanos';
 import ProfissionalModal from '../components/configuracoes/ProfissionalModal';
 
-// Dados dos planos
+// Dados dos planos - TODOS (disponíveis e futuros)
 import { PLANOS_DATA } from '../data/planosData';
 
 const Configuracoes = () => {
@@ -182,9 +182,17 @@ const Configuracoes = () => {
     }
   };
 
-  // Handler para Planos
+  // Handler para Planos - VALIDAÇÃO DE PLANOS DISPONÍVEIS
   const handleChangePlano = (planoId) => {
-    if (confirm(`Deseja alterar para o ${PLANOS_DATA.find(p => p.id === planoId).nome}?`)) {
+    const planoSelecionado = PLANOS_DATA.find(p => p.id === planoId);
+    
+    // Verificar se o plano está disponível
+    if (!planoSelecionado.disponivel) {
+      alert(`O plano ${planoSelecionado.nome} estará disponível em breve!\n\nEntre em contato conosco para receber novidades sobre este plano.`);
+      return;
+    }
+
+    if (confirm(`Deseja alterar para o ${planoSelecionado.nome}?`)) {
       atualizarSalao(salaoAtual.id, { plano: planoId });
       alert('Plano alterado com sucesso!');
     }

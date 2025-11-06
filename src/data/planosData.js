@@ -1,4 +1,4 @@
-// src/data/planosData.js - Dados centralizados dos planos
+// src/data/planosData.js - APENAS 3 PLANOS DISPONÍVEIS
 
 export const PLANOS_DATA = [
   {
@@ -6,6 +6,7 @@ export const PLANOS_DATA = [
     nome: 'Plano Inicial',
     preco: 'Gratuito',
     destaque: false,
+    disponivel: true,
     recursos: [
       '1 salão',
       '1 profissional',
@@ -24,6 +25,7 @@ export const PLANOS_DATA = [
     nome: 'Plano Essencial',
     preco: 'R$ 29,90',
     destaque: false,
+    disponivel: true,
     recursos: [
       '1 salão',
       'Até 2 profissionais',
@@ -38,28 +40,11 @@ export const PLANOS_DATA = [
     ]
   },
   {
-    id: 'plus',
-    nome: 'Plano Plus',
-    preco: 'R$ 49,50',
-    destaque: false,
-    recursos: [
-      '1 salão',
-      'Até 5 profissionais',
-      'Até 100 clientes',
-      '5 categorias, 5 serviços por categoria',
-      '5 fornecedores, 15 produtos',
-      '✅ Controle financeiro simples',
-      '✅ Agenda online avançada',
-      '✅ Notificações: confirmação + cancelamento',
-      '✅ Relatórios básicos',
-      '❌ Sem notificações de alteração/avaliação'
-    ]
-  },
-  {
     id: 'profissional',
     nome: 'Plano Profissional',
     preco: 'R$ 79,90',
     destaque: true,
+    disponivel: true,
     recursos: [
       'Até 2 salões',
       'Até 10 profissionais por salão',
@@ -70,8 +55,20 @@ export const PLANOS_DATA = [
       '✅ Link de agendamento personalizado',
       '✅ Notificações: confirmação + alteração + cancelamento',
       '✅ Relatórios detalhados',
-      '✅ Análise de comissões',
-      '❌ Sem solicitação de avaliação automática'
+      '✅ Análise de comissões'
+    ]
+  },
+  // PLANOS FUTUROS - Desabilitados temporariamente
+  {
+    id: 'plus',
+    nome: 'Plano Plus',
+    preco: 'R$ 49,50',
+    destaque: false,
+    disponivel: false, // ← DESABILITADO
+    recursos: [
+      'Em breve...',
+      'Recursos intermediários',
+      'Entre em contato para mais informações'
     ]
   },
   {
@@ -79,18 +76,11 @@ export const PLANOS_DATA = [
     nome: 'Plano Premium',
     preco: 'R$ 99,90',
     destaque: false,
+    disponivel: false, // ← DESABILITADO
     recursos: [
-      'Até 5 salões',
-      'Até 10 profissionais por salão',
-      'Até 500 clientes por salão',
-      'Categorias e serviços ilimitados',
-      '30 fornecedores, 100 produtos',
-      '✅ Financeiro completo',
-      '✅ Relatórios multi-salão',
-      '✅ TODAS as notificações (confirmação, alteração, cancelamento)',
-      '✅ Solicitação automática de avaliação/feedback',
-      '✅ Análises comparativas',
-      '✅ Previsões e projeções'
+      'Em breve...',
+      'Recursos avançados',
+      'Entre em contato para mais informações'
     ]
   },
   {
@@ -98,19 +88,14 @@ export const PLANOS_DATA = [
     nome: 'Plano Master',
     preco: 'R$ 149,90',
     destaque: false,
+    disponivel: false, // ← DESABILITADO
     recursos: [
-      'Salões ilimitados',
-      'Profissionais ilimitados',
-      'Clientes ilimitados',
-      'Todos recursos liberados',
-      '✅ TODAS as notificações incluindo avaliações',
-      '✅ Estoque, campanhas e integrações',
-      '✅ Marketing e fiscal (NFe)',
-      '✅ Histórico completo',
-      '✅ Backup em nuvem',
-      '✅ Prioridade no suporte',
-      '✅ App personalizado',
-      '✅ Relatórios customizáveis'
+      'Em breve...',
+      'Recursos premium',
+      'Entre em contato para mais informações'
     ]
   }
 ];
+
+// Apenas planos disponíveis para compra
+export const PLANOS_DISPONIVEIS = PLANOS_DATA.filter(p => p.disponivel);
