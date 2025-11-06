@@ -1,4 +1,4 @@
-// src/components/layout/Header.jsx - COM NOTIFICAÇÕES EM TEMPO REAL
+// src/components/layout/Header.jsx - CORRIGIDO: Safe rendering
 
 import { useState, useContext, useEffect, useMemo } from 'react';
 import { Bell, ChevronDown, Plus, LogOut, User, Calendar, Clock, X, RefreshCw } from 'lucide-react';
@@ -39,7 +39,7 @@ const Header = () => {
     plano: 'inicial'
   });
 
-  // ✅ CORREÇÃO: Usar hook de tempo real para notificações
+  // Hook de tempo real
   const { 
     agendamentos: agendamentosRealtime, 
     isUpdating, 
@@ -47,21 +47,31 @@ const Header = () => {
     forceRefresh 
   } = useRealtimeAgendamentos(salaoAtual?.id, 2000);
 
-  // ✅ Calcular agendamentos online não lidos em tempo real
+  // ✅ CORREÇÃO CRÍTICA: Safe filtering com verificação de dados
   const agendamentosOnline = useMemo(() => {
     if (!salaoAtual) return [];
     
-    return agendamentosRealtime
-      .filter(ag => 
-        ag.salaoId === salaoAtual.id && 
-        ag.origemAgendamento === 'online' &&
-        !notificacoesLidas.includes(ag.id)
-      )
-      .sort((a, b) => {
-        const dateA = new Date(ag.criadoEm || 0);
-        const dateB = new Date(ag.criadoEm || 0);
-        return dateB - dateA;
-      });
+    try {
+      return agendamentosRealtime
+        .filter(ag => {
+          // Verificação segura
+          if (!ag || !ag.salaoId || !ag.id) return false;
+          
+          return (
+            ag.salaoId === salaoAtual.id && 
+            ag.origemAgendamento === 'online' &&
+            !notificacoesLidas.includes(ag.id)
+          );
+        })
+        .sort((a, b) => {
+          const dateA = new Date(a.criadoEm || 0);
+          const dateB = new Date(b.criadoEm || 0);
+          return dateB - dateA;
+        });
+    } catch (error) {
+      console.error('Erro ao filtrar agendamentos:', error);
+      return [];
+    }
   }, [agendamentosRealtime, salaoAtual, notificacoesLidas]);
 
   const notificacoesNaoLidas = agendamentosOnline.length;
@@ -71,12 +81,11 @@ const Header = () => {
     localStorage.setItem('notificacoesLidas', JSON.stringify(notificacoesLidas));
   }, [notificacoesLidas]);
 
-  // ✅ NOVO: Som de notificação quando chega novo agendamento
+  // Som de notificação
   useEffect(() => {
     const previousCount = parseInt(localStorage.getItem('previousNotificationCount') || '0');
     
     if (notificacoesNaoLidas > previousCount && previousCount > 0) {
-      // Novo agendamento detectado - reproduzir som (opcional)
       console.log('🔔 Novo agendamento online recebido!');
     }
     
@@ -151,41 +160,62 @@ const Header = () => {
     return saloes.length < limite;
   };
 
+  // ✅ CORREÇÃO CRÍTICA: Safe getters com fallback
   const getClienteNome = (clienteId) => {
-    const cliente = clientes.find(c => c.id === clienteId);
-    return cliente?.nome || 'Cliente';
+    try {
+      const cliente = clientes.find(c => c.id === clienteId);
+      return cliente?.nome || 'Cliente não encontrado';
+    } catch {
+      return 'Cliente';
+    }
   };
 
   const getServicoNome = (servicoId) => {
-    const servico = servicos.find(s => s.id === servicoId);
-    return servico?.nome || 'Serviço';
+    try {
+      const servico = servicos.find(s => s.id === servicoId);
+      return servico?.nome || 'Serviço não encontrado';
+    } catch {
+      return 'Serviço';
+    }
   };
 
   const getProfissionalNome = (profissionalId) => {
-    const profissional = profissionais.find(p => p.id === profissionalId);
-    return profissional?.nome || 'Profissional';
+    try {
+      const profissional = profissionais.find(p => p.id === profissionalId);
+      return profissional?.nome || 'Profissional não encontrado';
+    } catch {
+      return 'Profissional';
+    }
   };
 
   const formatarDataHora = (dataStr, horaStr) => {
-    return `${dataStr} às ${horaStr}`;
+    try {
+      return `${dataStr} às ${horaStr}`;
+    } catch {
+      return 'Data não disponível';
+    }
   };
 
   const getTempoDecorrido = (criadoEm) => {
-    if (!criadoEm) return 'Agora';
-    
-    const agora = new Date();
-    const criado = new Date(criadoEm);
-    const diffMs = agora - criado;
-    const diffMins = Math.floor(diffMs / 60000);
-    
-    if (diffMins < 1) return 'Agora';
-    if (diffMins < 60) return `Há ${diffMins} min`;
-    
-    const diffHoras = Math.floor(diffMins / 60);
-    if (diffHoras < 24) return `Há ${diffHoras}h`;
-    
-    const diffDias = Math.floor(diffHoras / 24);
-    return `Há ${diffDias}d`;
+    try {
+      if (!criadoEm) return 'Agora';
+      
+      const agora = new Date();
+      const criado = new Date(criadoEm);
+      const diffMs = agora - criado;
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 1) return 'Agora';
+      if (diffMins < 60) return `Há ${diffMins} min`;
+      
+      const diffHoras = Math.floor(diffMins / 60);
+      if (diffHoras < 24) return `Há ${diffHoras}h`;
+      
+      const diffDias = Math.floor(diffHoras / 24);
+      return `Há ${diffDias}d`;
+    } catch {
+      return 'Recente';
+    }
   };
 
   return (
@@ -198,7 +228,7 @@ const Header = () => {
               onClick={() => setShowSaloes(!showSaloes)}
               className="flex items-center space-x-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
             >
-              <span className="font-medium text-gray-700">{salaoAtual.nome}</span>
+              <span className="font-medium text-gray-700">{salaoAtual?.nome || 'Sem salão'}</span>
               <ChevronDown size={18} className="text-gray-500" />
             </button>
 
@@ -213,13 +243,13 @@ const Header = () => {
                         setShowSaloes(false);
                       }}
                       className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                        salao.id === salaoAtual.id ? 'bg-purple-50' : ''
+                        salao.id === salaoAtual?.id ? 'bg-purple-50' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className={`font-medium ${
-                            salao.id === salaoAtual.id ? 'text-purple-600' : 'text-gray-800'
+                            salao.id === salaoAtual?.id ? 'text-purple-600' : 'text-gray-800'
                           }`}>
                             {salao.nome}
                           </div>
@@ -230,7 +260,7 @@ const Header = () => {
                             </span>
                           </div>
                         </div>
-                        {salao.id === salaoAtual.id && (
+                        {salao.id === salaoAtual?.id && (
                           <div className="w-2 h-2 bg-purple-600 rounded-full mt-2"></div>
                         )}
                       </div>
@@ -251,20 +281,10 @@ const Header = () => {
                 ) : (
                   <div className="border-t border-gray-200 mt-2 pt-2 px-4">
                     <div className="text-xs text-gray-600 text-center py-2">
-                      Limite de salões atingido para o plano {salaoAtual.plano}.
+                      Limite de salões atingido para o plano {salaoAtual?.plano || 'atual'}.
                     </div>
                   </div>
                 )}
-
-                <div className="border-t border-gray-200 mt-2 pt-2 px-4">
-                  <div className="text-xs text-gray-500">
-                    {saloes.length} de {podeAdicionarSalao() ? 
-                      (salaoAtual.plano === 'master' ? '∞' : 
-                       salaoAtual.plano === 'premium' ? '5' : 
-                       salaoAtual.plano === 'profissional' ? '2' : '1') 
-                      : saloes.length} salões cadastrados
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -283,7 +303,6 @@ const Header = () => {
                     {notificacoesNaoLidas > 9 ? '9+' : notificacoesNaoLidas}
                   </span>
                 )}
-                {/* ✅ NOVO: Indicador de sincronização */}
                 {isUpdating && (
                   <div className="absolute -bottom-1 -right-1">
                     <RefreshCw size={12} className="text-blue-500 animate-spin" />
@@ -310,7 +329,6 @@ const Header = () => {
                       )}
                     </div>
                     
-                    {/* ✅ NOVO: Status de sincronização */}
                     <div className={`flex items-center space-x-2 text-xs ${
                       isUpdating ? 'text-blue-600' : 'text-green-600'
                     }`}>
@@ -331,63 +349,68 @@ const Header = () => {
                   {/* Lista de Notificações */}
                   <div className="max-h-80 overflow-y-auto">
                     {agendamentosOnline.length > 0 ? (
-                      agendamentosOnline.map(ag => (
-                        <div 
-                          key={ag.id}
-                          className={`p-4 hover:bg-gray-50 border-b border-gray-100 transition-all ${
-                            isUpdating ? 'opacity-50' : 'opacity-100'
-                          }`}
-                        >
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                <Calendar size={16} className="text-green-600" />
+                      agendamentosOnline.map(ag => {
+                        // ✅ PROTEÇÃO: Verificar se ag existe
+                        if (!ag) return null;
+
+                        return (
+                          <div 
+                            key={ag.id}
+                            className={`p-4 hover:bg-gray-50 border-b border-gray-100 transition-all ${
+                              isUpdating ? 'opacity-50' : 'opacity-100'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-center space-x-2">
+                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                  <Calendar size={16} className="text-green-600" />
+                                </div>
+                                <div>
+                                  <p className="text-sm font-semibold text-gray-800">
+                                    Novo agendamento online
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {getTempoDecorrido(ag.criadoEm)}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-sm font-semibold text-gray-800">
-                                  Novo agendamento online
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  {getTempoDecorrido(ag.criadoEm)}
-                                </p>
+                              <button
+                                onClick={() => marcarComoLida(ag.id)}
+                                className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                title="Marcar como lida"
+                              >
+                                <X size={14} className="text-gray-400" />
+                              </button>
+                            </div>
+
+                            <div className="ml-10 space-y-1">
+                              <p className="text-sm text-gray-700">
+                                <strong>{getClienteNome(ag.clienteId)}</strong> agendou <strong>{getServicoNome(ag.servicoId)}</strong>
+                              </p>
+                              <div className="flex items-center space-x-3 text-xs text-gray-600">
+                                <div className="flex items-center space-x-1">
+                                  <Calendar size={12} />
+                                  <span>{formatarDataHora(ag.data, ag.horario)}</span>
+                                </div>
+                                <div className="flex items-center space-x-1">
+                                  <User size={12} />
+                                  <span>{getProfissionalNome(ag.profissionalId)}</span>
+                                </div>
                               </div>
                             </div>
+
                             <button
-                              onClick={() => marcarComoLida(ag.id)}
-                              className="p-1 hover:bg-gray-200 rounded transition-colors"
-                              title="Marcar como lida"
+                              onClick={() => {
+                                setShowNotifications(false);
+                                navigate('/agendamentos');
+                              }}
+                              className="ml-10 mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium"
                             >
-                              <X size={14} className="text-gray-400" />
+                              Ver detalhes →
                             </button>
                           </div>
-
-                          <div className="ml-10 space-y-1">
-                            <p className="text-sm text-gray-700">
-                              <strong>{getClienteNome(ag.clienteId)}</strong> agendou <strong>{getServicoNome(ag.servicoId)}</strong>
-                            </p>
-                            <div className="flex items-center space-x-3 text-xs text-gray-600">
-                              <div className="flex items-center space-x-1">
-                                <Calendar size={12} />
-                                <span>{formatarDataHora(ag.data, ag.horario)}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <User size={12} />
-                                <span>{getProfissionalNome(ag.profissionalId)}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              setShowNotifications(false);
-                              navigate('/agendamentos');
-                            }}
-                            className="ml-10 mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium"
-                          >
-                            Ver detalhes →
-                          </button>
-                        </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="p-8 text-center text-gray-500">
                         <Bell size={48} className="mx-auto mb-4 opacity-50" />
@@ -420,7 +443,6 @@ const Header = () => {
                     </div>
                   )}
                   
-                  {/* ✅ NOVO: Info de atualização automática */}
                   <div className="px-3 pb-3">
                     <p className="text-xs text-center text-gray-500">
                       🔄 Atualização automática a cada 2 segundos
