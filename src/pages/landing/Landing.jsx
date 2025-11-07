@@ -1,4 +1,4 @@
-// src/pages/Landing.jsx - CORRIGIDO: Redirecionamento de autenticação
+// src/pages/landing/Landing.jsx
 
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,9 +16,9 @@ import {
   Sparkles,
   LogIn
 } from 'lucide-react';
-import { AuthContext } from '../contexts/AuthContext';
-import RegisterModal from '../components/auth/RegisterModal';
-import LoginModal from '../components/auth/LoginModal';
+import { AuthContext } from '../../contexts/AuthContext';
+import RegisterModal from '../../components/auth/RegisterModal';
+import LoginModal from '../../components/auth/LoginModal';
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -28,14 +28,12 @@ const Landing = () => {
   const [showRegisterModal, setShowRegisterModal] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
 
-  // Redirecionar usuário logado para dashboard
   useEffect(() => {
     if (currentUser) {
       navigate('/dashboard');
     }
   }, [currentUser, navigate]);
 
-  // Não renderizar landing se estiver logado (evita flash de conteúdo)
   if (currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-pink-50">
@@ -48,7 +46,6 @@ const Landing = () => {
     const result = await register(userData);
     
     if (result.success) {
-      // O useEffect acima cuidará do redirecionamento
       setShowRegisterModal(false);
     }
     
@@ -59,7 +56,6 @@ const Landing = () => {
     const result = await login(email, password);
     
     if (result.success) {
-      // O useEffect acima cuidará do redirecionamento
       setShowLoginModal(false);
     }
     
@@ -166,9 +162,12 @@ const Landing = () => {
               <a href="#pricing" className="text-gray-700 hover:text-purple-600 transition-colors">
                 Planos
               </a>
-              <a href="#contact" className="text-gray-700 hover:text-purple-600 transition-colors">
+              <button
+                onClick={() => navigate('/contact')}
+                className="text-gray-700 hover:text-purple-600 transition-colors"
+              >
                 Contato
-              </a>
+              </button>
               <button
                 onClick={() => setShowLoginModal(true)}
                 className="flex items-center space-x-2 px-4 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
@@ -204,9 +203,12 @@ const Landing = () => {
               <a href="#pricing" className="block text-gray-700 hover:text-purple-600">
                 Planos
               </a>
-              <a href="#contact" className="block text-gray-700 hover:text-purple-600">
+              <button
+                onClick={() => navigate('/contact')}
+                className="block w-full text-left text-gray-700 hover:text-purple-600"
+              >
                 Contato
-              </a>
+              </button>
               <button
                 onClick={() => {
                   setMenuOpen(false);
@@ -431,25 +433,58 @@ const Landing = () => {
               <ul className="space-y-2 text-gray-400 text-sm">
                 <li><a href="#features" className="hover:text-white">Recursos</a></li>
                 <li><a href="#pricing" className="hover:text-white">Planos</a></li>
-                <li><button onClick={() => setShowRegisterModal(true)} className="hover:text-white">Demonstração</button></li>
+                <li>
+                  <button 
+                    onClick={() => navigate('/demo')} 
+                    className="hover:text-white"
+                  >
+                    Demonstração
+                  </button>
+                </li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold mb-4">Empresa</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" className="hover:text-white">Sobre</a></li>
-                <li><a href="#" className="hover:text-white">Blog</a></li>
-                <li><a href="#contact" className="hover:text-white">Contato</a></li>
+                <li>
+                  <button 
+                    onClick={() => navigate('/about')} 
+                    className="hover:text-white"
+                  >
+                    Sobre
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => navigate('/contact')} 
+                    className="hover:text-white"
+                  >
+                    Contato
+                  </button>
+                </li>
               </ul>
             </div>
 
             <div>
               <h4 className="font-semibold mb-4">Suporte</h4>
               <ul className="space-y-2 text-gray-400 text-sm">
-                <li><a href="#" className="hover:text-white">Central de Ajuda</a></li>
-                <li><a href="#" className="hover:text-white">Documentação</a></li>
-                <li><a href="#" className="hover:text-white">Status</a></li>
+                <li>
+                  <button 
+                    onClick={() => navigate('/help')} 
+                    className="hover:text-white"
+                  >
+                    Central de Ajuda
+                  </button>
+                </li>
+                <li>
+                  <button 
+                    onClick={() => navigate('/documentation')} 
+                    className="hover:text-white"
+                  >
+                    Documentação
+                  </button>
+                </li>
               </ul>
             </div>
           </div>

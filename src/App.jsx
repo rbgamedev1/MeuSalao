@@ -4,7 +4,12 @@ import { useState, useEffect, useContext } from 'react';
 import { Menu } from 'lucide-react';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
-import Landing from './pages/Landing';
+import Landing from './pages/landing/Landing';
+import Contact from './pages/landing/Contact';
+import About from './pages/landing/About';
+import Demo from './pages/landing/Demo';
+import Help from './pages/landing/Help';
+import Documentation from './pages/landing/Documentation';
 import Dashboard from './pages/Dashboard';
 import Agendamentos from './pages/Agendamentos';
 import Clientes from './pages/Clientes';
@@ -79,10 +84,13 @@ function App() {
       <SalaoProvider>
         <Router>
           <Routes>
-            {/* Landing Page (rota pública) */}
+            {/* Public Routes */}
             <Route path="/" element={<Landing />} />
-            
-            {/* Rotas públicas */}
+            <Route path="/contact" element={<Contact />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/demo" element={<Demo />} />
+            <Route path="/help" element={<Help />} />
+            <Route path="/documentation" element={<Documentation />} />
             <Route path="/agenda/:salaoId" element={<AgendaOnline />} />
             <Route path="/avaliacao/:salaoId/:token" element={<Avaliacao />} />
 
