@@ -1,4 +1,4 @@
-// src/pages/Agendamentos.jsx - CORRIGIDO: Email de avaliação ao concluir
+// src/pages/Agendamentos.jsx - BLOQUEIOS CORRIGIDOS
 
 import { useState, useContext, useEffect, useMemo } from 'react';
 import Modal from '../components/Modal';
@@ -8,7 +8,10 @@ import AgendamentoHeader from '../components/agendamentos/AgendamentoHeader';
 import AgendamentoFiltros from '../components/agendamentos/AgendamentoFiltros';
 import AgendamentoLista from '../components/agendamentos/AgendamentoLista';
 import AgendamentoCalendario from '../components/agendamentos/AgendamentoCalendario';
+import AgendamentoDia from '../components/agendamentos/AgendamentoDia';
+import AgendamentoSemana from '../components/agendamentos/AgendamentoSemana';
 import AgendamentoFormulario from '../components/agendamentos/AgendamentoFormulario';
+import BloqueioHorarioForm from '../components/agendamentos/BloqueioHorarioForm';
 import { formatarDuracao } from '../utils/agendamentoUtils';
 import { useRealtimeAgendamentos } from '../hooks/useRealtimeAgendamentos';
 import { RefreshCw } from 'lucide-react';
@@ -34,8 +37,10 @@ const Agendamentos = () => {
   
   const [viewMode, setViewMode] = useState('lista');
   const [showModal, setShowModal] = useState(false);
+  const [showBloqueioModal, setShowBloqueioModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFiltro, setStatusFiltro] = useState('');
+  const [dataFiltro, setDataFiltro] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [dadosOriginais, setDadosOriginais] = useState(null);
@@ -104,7 +109,7 @@ const Agendamentos = () => {
         horario: agendamento.horario,
         profissionalId: agendamento.profissionalId,
         profissionalNome: profissionais.find(p => p.id === agendamento.profissionalId)?.nome,
-        status: agendamento.status // ✨ ADICIONAR STATUS ORIGINAL
+        status: agendamento.status
       });
       
       setFormData({
@@ -187,10 +192,8 @@ const Agendamentos = () => {
     if (editingId) {
       const agendamentoAntigo = agendamentosAll.find(ag => ag.id === editingId);
       
-      // ✨ DETECTAR MUDANÇA DE STATUS PARA CONCLUÍDO
       const foiConcluido = dadosOriginais.status !== 'concluido' && formData.status === 'concluido';
       
-      // Verificar se houve alterações significativas de data/hora/profissional
       const houveAlteracao = 
         dadosOriginais.data !== formData.data ||
         dadosOriginais.horario !== formData.horario ||
@@ -209,30 +212,19 @@ const Agendamentos = () => {
         url: window.location.href
       }));
 
-      // ✨ LÓGICA DE NOTIFICAÇÕES ATUALIZADA
       if (agendamentoAntigo.status !== 'cancelado' && formData.status === 'cancelado') {
-        // CANCELAMENTO
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyCancelamento(editingId);
         }
       } else if (foiConcluido) {
-        // ✅ ATENDIMENTO CONCLUÍDO - Solicitar avaliação SEMPRE
         const settings = notificationService.getSettings();
         if (settings.avaliacoes && clienteSelecionado?.email) {
-          console.log('🎯 Solicitando avaliação para agendamento concluído:', editingId);
           const sucesso = await notificationService.solicitarAvaliacao(editingId);
           if (sucesso) {
             alert('✅ Solicitação de avaliação enviada para o cliente!');
-          } else {
-            alert('⚠️ Não foi possível enviar solicitação de avaliação. Verifique o email do cliente.');
           }
-        } else if (!settings.avaliacoes) {
-          console.log('⏭️ Avaliações desabilitadas nas configurações');
-        } else if (!clienteSelecionado?.email) {
-          console.log('⚠️ Cliente sem email cadastrado');
         }
       } else if (houveAlteracao) {
-        // ALTERAÇÃO DE DATA/HORA/PROFISSIONAL
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyAlteracaoAgendamento(
             editingId,
@@ -242,13 +234,11 @@ const Agendamentos = () => {
           alert('✅ Email de alteração enviado para o cliente!');
         }
       } else {
-        // OUTRAS ALTERAÇÕES (ex: apenas mudança de status de pendente para confirmado)
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyNovoAgendamento(editingId);
         }
       }
     } else {
-      // NOVO AGENDAMENTO
       const newAgendamento = {
         ...agendamentoData,
         id: Math.max(...agendamentosAll.map(a => a.id), 0) + 1,
@@ -309,8 +299,135 @@ const Agendamentos = () => {
     setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + delta, 1));
   };
 
+  const changeWeek = (delta) => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(currentDate.getDate() + (delta * 7));
+    setCurrentDate(newDate);
+  };
+
+  const changeDay = (delta) => {
+    if (delta === 0) {
+      setCurrentDate(new Date());
+    } else {
+      const newDate = new Date(currentDate);
+      newDate.setDate(currentDate.getDate() + delta);
+      setCurrentDate(newDate);
+    }
+  };
+
+  const handleClickHorario = (profissionalId, horario) => {
+    setFormData({
+      clienteId: '',
+      servicoId: '',
+      profissionalId: profissionalId.toString(),
+      data: currentDate.toLocaleDateString('pt-BR'),
+      horario: horario,
+      status: 'pendente',
+      notificarCliente: true,
+      motivoAlteracao: ''
+    });
+    setShowModal(true);
+  };
+
+  // ✅ CORRIGIDO: Criar bloqueios com horarioFim e gerar todos os slots
+  const handleBloqueioSubmit = (bloqueioData) => {
+    const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
+    
+    // Gerar todos os horários de 30 em 30 min entre início e fim
+    const gerarSlotsBloqueio = (horarioInicio, horarioFim) => {
+      const slots = [];
+      const [hInicio, mInicio] = horarioInicio.split(':').map(Number);
+      const [hFim, mFim] = horarioFim.split(':').map(Number);
+      
+      let minAtual = hInicio * 60 + mInicio;
+      const minFim = hFim * 60 + mFim;
+      
+      while (minAtual < minFim) {
+        const h = Math.floor(minAtual / 60);
+        const m = minAtual % 60;
+        slots.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+        minAtual += 30;
+      }
+      
+      return slots;
+    };
+    
+    const slotsBloqueio = gerarSlotsBloqueio(bloqueioData.horarioInicio, bloqueioData.horarioFim);
+    
+    if (bloqueioData.recorrente) {
+      // Criar bloqueios recorrentes para próximas 12 semanas
+      const bloqueios = [];
+      for (let semana = 0; semana < 12; semana++) {
+        bloqueioData.diasSemana.forEach(diaSemana => {
+          const data = new Date();
+          data.setDate(data.getDate() + (semana * 7) + (diaSemana - data.getDay()));
+          
+          // Criar um bloqueio por slot
+          slotsBloqueio.forEach(horario => {
+            bloqueios.push({
+              id: Math.max(...agendamentosAll.map(a => a.id), 0) + bloqueios.length + 1,
+              profissionalId: parseInt(bloqueioData.profissionalId),
+              data: data.toLocaleDateString('pt-BR'),
+              horario: horario,
+              horarioFim: bloqueioData.horarioFim,
+              status: 'bloqueado',
+              tipo: 'bloqueio',
+              motivo: bloqueioData.motivo,
+              recorrente: true,
+              salaoId: salaoAtual.id
+            });
+          });
+        });
+      }
+      
+      const updated = [...agendamentosAll, ...bloqueios];
+      localStorage.setItem('agendamentos', JSON.stringify(updated));
+      setAgendamentos(updated);
+      
+      alert(`✅ ${bloqueios.length} horários bloqueados com sucesso!`);
+    } else {
+      // Bloqueio único - criar um por slot
+      const bloqueios = slotsBloqueio.map((horario, index) => ({
+        id: Math.max(...agendamentosAll.map(a => a.id), 0) + index + 1,
+        profissionalId: parseInt(bloqueioData.profissionalId),
+        data: bloqueioData.data,
+        horario: horario,
+        horarioFim: bloqueioData.horarioFim,
+        status: 'bloqueado',
+        tipo: 'bloqueio',
+        motivo: bloqueioData.motivo,
+        salaoId: salaoAtual.id
+      }));
+      
+      const updated = [...agendamentosAll, ...bloqueios];
+      localStorage.setItem('agendamentos', JSON.stringify(updated));
+      setAgendamentos(updated);
+      
+      alert(`✅ ${bloqueios.length} horário(s) bloqueado(s) com sucesso!`);
+    }
+    
+    window.dispatchEvent(new StorageEvent('storage', {
+      key: 'agendamentos',
+      newValue: JSON.stringify(JSON.parse(localStorage.getItem('agendamentos'))),
+      url: window.location.href
+    }));
+    
+    setShowBloqueioModal(false);
+  };
+
   const getAgendamentoCompleto = useMemo(() => {
     return (agendamento) => {
+      // ✅ CORRIGIDO: Não buscar cliente/serviço para bloqueios
+      if (agendamento.tipo === 'bloqueio' || agendamento.status === 'bloqueado') {
+        const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
+        return {
+          ...agendamento,
+          profissional,
+          cliente: { nome: agendamento.motivo || 'Bloqueado' },
+          servico: { nome: '' }
+        };
+      }
+      
       const cliente = clientes.find(c => c.id === agendamento.clienteId);
       const servico = servicos.find(s => s.id === agendamento.servicoId);
       const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
@@ -328,21 +445,28 @@ const Agendamentos = () => {
     return agendamentosSalao
       .map(ag => getAgendamentoCompleto(ag))
       .filter(ag => {
+        // ✅ CORRIGIDO: Filtrar bloqueios da lista (aparecem só nas views dia/semana/mês)
+        if (viewMode === 'lista' && (ag.tipo === 'bloqueio' || ag.status === 'bloqueado')) {
+          return false;
+        }
+        
         if (!ag.cliente || !ag.servico) return false;
         
         const matchSearch = ag.cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ag.servico.nome.toLowerCase().includes(searchTerm.toLowerCase());
+                           (ag.servico.nome && ag.servico.nome.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchStatus = !statusFiltro || ag.status === statusFiltro;
+        const matchData = !dataFiltro || ag.data === dataFiltro;
         
-        return matchSearch && matchStatus;
+        return matchSearch && matchStatus && matchData;
       });
-  }, [agendamentosSalao, searchTerm, statusFiltro, getAgendamentoCompleto]);
+  }, [agendamentosSalao, searchTerm, statusFiltro, dataFiltro, viewMode, getAgendamentoCompleto]);
 
   const stats = useMemo(() => ({
-    total: agendamentosSalao.length,
+    total: agendamentosSalao.filter(a => a.tipo !== 'bloqueio' && a.status !== 'bloqueado').length,
     confirmados: agendamentosSalao.filter(a => a.status === 'confirmado').length,
     pendentes: agendamentosSalao.filter(a => a.status === 'pendente').length,
     faturamentoPrevisto: agendamentosSalao.reduce((acc, ag) => {
+      if (ag.tipo === 'bloqueio' || ag.status === 'bloqueado') return acc;
       const serv = servicos.find(s => s.id === ag.servicoId);
       return acc + (serv ? serv.valor : 0);
     }, 0)
@@ -353,10 +477,13 @@ const Agendamentos = () => {
       <AgendamentoHeader 
         salaoNome={salaoAtual.nome}
         onNovoAgendamento={() => handleOpenModal()}
+        onBloquearHorario={() => setShowBloqueioModal(true)}
         viewMode={viewMode}
         setViewMode={setViewMode}
         currentDate={currentDate}
         changeMonth={changeMonth}
+        changeWeek={changeWeek}
+        changeDay={changeDay}
         monthNames={monthNames}
       />
 
@@ -382,6 +509,8 @@ const Agendamentos = () => {
         setSearchTerm={setSearchTerm}
         statusFiltro={statusFiltro}
         setStatusFiltro={setStatusFiltro}
+        dataFiltro={dataFiltro}
+        setDataFiltro={setDataFiltro}
       />
 
       {viewMode === 'lista' && (
@@ -389,6 +518,34 @@ const Agendamentos = () => {
           agendamentos={filteredAgendamentos}
           onEdit={handleOpenModal}
           onDelete={handleDelete}
+        />
+      )}
+
+      {viewMode === 'dia' && (
+        <AgendamentoDia 
+          currentDate={currentDate}
+          agendamentos={agendamentosSalao}
+          clientes={clientes}
+          servicos={servicos}
+          profissionais={profissionaisSalao}
+          onAgendamentoClick={handleOpenModal}
+          onEdit={handleOpenModal}
+          onDelete={handleDelete}
+          onClickHorario={handleClickHorario}
+        />
+      )}
+
+      {viewMode === 'semana' && (
+        <AgendamentoSemana 
+          currentDate={currentDate}
+          agendamentos={agendamentosSalao}
+          clientes={clientes}
+          servicos={servicos}
+          profissionais={profissionaisSalao}
+          onAgendamentoClick={handleOpenModal}
+          onEdit={handleOpenModal}
+          onDelete={handleDelete}
+          onClickHorario={handleClickHorario}
         />
       )}
 
@@ -422,7 +579,6 @@ const Agendamentos = () => {
             onClose={handleCloseModal}
           />
 
-          {/* Campo para motivo da alteração */}
           {editingId && dadosOriginais && (
             dadosOriginais.data !== formData.data ||
             dadosOriginais.horario !== formData.horario ||
@@ -446,7 +602,6 @@ const Agendamentos = () => {
             </div>
           )}
 
-          {/* ✨ ALERTA quando marcar como concluído */}
           {editingId && dadosOriginais && dadosOriginais.status !== 'concluido' && formData.status === 'concluido' && (
             <div className="pt-4 border-t border-gray-200">
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
@@ -457,6 +612,19 @@ const Agendamentos = () => {
             </div>
           )}
         </form>
+      </Modal>
+
+      <Modal
+        isOpen={showBloqueioModal}
+        onClose={() => setShowBloqueioModal(false)}
+        title="Bloquear Horário"
+        size="lg"
+      >
+        <BloqueioHorarioForm 
+          profissionais={profissionaisSalao}
+          onSubmit={handleBloqueioSubmit}
+          onClose={() => setShowBloqueioModal(false)}
+        />
       </Modal>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

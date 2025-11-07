@@ -1,4 +1,4 @@
-// src/utils/agendamentoUtils.js - ATUALIZADO COM VALIDAÇÃO DE DURAÇÃO
+// src/utils/agendamentoUtils.js - CORRIGIDO COM VALIDAÇÃO DE BLOQUEIOS
 
 import { format, addDays, isSameDay, isToday, isPast, isFuture } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -69,13 +69,36 @@ const minutosParaHorario = (minutos) => {
 };
 
 /**
- * NOVO: Calcular horários ocupados considerando duração do serviço
- * Retorna array de horários que NÃO podem ser agendados
+ * ✅ NOVO: Verificar se horário está dentro de um bloqueio
+ */
+const isHorarioBloqueado = (horario, bloqueios, profissionalId, data) => {
+  const horarioMinutos = horarioParaMinutos(horario);
+  
+  return bloqueios.some(bloqueio => {
+    if (bloqueio.profissionalId !== profissionalId) return false;
+    if (bloqueio.data !== data) return false;
+    if (bloqueio.status !== 'bloqueado' && bloqueio.tipo !== 'bloqueio') return false;
+    
+    const inicioMinutos = horarioParaMinutos(bloqueio.horario);
+    
+    // Se tem horarioFim, verificar se está no intervalo
+    if (bloqueio.horarioFim) {
+      const fimMinutos = horarioParaMinutos(bloqueio.horarioFim);
+      return horarioMinutos >= inicioMinutos && horarioMinutos < fimMinutos;
+    }
+    
+    // Se não tem horarioFim, bloquear apenas o horário exato
+    return horarioMinutos === inicioMinutos;
+  });
+};
+
+/**
+ * ✅ ATUALIZADO: Calcular horários ocupados considerando duração do serviço E bloqueios
  */
 export const calcularHorariosOcupados = (agendamentos, servicos, profissionalId, data) => {
   const horariosOcupados = new Set();
   
-  // Filtrar agendamentos do profissional na data específica
+  // Filtrar agendamentos do profissional na data específica (incluindo bloqueios)
   const agendamentosDia = agendamentos.filter(ag => 
     ag.profissionalId === profissionalId &&
     ag.data === data &&
@@ -84,6 +107,26 @@ export const calcularHorariosOcupados = (agendamentos, servicos, profissionalId,
 
   // Para cada agendamento, marcar todos os horários ocupados pela duração
   agendamentosDia.forEach(ag => {
+    // Se for bloqueio
+    if (ag.tipo === 'bloqueio' || ag.status === 'bloqueado') {
+      const inicioMinutos = horarioParaMinutos(ag.horario);
+      const fimMinutos = ag.horarioFim 
+        ? horarioParaMinutos(ag.horarioFim)
+        : inicioMinutos + 30; // Se não tiver fim, bloqueia 30min
+      
+      // Gerar todos os horários de 30 em 30 minutos dentro do bloqueio
+      const todosHorarios = gerarHorariosDisponiveis('08:00', '20:30', 30);
+      
+      todosHorarios.forEach(horario => {
+        const horarioMinutos = horarioParaMinutos(horario);
+        if (horarioMinutos >= inicioMinutos && horarioMinutos < fimMinutos) {
+          horariosOcupados.add(horario);
+        }
+      });
+      return;
+    }
+    
+    // Se for agendamento normal
     const servico = servicos.find(s => s.id === ag.servicoId);
     if (!servico) return;
 
@@ -91,17 +134,11 @@ export const calcularHorariosOcupados = (agendamentos, servicos, profissionalId,
     const duracaoMinutos = servico.duracao;
     const fimMinutos = inicioMinutos + duracaoMinutos;
 
-    // Gerar todos os horários de 30 em 30 minutos que conflitam
     const todosHorarios = gerarHorariosDisponiveis('08:00', '20:30', 30);
     
     todosHorarios.forEach(horario => {
       const horarioMinutos = horarioParaMinutos(horario);
       
-      // Um horário está ocupado se:
-      // 1. Está dentro do período do agendamento (horarioMinutos >= inicioMinutos && horarioMinutos < fimMinutos)
-      // 2. OU se um serviço iniciado neste horário terminaria durante um agendamento existente
-      
-      // Verificação 1: Horário cai dentro de um agendamento existente
       if (horarioMinutos >= inicioMinutos && horarioMinutos < fimMinutos) {
         horariosOcupados.add(horario);
       }
@@ -112,8 +149,7 @@ export const calcularHorariosOcupados = (agendamentos, servicos, profissionalId,
 };
 
 /**
- * NOVO: Verificar se um novo agendamento conflita com existentes
- * Considera a duração do serviço sendo agendado
+ * ✅ ATUALIZADO: Verificar se um novo agendamento conflita com existentes OU bloqueios
  */
 export const verificarConflitoHorario = (
   novoHorario,
@@ -127,7 +163,7 @@ export const verificarConflitoHorario = (
   const novoInicioMinutos = horarioParaMinutos(novoHorario);
   const novoFimMinutos = novoInicioMinutos + novaDuracao;
 
-  // Filtrar agendamentos do profissional na data específica
+  // Filtrar agendamentos do profissional na data específica (incluindo bloqueios)
   const agendamentosDia = agendamentos.filter(ag => 
     ag.id !== agendamentoIdIgnorar &&
     ag.profissionalId === profissionalId &&
@@ -135,19 +171,39 @@ export const verificarConflitoHorario = (
     ag.status !== 'cancelado'
   );
 
-  // Verificar conflito com cada agendamento
+  // Verificar conflito com cada agendamento ou bloqueio
   for (const ag of agendamentosDia) {
+    let agInicioMinutos, agFimMinutos;
+    
+    // Se for bloqueio
+    if (ag.tipo === 'bloqueio' || ag.status === 'bloqueado') {
+      agInicioMinutos = horarioParaMinutos(ag.horario);
+      agFimMinutos = ag.horarioFim 
+        ? horarioParaMinutos(ag.horarioFim)
+        : agInicioMinutos + 30;
+      
+      const iniciaEmConflito = novoInicioMinutos >= agInicioMinutos && novoInicioMinutos < agFimMinutos;
+      const terminaEmConflito = novoFimMinutos > agInicioMinutos && novoFimMinutos <= agFimMinutos;
+      const englobaExistente = novoInicioMinutos <= agInicioMinutos && novoFimMinutos >= agFimMinutos;
+
+      if (iniciaEmConflito || terminaEmConflito || englobaExistente) {
+        return {
+          conflito: true,
+          tipo: 'bloqueio',
+          motivo: ag.motivo || 'Horário bloqueado',
+          agendamentoConflitante: ag
+        };
+      }
+      continue;
+    }
+    
+    // Se for agendamento normal
     const servico = servicos.find(s => s.id === ag.servicoId);
     if (!servico) continue;
 
-    const agInicioMinutos = horarioParaMinutos(ag.horario);
-    const agFimMinutos = agInicioMinutos + servico.duracao;
+    agInicioMinutos = horarioParaMinutos(ag.horario);
+    agFimMinutos = agInicioMinutos + servico.duracao;
 
-    // Há conflito se:
-    // 1. O novo agendamento inicia durante um agendamento existente
-    // 2. O novo agendamento termina durante um agendamento existente
-    // 3. O novo agendamento engloba completamente um agendamento existente
-    
     const iniciaEmConflito = novoInicioMinutos >= agInicioMinutos && novoInicioMinutos < agFimMinutos;
     const terminaEmConflito = novoFimMinutos > agInicioMinutos && novoFimMinutos <= agFimMinutos;
     const englobaExistente = novoInicioMinutos <= agInicioMinutos && novoFimMinutos >= agFimMinutos;
@@ -155,6 +211,7 @@ export const verificarConflitoHorario = (
     if (iniciaEmConflito || terminaEmConflito || englobaExistente) {
       return {
         conflito: true,
+        tipo: 'agendamento',
         agendamentoConflitante: ag,
         servico
       };
@@ -165,7 +222,7 @@ export const verificarConflitoHorario = (
 };
 
 /**
- * NOVO: Filtrar horários disponíveis considerando duração do serviço
+ * ✅ ATUALIZADO: Filtrar horários disponíveis considerando duração do serviço E bloqueios
  */
 export const obterHorariosDisponiveisComDuracao = (
   todosHorarios,
@@ -173,7 +230,8 @@ export const obterHorariosDisponiveisComDuracao = (
   servicos,
   profissionalId,
   data,
-  duracaoServicoMinutos
+  duracaoServicoMinutos,
+  agendamentoIdIgnorar = null
 ) => {
   return todosHorarios.map(horario => {
     const resultado = verificarConflitoHorario(
@@ -182,12 +240,14 @@ export const obterHorariosDisponiveisComDuracao = (
       agendamentos,
       servicos,
       profissionalId,
-      data
+      data,
+      agendamentoIdIgnorar
     );
 
     return {
       horario,
-      disponivel: !resultado.conflito
+      disponivel: !resultado.conflito,
+      motivoBloqueio: resultado.conflito ? resultado.motivo || 'Ocupado' : null
     };
   });
 };
@@ -252,7 +312,8 @@ export const getStatusColor = (status) => {
     confirmado: 'bg-green-100 text-green-800 border-green-300',
     pendente: 'bg-yellow-100 text-yellow-800 border-yellow-300',
     cancelado: 'bg-red-100 text-red-800 border-red-300',
-    concluido: 'bg-blue-100 text-blue-800 border-blue-300'
+    concluido: 'bg-blue-100 text-blue-800 border-blue-300',
+    bloqueado: 'bg-gray-100 text-gray-800 border-gray-400'
   };
   return cores[status] || cores.pendente;
 };

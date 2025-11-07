@@ -1,4 +1,4 @@
-// src/components/agendamentos/AgendamentoFormulario.jsx - ATUALIZADO COM VALIDAÇÃO DE DURAÇÃO
+// src/components/agendamentos/AgendamentoFormulario.jsx - ATUALIZADO COM SCROLL
 
 import { Phone, Mail, Check } from 'lucide-react';
 import { useContext, useMemo } from 'react';
@@ -29,7 +29,6 @@ const AgendamentoFormulario = ({
       return timeOptions.map(time => ({ time, disponivel: true }));
     }
 
-    // Usar função que considera duração do serviço
     const resultado = obterHorariosDisponiveisComDuracao(
       timeOptions,
       agendamentos,
@@ -37,7 +36,7 @@ const AgendamentoFormulario = ({
       parseInt(formData.profissionalId),
       formData.data,
       servicoSelecionado.duracao,
-      editingId // Ignorar o próprio agendamento ao editar
+      editingId
     );
 
     return resultado.map(r => ({ time: r.horario, disponivel: r.disponivel }));
@@ -46,7 +45,7 @@ const AgendamentoFormulario = ({
   const horariosOcupados = horariosDisponiveis.filter(h => !h.disponivel).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
       {/* Cliente */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -304,8 +303,8 @@ const AgendamentoFormulario = ({
         })()
       )}
 
-      {/* Botões */}
-      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+      {/* Botões - fixos no final */}
+      <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 sticky bottom-0 bg-white">
         <button
           type="button"
           onClick={onClose}
