@@ -1,15 +1,16 @@
-// src/pages/Financeiro.jsx - CORRIGIDO
+// src/pages/Financeiro.jsx - VERSÃO COMPLETA COM NOVAS FUNCIONALIDADES
 
 import { useState, useContext, useEffect, useMemo } from 'react';
-import { Plus, Crown } from 'lucide-react';
+import { Plus, Crown, Filter, Calendar, DollarSign } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
 import FinanceiroStats from '../components/financeiro/FinanceiroStats';
 import FinanceiroCharts from '../components/financeiro/FinanceiroCharts';
 import FinanceiroTable from '../components/financeiro/FinanceiroTable';
 import PlanRestriction from '../components/PlanRestriction';
+import ContasPagarReceber from '../components/financeiro/ContasPagarReceber';
 import { SalaoContext } from '../contexts/SalaoContext';
-import { dateToISO, getTodayBR } from '../utils/masks';
+import { dateToISO, getTodayBR, addDays, addMonths, compareDates } from '../utils/masks';
 import { hasAccess } from '../utils/planRestrictions';
 
 const Financeiro = () => {
@@ -34,6 +35,18 @@ const Financeiro = () => {
   const [tipoTransacao, setTipoTransacao] = useState('todas');
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [viewMode, setViewMode] = useState('transacoes'); // 'transacoes' ou 'contas'
+
+  // Estados para filtros avançados
+  const [filtros, setFiltros] = useState({
+    dataInicio: '',
+    dataFim: '',
+    categoria: '',
+    status: '',
+    formaPagamento: '',
+    busca: ''
+  });
 
   const [formData, setFormData] = useState({
     tipo: 'receita',
@@ -42,10 +55,15 @@ const Financeiro = () => {
     valor: '',
     formaPagamento: '',
     data: '',
+    dataVencimento: '',
     cliente: '',
     fornecedor: '',
-    status: 'confirmado',
-    salaoId: salaoAtual.id
+    status: 'pendente',
+    salaoId: salaoAtual.id,
+    recorrente: false,
+    tipoRecorrencia: 'mensal',
+    quantidadeParcelas: 1,
+    observacoes: ''
   });
 
   // Obter dados filtrados por salão
@@ -156,10 +174,15 @@ const Financeiro = () => {
         valor: transacao.valor.toString(),
         formaPagamento: transacao.formaPagamento,
         data: transacao.data,
+        dataVencimento: transacao.dataVencimento || '',
         cliente: transacao.cliente || '',
         fornecedor: transacao.fornecedor || '',
         status: transacao.status,
-        salaoId: transacao.salaoId
+        salaoId: transacao.salaoId,
+        recorrente: transacao.recorrente || false,
+        tipoRecorrencia: transacao.tipoRecorrencia || 'mensal',
+        quantidadeParcelas: transacao.quantidadeParcelas || 1,
+        observacoes: transacao.observacoes || ''
       });
     } else {
       setEditingId(null);
@@ -170,10 +193,15 @@ const Financeiro = () => {
         valor: '',
         formaPagamento: '',
         data: getTodayBR(),
+        dataVencimento: '',
         cliente: '',
         fornecedor: '',
-        status: 'confirmado',
-        salaoId: salaoAtual.id
+        status: 'pendente',
+        salaoId: salaoAtual.id,
+        recorrente: false,
+        tipoRecorrencia: 'mensal',
+        quantidadeParcelas: 1,
+        observacoes: ''
       });
     }
     setShowModal(true);
@@ -189,33 +217,67 @@ const Financeiro = () => {
       valor: '',
       formaPagamento: '',
       data: getTodayBR(),
+      dataVencimento: '',
       cliente: '',
       fornecedor: '',
-      status: 'confirmado',
-      salaoId: salaoAtual.id
+      status: 'pendente',
+      salaoId: salaoAtual.id,
+      recorrente: false,
+      tipoRecorrencia: 'mensal',
+      quantidadeParcelas: 1,
+      observacoes: ''
     });
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
+    const baseTransacao = {
+      ...formData,
+      id: editingId || Math.max(...transacoes.map(t => t.id), 0) + 1,
+      valor: parseFloat(formData.valor),
+      dataCriacao: getTodayBR()
+    };
+
     if (editingId) {
       setTransacoes(transacoes.map(t => 
-        t.id === editingId 
-          ? { 
-              ...formData, 
-              id: editingId,
-              valor: parseFloat(formData.valor)
-            } 
-          : t
+        t.id === editingId ? baseTransacao : t
       ));
     } else {
-      const newTransacao = {
-        ...formData,
-        id: Math.max(...transacoes.map(t => t.id), 0) + 1,
-        valor: parseFloat(formData.valor)
-      };
-      setTransacoes([...transacoes, newTransacao]);
+      const novasTransacoes = [baseTransacao];
+      
+      // Gerar transações recorrentes
+      if (formData.recorrente && formData.quantidadeParcelas > 1) {
+        let dataBase = formData.dataVencimento || formData.data;
+        
+        for (let i = 1; i < formData.quantidadeParcelas; i++) {
+          // Calcular próxima data baseada no tipo de recorrência
+          if (formData.tipoRecorrencia === 'mensal') {
+            dataBase = addMonths(dataBase, 1);
+          } else if (formData.tipoRecorrencia === 'semanal') {
+            dataBase = addDays(dataBase, 7);
+          } else if (formData.tipoRecorrencia === 'anual') {
+            dataBase = addMonths(dataBase, 12);
+          }
+          
+          novasTransacoes.push({
+            ...baseTransacao,
+            id: Math.max(...transacoes.map(t => t.id), 0) + i + 1,
+            data: dataBase,
+            dataVencimento: dataBase,
+            descricao: `${formData.descricao} (${i + 1}/${formData.quantidadeParcelas})`,
+            parcelaAtual: i + 1,
+            totalParcelas: formData.quantidadeParcelas
+          });
+        }
+        
+        // Atualizar a primeira transação com info de parcela
+        novasTransacoes[0].descricao = `${formData.descricao} (1/${formData.quantidadeParcelas})`;
+        novasTransacoes[0].parcelaAtual = 1;
+        novasTransacoes[0].totalParcelas = formData.quantidadeParcelas;
+      }
+      
+      setTransacoes([...transacoes, ...novasTransacoes]);
     }
     
     handleCloseModal();
@@ -236,8 +298,45 @@ const Financeiro = () => {
   };
 
   const filteredTransacoes = transacoesSalao.filter(t => {
-    if (tipoTransacao === 'todas') return true;
-    return t.tipo === tipoTransacao;
+    // Filtro por tipo
+    if (tipoTransacao !== 'todas' && t.tipo !== tipoTransacao) return false;
+    
+    // Filtro por categoria
+    if (filtros.categoria && t.categoria !== filtros.categoria) return false;
+    
+    // Filtro por status
+    if (filtros.status && t.status !== filtros.status) return false;
+    
+    // Filtro por forma de pagamento
+    if (filtros.formaPagamento && t.formaPagamento !== filtros.formaPagamento) return false;
+    
+    // Filtro por data início
+    if (filtros.dataInicio) {
+      const dataTransacao = dateToISO(t.dataVencimento || t.data);
+      const dataInicio = dateToISO(filtros.dataInicio);
+      if (compareDates(dataTransacao, dataInicio) < 0) return false;
+    }
+    
+    // Filtro por data fim
+    if (filtros.dataFim) {
+      const dataTransacao = dateToISO(t.dataVencimento || t.data);
+      const dataFim = dateToISO(filtros.dataFim);
+      if (compareDates(dataTransacao, dataFim) > 0) return false;
+    }
+    
+    // Filtro por busca (descrição, cliente, fornecedor)
+    if (filtros.busca) {
+      const busca = filtros.busca.toLowerCase();
+      const descricao = t.descricao?.toLowerCase() || '';
+      const cliente = t.cliente?.toLowerCase() || '';
+      const fornecedor = t.fornecedor?.toLowerCase() || '';
+      
+      if (!descricao.includes(busca) && !cliente.includes(busca) && !fornecedor.includes(busca)) {
+        return false;
+      }
+    }
+    
+    return true;
   });
 
   return (
@@ -301,48 +400,208 @@ const Financeiro = () => {
         categoriasDespesas={categoriasDespesas}
       />
 
-      {/* Filtros */}
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-center space-x-4">
+      {/* Tabs de Visualização */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div className="flex border-b border-gray-200">
           <button
-            onClick={() => setTipoTransacao('todas')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              tipoTransacao === 'todas'
-                ? 'bg-purple-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            onClick={() => setViewMode('transacoes')}
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              viewMode === 'transacoes'
+                ? 'text-purple-600 border-b-2 border-purple-600'
+                : 'text-gray-600 hover:text-gray-800'
             }`}
           >
-            Todas
+            <DollarSign className="inline-block mr-2" size={20} />
+            Todas as Transações
           </button>
           <button
-            onClick={() => setTipoTransacao('receita')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              tipoTransacao === 'receita'
-                ? 'bg-green-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            onClick={() => setViewMode('contas')}
+            className={`flex-1 px-6 py-4 font-medium transition-colors ${
+              viewMode === 'contas'
+                ? 'text-purple-600 border-b-2 border-purple-600'
+                : 'text-gray-600 hover:text-gray-800'
             }`}
           >
-            Receitas
-          </button>
-          <button
-            onClick={() => setTipoTransacao('despesa')}
-            className={`px-4 py-2 rounded-lg transition-colors ${
-              tipoTransacao === 'despesa'
-                ? 'bg-red-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Despesas
+            <Calendar className="inline-block mr-2" size={20} />
+            Contas a Pagar/Receber
           </button>
         </div>
       </div>
 
-      {/* Lista de Transações */}
-      <FinanceiroTable 
-        filteredTransacoes={filteredTransacoes}
-        handleOpenModal={handleOpenModal}
-        handleDelete={handleDelete}
-      />
+      {/* Filtros */}
+      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => setTipoTransacao('todas')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                tipoTransacao === 'todas'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Todas
+            </button>
+            <button
+              onClick={() => setTipoTransacao('receita')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                tipoTransacao === 'receita'
+                  ? 'bg-green-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Receitas
+            </button>
+            <button
+              onClick={() => setTipoTransacao('despesa')}
+              className={`px-4 py-2 rounded-lg transition-colors ${
+                tipoTransacao === 'despesa'
+                  ? 'bg-red-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Despesas
+            </button>
+          </div>
+          
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            <Filter size={18} />
+            <span>Filtros Avançados</span>
+          </button>
+        </div>
+
+        {/* Filtros Avançados */}
+        {showFilters && (
+          <div className="mt-4 pt-4 border-t border-gray-200 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Buscar
+              </label>
+              <input
+                type="text"
+                placeholder="Descrição, cliente ou fornecedor..."
+                value={filtros.busca}
+                onChange={(e) => setFiltros({...filtros, busca: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Data Início
+              </label>
+              <MaskedInput
+                mask="date"
+                value={filtros.dataInicio}
+                onChange={(e) => setFiltros({...filtros, dataInicio: e.target.value})}
+                placeholder="DD/MM/AAAA"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Data Fim
+              </label>
+              <MaskedInput
+                mask="date"
+                value={filtros.dataFim}
+                onChange={(e) => setFiltros({...filtros, dataFim: e.target.value})}
+                placeholder="DD/MM/AAAA"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Categoria
+              </label>
+              <select
+                value={filtros.categoria}
+                onChange={(e) => setFiltros({...filtros, categoria: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Todas as categorias</option>
+                <option value="Serviços">Serviços</option>
+                <option value="Produtos">Produtos</option>
+                <option value="Estoque">Estoque</option>
+                <option value="Fixas">Fixas</option>
+                <option value="Salários">Salários</option>
+                <option value="Marketing">Marketing</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={filtros.status}
+                onChange={(e) => setFiltros({...filtros, status: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Todos os status</option>
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="recebido">Recebido</option>
+                <option value="cancelado">Cancelado</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Forma de Pagamento
+              </label>
+              <select
+                value={filtros.formaPagamento}
+                onChange={(e) => setFiltros({...filtros, formaPagamento: e.target.value})}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Todas as formas</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                <option value="Cartão de Débito">Cartão de Débito</option>
+                <option value="Pix">Pix</option>
+                <option value="Boleto">Boleto</option>
+                <option value="Transferência">Transferência</option>
+              </select>
+            </div>
+
+            <div className="col-span-full flex justify-end space-x-2">
+              <button
+                onClick={() => setFiltros({
+                  dataInicio: '',
+                  dataFim: '',
+                  categoria: '',
+                  status: '',
+                  formaPagamento: '',
+                  busca: ''
+                })}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Limpar Filtros
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Conteúdo baseado na visualização */}
+      {viewMode === 'transacoes' ? (
+        <FinanceiroTable 
+          filteredTransacoes={filteredTransacoes}
+          handleOpenModal={handleOpenModal}
+          handleDelete={handleDelete}
+        />
+      ) : (
+        <ContasPagarReceber
+          transacoes={filteredTransacoes}
+          handleOpenModal={handleOpenModal}
+          setTransacoes={setTransacoes}
+          allTransacoes={transacoes}
+        />
+      )}
 
       {/* Modal de Cadastro/Edição */}
       <Modal
@@ -371,7 +630,7 @@ const Financeiro = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data *
+                Data da Transação *
               </label>
               <MaskedInput
                 mask="date"
@@ -381,6 +640,22 @@ const Financeiro = () => {
                 required
                 placeholder="DD/MM/AAAA"
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Data de Vencimento
+              </label>
+              <MaskedInput
+                mask="date"
+                name="dataVencimento"
+                value={formData.dataVencimento}
+                onChange={handleChange}
+                placeholder="DD/MM/AAAA"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Para controle de contas a pagar/receber
+              </p>
             </div>
           </div>
 
@@ -514,11 +789,82 @@ const Financeiro = () => {
               required
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="confirmado">Confirmado</option>
-              <option value="pago">Pago</option>
               <option value="pendente">Pendente</option>
+              <option value="pago">Pago</option>
+              <option value="recebido">Recebido</option>
               <option value="cancelado">Cancelado</option>
             </select>
+          </div>
+
+          {/* Recorrência */}
+          <div className="col-span-full border-t border-gray-200 pt-4">
+            <div className="flex items-center space-x-2 mb-4">
+              <input
+                type="checkbox"
+                id="recorrente"
+                checked={formData.recorrente}
+                onChange={(e) => setFormData({...formData, recorrente: e.target.checked})}
+                className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
+              />
+              <label htmlFor="recorrente" className="text-sm font-medium text-gray-700">
+                Transação Recorrente (gerar múltiplas parcelas)
+              </label>
+            </div>
+
+            {formData.recorrente && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Recorrência
+                  </label>
+                  <select
+                    value={formData.tipoRecorrencia}
+                    onChange={(e) => setFormData({...formData, tipoRecorrencia: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  >
+                    <option value="semanal">Semanal</option>
+                    <option value="mensal">Mensal</option>
+                    <option value="anual">Anual</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Quantidade de Parcelas
+                  </label>
+                  <input
+                    type="number"
+                    min="2"
+                    max="60"
+                    value={formData.quantidadeParcelas}
+                    onChange={(e) => setFormData({...formData, quantidadeParcelas: parseInt(e.target.value)})}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div className="col-span-full">
+                  <p className="text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
+                    💡 Serão criadas {formData.quantidadeParcelas} transações {formData.tipoRecorrencia}s 
+                    de R$ {formData.valor || '0,00'} cada
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Observações */}
+          <div className="col-span-full">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Observações
+            </label>
+            <textarea
+              name="observacoes"
+              value={formData.observacoes}
+              onChange={handleChange}
+              rows="3"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Informações adicionais sobre a transação..."
+            />
           </div>
 
           <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

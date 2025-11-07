@@ -150,3 +150,31 @@ export const generateDurationOptions = () => {
   }
   return options;
 };
+
+// Adicionar dias a uma data no formato DD/MM/AAAA
+export const addDays = (dataBR, days) => {
+  if (!dataBR) return '';
+  const [dia, mes, ano] = dataBR.split('/').map(Number);
+  const date = new Date(ano, mes - 1, dia);
+  date.setDate(date.getDate() + days);
+  
+  const novoDia = String(date.getDate()).padStart(2, '0');
+  const novoMes = String(date.getMonth() + 1).padStart(2, '0');
+  const novoAno = date.getFullYear();
+  
+  return `${novoDia}/${novoMes}/${novoAno}`;
+};
+
+// Adicionar meses a uma data no formato DD/MM/AAAA
+export const addMonths = (dataBR, months) => {
+  if (!dataBR) return '';
+  const [dia, mes, ano] = dataBR.split('/').map(Number);
+  const date = new Date(ano, mes - 1, dia);
+  date.setMonth(date.getMonth() + months);
+  
+  const novoDia = String(date.getDate()).padStart(2, '0');
+  const novoMes = String(date.getMonth() + 1).padStart(2, '0');
+  const novoAno = date.getFullYear();
+  
+  return `${novoDia}/${novoMes}/${novoAno}`;
+};
