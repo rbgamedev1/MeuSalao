@@ -1,4 +1,4 @@
-// src/components/financeiro/TransacaoModal.jsx
+// src/components/financeiro/TransacaoModal.jsx - ATUALIZADO
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
 
@@ -13,45 +13,71 @@ const TransacaoModal = ({
   clientesSalao,
   fornecedoresSalao
 }) => {
+  const getModalTitle = () => {
+    if (editingId) return 'Editar Transação';
+    return formData.tipo === 'receita' ? 'Nova Entrada' : 'Nova Saída';
+  };
+
+  const getTipoColor = () => {
+    return formData.tipo === 'receita' 
+      ? 'from-green-600 to-emerald-600' 
+      : 'from-red-600 to-rose-600';
+  };
+
   return (
     <Modal
       isOpen={showModal}
       onClose={handleCloseModal}
-      title={editingId ? 'Editar Transação' : 'Nova Transação'}
+      title={getModalTitle()}
       size="md"
     >
       <div className="max-h-[calc(100vh-200px)] overflow-y-auto px-1">
         <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Tipo */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Tipo *
-          </label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              type="button"
-              onClick={() => setFormData({...formData, tipo: 'receita'})}
-              className={`py-3 rounded-lg font-medium transition-all ${
-                formData.tipo === 'receita'
-                  ? 'bg-green-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              💰 Receita
-            </button>
-            <button
-              type="button"
-              onClick={() => setFormData({...formData, tipo: 'despesa'})}
-              className={`py-3 rounded-lg font-medium transition-all ${
-                formData.tipo === 'despesa'
-                  ? 'bg-red-600 text-white shadow-md'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              💸 Despesa
-            </button>
-          </div>
+        
+        {/* Badge do Tipo */}
+        <div className={`bg-gradient-to-r ${getTipoColor()} text-white rounded-lg p-4 text-center`}>
+          <p className="text-2xl font-bold">
+            {formData.tipo === 'receita' ? '💰 Entrada de Dinheiro' : '💸 Saída de Dinheiro'}
+          </p>
+          <p className="text-sm opacity-90 mt-1">
+            {formData.tipo === 'receita' 
+              ? 'Registre um recebimento (serviço, produto, etc)' 
+              : 'Registre um pagamento ou despesa'}
+          </p>
         </div>
+
+        {/* Tipo - Apenas se estiver editando */}
+        {editingId && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo *
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, tipo: 'receita'})}
+                className={`py-3 rounded-lg font-medium transition-all ${
+                  formData.tipo === 'receita'
+                    ? 'bg-green-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                💰 Receita
+              </button>
+              <button
+                type="button"
+                onClick={() => setFormData({...formData, tipo: 'despesa'})}
+                className={`py-3 rounded-lg font-medium transition-all ${
+                  formData.tipo === 'despesa'
+                    ? 'bg-red-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                💸 Despesa
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Descrição */}
         <div>
@@ -243,9 +269,9 @@ const TransacaoModal = ({
           </button>
           <button
             type="submit"
-            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+            className={`px-6 py-2 bg-gradient-to-r ${getTipoColor()} text-white rounded-lg hover:opacity-90 transition-all shadow-lg`}
           >
-            {editingId ? 'Salvar' : 'Cadastrar'}
+            {editingId ? 'Salvar Alterações' : `Registrar ${formData.tipo === 'receita' ? 'Entrada' : 'Saída'}`}
           </button>
         </div>
       </form>

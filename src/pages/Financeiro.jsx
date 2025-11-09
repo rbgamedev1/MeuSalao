@@ -1,8 +1,9 @@
-// src/pages/Financeiro.jsx - VERSÃO SIMPLIFICADA
+// src/pages/Financeiro.jsx - CORRIGIDO FINAL
 import { useState, useContext } from 'react';
 import { Crown } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { hasAccess } from '../utils/planRestrictions';
+import { getTodayBR } from '../utils/masks';
 
 // Hooks personalizados
 import { useFinanceiroData } from '../hooks/useFinanceiroData';
@@ -78,14 +79,40 @@ const Financeiro = () => {
     setSelectedCard(null);
   };
 
+  // Handler para adicionar receita - define TUDO antes de abrir modal
   const handleAddReceita = () => {
-    setFormData(prev => ({ ...prev, tipo: 'receita' }));
-    handleOpenModal();
+    setFormData({
+      tipo: 'receita',
+      descricao: '',
+      categoria: '',
+      valor: '',
+      formaPagamento: '',
+      data: getTodayBR(),
+      cliente: '',
+      fornecedor: '',
+      status: 'pago',
+      salaoId: salaoAtual?.id || '',
+      observacoes: ''
+    });
+    handleOpenModal(); // Abre o modal sem parâmetro (nova transação)
   };
 
+  // Handler para adicionar despesa - define TUDO antes de abrir modal
   const handleAddDespesa = () => {
-    setFormData(prev => ({ ...prev, tipo: 'despesa' }));
-    handleOpenModal();
+    setFormData({
+      tipo: 'despesa',
+      descricao: '',
+      categoria: '',
+      valor: '',
+      formaPagamento: '',
+      data: getTodayBR(),
+      cliente: '',
+      fornecedor: '',
+      status: 'pago',
+      salaoId: salaoAtual?.id || '',
+      observacoes: ''
+    });
+    handleOpenModal(); // Abre o modal sem parâmetro (nova transação)
   };
 
   return (
@@ -107,7 +134,7 @@ const Financeiro = () => {
                 Plano {salaoAtual.plano} - Módulo Financeiro Ativo
               </p>
               <p className="text-xs text-blue-700 mt-1">
-                Clique nos cards para ver detalhes • Use o botão + para adicionar transações
+                💡 Clique no botão <strong>+</strong> verde para adicionar <strong>Entradas</strong> ou no botão <strong>+</strong> vermelho para adicionar <strong>Saídas</strong>
               </p>
             </div>
           </div>

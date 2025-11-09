@@ -1,4 +1,4 @@
-// src/components/financeiro/FinanceiroStats.jsx
+// src/components/financeiro/FinanceiroStats.jsx - ATUALIZADO
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus } from 'lucide-react';
 
 const StatCard = ({ icon: Icon, label, value, subtext, color, onClick, onAddClick, showAddButton }) => {
@@ -63,7 +63,7 @@ const StatCard = ({ icon: Icon, label, value, subtext, color, onClick, onAddClic
       </div>
       
       <div className="mt-3 text-xs text-gray-400 text-center">
-        Clique para ver detalhes
+        {showAddButton ? 'Clique no + para adicionar ou aqui para detalhes' : 'Clique para ver detalhes'}
       </div>
     </div>
   );

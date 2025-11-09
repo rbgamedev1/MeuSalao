@@ -1,4 +1,4 @@
-// src/hooks/useTransacaoForm.js
+// src/hooks/useTransacaoForm.js - CORRIGIDO
 import { useState, useEffect } from 'react';
 import { getTodayBR } from '../utils/masks';
 
@@ -38,6 +38,7 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
 
   const handleOpenModal = (transacao = null) => {
     if (transacao) {
+      // Editando transação existente
       setEditingId(transacao.id);
       setFormData({
         tipo: transacao.tipo,
@@ -53,8 +54,9 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
         observacoes: transacao.observacoes || ''
       });
     } else {
+      // Nova transação - mantém o tipo que foi setado antes de chamar handleOpenModal
       setEditingId(null);
-      resetForm();
+      // NÃO reseta o form aqui, pois o tipo já foi setado no componente pai
     }
     setShowModal(true);
   };
