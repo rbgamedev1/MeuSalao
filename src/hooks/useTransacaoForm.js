@@ -1,8 +1,6 @@
-// ============================================
-// 3. src/hooks/useTransacaoForm.js
-// ============================================
+// src/hooks/useTransacaoForm.js - SIMPLIFICADO
 import { useState } from 'react';
-import { getTodayBR, addDays, addMonths } from '../utils/masks';
+import { getTodayBR } from '../utils/masks';
 
 export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
   const [showModal, setShowModal] = useState(false);
@@ -14,15 +12,11 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
     categoria: '',
     valor: '',
     formaPagamento: '',
-    data: '',
-    dataVencimento: '',
+    data: getTodayBR(),
     cliente: '',
     fornecedor: '',
-    status: 'pendente',
+    status: 'pago', // Por padrão já é pago
     salaoId: salaoAtual.id,
-    recorrente: false,
-    tipoRecorrencia: 'mensal',
-    quantidadeParcelas: 1,
     observacoes: ''
   });
 
@@ -34,14 +28,10 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
       valor: '',
       formaPagamento: '',
       data: getTodayBR(),
-      dataVencimento: '',
       cliente: '',
       fornecedor: '',
-      status: 'pendente',
+      status: 'pago',
       salaoId: salaoAtual.id,
-      recorrente: false,
-      tipoRecorrencia: 'mensal',
-      quantidadeParcelas: 1,
       observacoes: ''
     });
   };
@@ -56,14 +46,10 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
         valor: transacao.valor.toString(),
         formaPagamento: transacao.formaPagamento,
         data: transacao.data,
-        dataVencimento: transacao.dataVencimento || '',
         cliente: transacao.cliente || '',
         fornecedor: transacao.fornecedor || '',
         status: transacao.status,
         salaoId: transacao.salaoId,
-        recorrente: transacao.recorrente || false,
-        tipoRecorrencia: transacao.tipoRecorrencia || 'mensal',
-        quantidadeParcelas: transacao.quantidadeParcelas || 1,
         observacoes: transacao.observacoes || ''
       });
     } else {
@@ -82,50 +68,20 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    const baseTransacao = {
-      ...formData,
+    const transacao = {
       id: editingId || Math.max(...transacoes.map(t => t.id), 0) + 1,
+      ...formData,
       valor: parseFloat(formData.valor),
-      dataCriacao: getTodayBR()
+      dataCriacao: getTodayBR(),
+      dataVencimento: null // Removido vencimento de transações simples
     };
 
     if (editingId) {
       setTransacoes(transacoes.map(t => 
-        t.id === editingId ? baseTransacao : t
+        t.id === editingId ? transacao : t
       ));
     } else {
-      const novasTransacoes = [baseTransacao];
-      
-      // Gerar transações recorrentes
-      if (formData.recorrente && formData.quantidadeParcelas > 1) {
-        let dataBase = formData.dataVencimento || formData.data;
-        
-        for (let i = 1; i < formData.quantidadeParcelas; i++) {
-          if (formData.tipoRecorrencia === 'mensal') {
-            dataBase = addMonths(dataBase, 1);
-          } else if (formData.tipoRecorrencia === 'semanal') {
-            dataBase = addDays(dataBase, 7);
-          } else if (formData.tipoRecorrencia === 'anual') {
-            dataBase = addMonths(dataBase, 12);
-          }
-          
-          novasTransacoes.push({
-            ...baseTransacao,
-            id: Math.max(...transacoes.map(t => t.id), 0) + i + 1,
-            data: dataBase,
-            dataVencimento: dataBase,
-            descricao: `${formData.descricao} (${i + 1}/${formData.quantidadeParcelas})`,
-            parcelaAtual: i + 1,
-            totalParcelas: formData.quantidadeParcelas
-          });
-        }
-        
-        novasTransacoes[0].descricao = `${formData.descricao} (1/${formData.quantidadeParcelas})`;
-        novasTransacoes[0].parcelaAtual = 1;
-        novasTransacoes[0].totalParcelas = formData.quantidadeParcelas;
-      }
-      
-      setTransacoes([...transacoes, ...novasTransacoes]);
+      setTransacoes([...transacoes, transacao]);
     }
     
     handleCloseModal();

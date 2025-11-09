@@ -1,6 +1,4 @@
-// ============================================
-// 8. src/components/financeiro/TransacaoModal.jsx
-// ============================================
+// src/components/financeiro/TransacaoModal.jsx - SIMPLIFICADO
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
 
@@ -20,57 +18,42 @@ const TransacaoModal = ({
       isOpen={showModal}
       onClose={handleCloseModal}
       title={editingId ? 'Editar Transação' : 'Nova Transação'}
-      size="lg"
+      size="md"
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tipo *
-            </label>
-            <select
-              name="tipo"
-              value={formData.tipo}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+      <div className="max-h-[calc(100vh-200px)] overflow-y-auto px-1">
+        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Tipo */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Tipo *
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setFormData({...formData, tipo: 'receita'})}
+              className={`py-3 rounded-lg font-medium transition-all ${
+                formData.tipo === 'receita'
+                  ? 'bg-green-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
             >
-              <option value="receita">Receita</option>
-              <option value="despesa">Despesa</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Data da Transação *
-            </label>
-            <MaskedInput
-              mask="date"
-              name="data"
-              value={formData.data}
-              onChange={handleChange}
-              required
-              placeholder="DD/MM/AAAA"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Data de Vencimento
-            </label>
-            <MaskedInput
-              mask="date"
-              name="dataVencimento"
-              value={formData.dataVencimento}
-              onChange={handleChange}
-              placeholder="DD/MM/AAAA"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Para controle de contas a pagar/receber
-            </p>
+              💰 Receita
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData({...formData, tipo: 'despesa'})}
+              className={`py-3 rounded-lg font-medium transition-all ${
+                formData.tipo === 'despesa'
+                  ? 'bg-red-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              💸 Despesa
+            </button>
           </div>
         </div>
 
+        {/* Descrição */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Descrição *
@@ -82,32 +65,12 @@ const TransacaoModal = ({
             onChange={handleChange}
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="Ex: Serviço - Corte + Escova"
+            placeholder={formData.tipo === 'receita' ? 'Ex: Corte + Escova' : 'Ex: Compra de produtos'}
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoria *
-            </label>
-            <select
-              name="categoria"
-              value={formData.categoria}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="">Selecione uma categoria</option>
-              <option value="Serviços">Serviços</option>
-              <option value="Produtos">Produtos</option>
-              <option value="Estoque">Estoque</option>
-              <option value="Fixas">Fixas</option>
-              <option value="Salários">Salários</option>
-              <option value="Marketing">Marketing</option>
-            </select>
-          </div>
-
+        {/* Valor e Data */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Valor (R$) *
@@ -124,8 +87,54 @@ const TransacaoModal = ({
               placeholder="0.00"
             />
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Data *
+            </label>
+            <MaskedInput
+              mask="date"
+              name="data"
+              value={formData.data}
+              onChange={handleChange}
+              required
+              placeholder="DD/MM/AAAA"
+            />
+          </div>
         </div>
 
+        {/* Categoria */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Categoria *
+          </label>
+          <select
+            name="categoria"
+            value={formData.categoria}
+            onChange={handleChange}
+            required
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+          >
+            <option value="">Selecione</option>
+            {formData.tipo === 'receita' ? (
+              <>
+                <option value="Serviços">Serviços</option>
+                <option value="Produtos">Venda de Produtos</option>
+                <option value="Outros">Outros</option>
+              </>
+            ) : (
+              <>
+                <option value="Produtos">Compra de Produtos</option>
+                <option value="Estoque">Estoque</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Manutenção">Manutenção</option>
+                <option value="Outros">Outros</option>
+              </>
+            )}
+          </select>
+        </div>
+
+        {/* Forma de Pagamento */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Forma de Pagamento *
@@ -138,20 +147,20 @@ const TransacaoModal = ({
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="">Selecione</option>
-            <option value="Dinheiro">Dinheiro</option>
-            <option value="Cartão de Crédito">Cartão de Crédito</option>
-            <option value="Cartão de Débito">Cartão de Débito</option>
-            <option value="Pix">Pix</option>
-            <option value="Boleto">Boleto</option>
-            <option value="Transferência">Transferência</option>
-            <option value="Débito Automático">Débito Automático</option>
+            <option value="Dinheiro">💵 Dinheiro</option>
+            <option value="Pix">📱 Pix</option>
+            <option value="Cartão de Débito">💳 Cartão de Débito</option>
+            <option value="Cartão de Crédito">💳 Cartão de Crédito</option>
+            <option value="Transferência">🏦 Transferência</option>
+            <option value="Boleto">📄 Boleto</option>
           </select>
         </div>
 
-        {formData.tipo === 'receita' && (
+        {/* Cliente ou Fornecedor */}
+        {formData.tipo === 'receita' ? (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Cliente
+              Cliente (opcional)
             </label>
             <select
               name="cliente"
@@ -159,7 +168,7 @@ const TransacaoModal = ({
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="">Selecione um cliente (opcional)</option>
+              <option value="">Nenhum</option>
               {clientesSalao.map(cliente => (
                 <option key={cliente.id} value={cliente.nome}>
                   {cliente.nome}
@@ -167,12 +176,10 @@ const TransacaoModal = ({
               ))}
             </select>
           </div>
-        )}
-
-        {formData.tipo === 'despesa' && (
+        ) : (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Fornecedor
+              Fornecedor (opcional)
             </label>
             <select
               name="fornecedor"
@@ -180,7 +187,7 @@ const TransacaoModal = ({
               onChange={handleChange}
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
-              <option value="">Selecione um fornecedor (opcional)</option>
+              <option value="">Nenhum</option>
               {fornecedoresSalao.map(fornecedor => (
                 <option key={fornecedor.id} value={fornecedor.nome}>
                   {fornecedor.nome}
@@ -190,6 +197,7 @@ const TransacaoModal = ({
           </div>
         )}
 
+        {/* Status */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Status *
@@ -201,84 +209,30 @@ const TransacaoModal = ({
             required
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
-            <option value="pendente">Pendente</option>
-            <option value="pago">Pago</option>
-            <option value="recebido">Recebido</option>
-            <option value="cancelado">Cancelado</option>
+            <option value="pendente">⏳ Pendente</option>
+            <option value={formData.tipo === 'receita' ? 'recebido' : 'pago'}>
+              ✅ {formData.tipo === 'receita' ? 'Recebido' : 'Pago'}
+            </option>
+            <option value="cancelado">❌ Cancelado</option>
           </select>
         </div>
 
-        {/* Recorrência */}
-        <div className="col-span-full border-t border-gray-200 pt-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <input
-              type="checkbox"
-              id="recorrente"
-              checked={formData.recorrente}
-              onChange={(e) => setFormData({...formData, recorrente: e.target.checked})}
-              className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
-            />
-            <label htmlFor="recorrente" className="text-sm font-medium text-gray-700">
-              Transação Recorrente (gerar múltiplas parcelas)
-            </label>
-          </div>
-
-          {formData.recorrente && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-6 border-l-2 border-purple-200">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Tipo de Recorrência
-                </label>
-                <select
-                  value={formData.tipoRecorrencia}
-                  onChange={(e) => setFormData({...formData, tipoRecorrencia: e.target.value})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="semanal">Semanal</option>
-                  <option value="mensal">Mensal</option>
-                  <option value="anual">Anual</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quantidade de Parcelas
-                </label>
-                <input
-                  type="number"
-                  min="2"
-                  max="60"
-                  value={formData.quantidadeParcelas}
-                  onChange={(e) => setFormData({...formData, quantidadeParcelas: parseInt(e.target.value)})}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div className="col-span-full">
-                <p className="text-sm text-gray-600 bg-purple-50 p-3 rounded-lg">
-                  💡 Serão criadas {formData.quantidadeParcelas} transações {formData.tipoRecorrencia}s 
-                  de R$ {formData.valor || '0,00'} cada
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
         {/* Observações */}
-        <div className="col-span-full">
+        <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Observações
+            Observações (opcional)
           </label>
           <textarea
             name="observacoes"
             value={formData.observacoes}
             onChange={handleChange}
-            rows="3"
+            rows="2"
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="Informações adicionais sobre a transação..."
+            placeholder="Informações adicionais..."
           />
         </div>
 
+        {/* Botões */}
         <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
           <button
             type="button"
@@ -291,10 +245,11 @@ const TransacaoModal = ({
             type="submit"
             className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
           >
-            {editingId ? 'Salvar Alterações' : 'Cadastrar Transação'}
+            {editingId ? 'Salvar' : 'Cadastrar'}
           </button>
         </div>
       </form>
+      </div>
     </Modal>
   );
 };

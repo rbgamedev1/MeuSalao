@@ -1,37 +1,46 @@
-// src/components/financeiro/ContasPagarReceber.jsx
-import { Calendar, CheckCircle, AlertCircle, Clock, XCircle } from 'lucide-react';
+// src/components/financeiro/ContasPagarReceber.jsx - COMPLETO ATUALIZADO
+import { Calendar, CheckCircle, AlertCircle, Clock, Edit } from 'lucide-react';
 import { dateToISO, compareDates, getTodayBR } from '../../utils/masks';
 
 const ContasPagarReceber = ({ transacoes, handleOpenModal, setTransacoes, allTransacoes }) => {
-  // Separar contas pendentes e filtrar apenas com vencimento
+  // Separar contas pendentes e filtrar apenas com vencimento ou despesas fixas
   const contasPendentes = transacoes
-    .filter(t => t.status === 'pendente' && t.dataVencimento)
+    .filter(t => t.status === 'pendente' && (t.dataVencimento || t.ehDespesaFixa))
     .sort((a, b) => {
-      const dataA = dateToISO(a.dataVencimento);
-      const dataB = dateToISO(b.dataVencimento);
+      const dataA = dateToISO(a.dataVencimento || a.data);
+      const dataB = dateToISO(b.dataVencimento || b.data);
       return compareDates(dataA, dataB);
     });
 
   const hoje = dateToISO(getTodayBR());
 
   // Classificar contas
-  const contasVencidas = contasPendentes.filter(t => 
-    compareDates(dateToISO(t.dataVencimento), hoje) < 0
-  );
+  const contasVencidas = contasPendentes.filter(t => {
+    const dataVenc = t.dataVencimento || t.data;
+    return compareDates(dateToISO(dataVenc), hoje) < 0;
+  });
   
-  const contasHoje = contasPendentes.filter(t => 
-    compareDates(dateToISO(t.dataVencimento), hoje) === 0
-  );
+  const contasHoje = contasPendentes.filter(t => {
+    const dataVenc = t.dataVencimento || t.data;
+    return compareDates(dateToISO(dataVenc), hoje) === 0;
+  });
   
-  const proximasContas = contasPendentes.filter(t => 
-    compareDates(dateToISO(t.dataVencimento), hoje) > 0
-  );
+  const proximasContas = contasPendentes.filter(t => {
+    const dataVenc = t.dataVencimento || t.data;
+    return compareDates(dateToISO(dataVenc), hoje) > 0;
+  });
 
-  const marcarComoPago = (id, tipo) => {
-    const novoStatus = tipo === 'receita' ? 'recebido' : 'pago';
-    setTransacoes(allTransacoes.map(t => 
-      t.id === id ? { ...t, status: novoStatus, dataPagamento: getTodayBR() } : t
-    ));
+  const marcarComoPago = (conta) => {
+    const novoStatus = conta.tipo === 'receita' ? 'recebido' : 'pago';
+    
+    // Atualizar o status da transação
+    const transacoesAtualizadas = allTransacoes.map(t => 
+      t.id === conta.id 
+        ? { ...t, status: novoStatus, dataPagamento: getTodayBR() } 
+        : t
+    );
+    
+    setTransacoes(transacoesAtualizadas);
   };
 
   const ContaCard = ({ conta, urgencia }) => {
@@ -77,7 +86,7 @@ const ContasPagarReceber = ({ transacoes, handleOpenModal, setTransacoes, allTra
             
             <div className="text-sm text-gray-600 space-y-1">
               <p>
-                <span className="font-medium">Vencimento:</span> {conta.dataVencimento}
+                <span className="font-medium">Vencimento:</span> {conta.dataVencimento || conta.data}
               </p>
               <p>
                 <span className="font-medium">Categoria:</span> {conta.categoria}
@@ -95,6 +104,11 @@ const ContasPagarReceber = ({ transacoes, handleOpenModal, setTransacoes, allTra
               <p>
                 <span className="font-medium">Forma:</span> {conta.formaPagamento}
               </p>
+              {conta.ehDespesaFixa && (
+                <p className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded inline-block mt-1">
+                  💫 Despesa Fixa Mensal
+                </p>
+              )}
             </div>
             
             <div className={`text-xl font-bold mt-3 ${
@@ -106,7 +120,7 @@ const ContasPagarReceber = ({ transacoes, handleOpenModal, setTransacoes, allTra
           
           <div className="flex flex-col space-y-2 ml-4">
             <button
-              onClick={() => marcarComoPago(conta.id, conta.tipo)}
+              onClick={() => marcarComoPago(conta)}
               className="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors"
               title={conta.tipo === 'receita' ? 'Marcar como Recebido' : 'Marcar como Pago'}
             >
@@ -117,7 +131,7 @@ const ContasPagarReceber = ({ transacoes, handleOpenModal, setTransacoes, allTra
               className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
               title="Editar"
             >
-              <Calendar size={20} />
+              <Edit size={20} />
             </button>
           </div>
         </div>
