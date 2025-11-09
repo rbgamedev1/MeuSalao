@@ -1,4 +1,4 @@
-// src/components/financeiro/FinanceiroStats.jsx - REFORMULADO
+// src/components/financeiro/FinanceiroStats.jsx
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus } from 'lucide-react';
 
 const StatCard = ({ icon: Icon, label, value, subtext, color, onClick, onAddClick, showAddButton }) => {
@@ -42,23 +42,23 @@ const StatCard = ({ icon: Icon, label, value, subtext, color, onClick, onAddClic
             e.stopPropagation();
             onAddClick();
           }}
-          className={`absolute top-4 right-4 ${colors.bg} ${colors.text} p-2 rounded-full hover:opacity-80 transition-opacity shadow-sm`}
+          className={`absolute top-4 right-4 ${colors.bg} ${colors.text} p-2.5 rounded-full hover:opacity-80 transition-opacity shadow-lg border-2 ${colors.border}`}
           title={`Adicionar ${label}`}
         >
-          <Plus size={18} />
+          <Plus size={22} strokeWidth={2.5} />
         </button>
       )}
       
       <div className="flex items-center justify-between">
+        <div className={`${colors.bg} p-3 rounded-lg flex-shrink-0 self-center mr-4`}>
+          <Icon className={colors.text} size={24} />
+        </div>
         <div className="flex-1">
           <p className="text-sm text-gray-600 font-medium">{label}</p>
           <p className={`text-3xl font-bold mt-2 ${colors.text}`}>
             {value}
           </p>
           <p className="text-xs text-gray-500 mt-2">{subtext}</p>
-        </div>
-        <div className={`${colors.bg} p-4 rounded-lg`}>
-          <Icon className={colors.text} size={32} />
         </div>
       </div>
       

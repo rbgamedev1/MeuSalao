@@ -1,4 +1,4 @@
-// src/components/financeiro/FinanceiroDetails.jsx - NOVO
+// src/components/financeiro/FinanceiroDetails.jsx
 import { X, TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react';
 import FinanceiroTable from './FinanceiroTable';
 

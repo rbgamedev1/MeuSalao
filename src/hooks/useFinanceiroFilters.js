@@ -1,6 +1,4 @@
-// ============================================
-// 2. src/hooks/useFinanceiroFilters.js
-// ============================================
+// src/hooks/useFinanceiroFilters.js
 import { useState, useMemo } from 'react';
 import { dateToISO, compareDates } from '../utils/masks';
 

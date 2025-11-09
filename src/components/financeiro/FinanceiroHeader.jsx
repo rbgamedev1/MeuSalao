@@ -1,4 +1,4 @@
-// src/components/financeiro/FinanceiroHeader.jsx - SIMPLIFICADO
+// src/components/financeiro/FinanceiroHeader.jsx
 const FinanceiroHeader = ({ salaoNome, periodo, setPeriodo }) => {
   const periodos = [
     { value: 'dia', label: 'Hoje' },

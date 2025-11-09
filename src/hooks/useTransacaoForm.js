@@ -1,4 +1,4 @@
-// src/hooks/useTransacaoForm.js - CORRIGIDO
+// src/hooks/useTransacaoForm.js
 import { useState, useEffect } from 'react';
 import { getTodayBR } from '../utils/masks';
 

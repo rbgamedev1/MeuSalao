@@ -1,4 +1,4 @@
-// src/hooks/useFinanceiroData.js - CORRIGIDO
+// src/hooks/useFinanceiroData.js
 import { useMemo } from 'react';
 import { dateToISO } from '../utils/masks';
 
@@ -44,13 +44,13 @@ export const useFinanceiroData = (transacoesSalao, periodo) => {
   const totalReceitas = useMemo(() => {
     return transacoesFiltradas
       .filter(t => t.tipo === 'receita' && (t.status === 'recebido' || t.status === 'pago'))
-      .reduce((acc, t) => acc + t.valor, 0);
+      .reduce((acc, t) => acc + parseFloat(t.valor || 0), 0);
   }, [transacoesFiltradas]);
 
   const totalDespesas = useMemo(() => {
     return transacoesFiltradas
-      .filter(t => t.tipo === 'despesa' && t.status === 'pago')
-      .reduce((acc, t) => acc + t.valor, 0);
+      .filter(t => t.tipo === 'despesa' && (t.status === 'pago' || t.status === 'recebido'))
+      .reduce((acc, t) => acc + parseFloat(t.valor || 0), 0);
   }, [transacoesFiltradas]);
 
   const saldo = totalReceitas - totalDespesas;

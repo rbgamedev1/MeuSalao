@@ -1,4 +1,4 @@
-// src/components/financeiro/TransacaoModal.jsx - SIMPLIFICADO
+// src/components/financeiro/TransacaoModal.jsx
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
 
