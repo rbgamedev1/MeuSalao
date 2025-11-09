@@ -1,12 +1,12 @@
-// src/hooks/useTransacaoForm.js - SIMPLIFICADO
-import { useState } from 'react';
+// src/hooks/useTransacaoForm.js - CORRIGIDO
+import { useState, useEffect } from 'react';
 import { getTodayBR } from '../utils/masks';
 
 export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
-  const [formData, setFormData] = useState({
+  const getInitialFormData = () => ({
     tipo: 'receita',
     descricao: '',
     categoria: '',
@@ -15,25 +15,25 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
     data: getTodayBR(),
     cliente: '',
     fornecedor: '',
-    status: 'pago', // Por padrão já é pago
-    salaoId: salaoAtual.id,
+    status: 'pago',
+    salaoId: salaoAtual?.id || '',
     observacoes: ''
   });
 
+  const [formData, setFormData] = useState(getInitialFormData());
+
+  // Atualizar salaoId quando mudar
+  useEffect(() => {
+    if (salaoAtual?.id) {
+      setFormData(prev => ({
+        ...prev,
+        salaoId: salaoAtual.id
+      }));
+    }
+  }, [salaoAtual?.id]);
+
   const resetForm = () => {
-    setFormData({
-      tipo: 'receita',
-      descricao: '',
-      categoria: '',
-      valor: '',
-      formaPagamento: '',
-      data: getTodayBR(),
-      cliente: '',
-      fornecedor: '',
-      status: 'pago',
-      salaoId: salaoAtual.id,
-      observacoes: ''
-    });
+    setFormData(getInitialFormData());
   };
 
   const handleOpenModal = (transacao = null) => {
@@ -73,7 +73,7 @@ export const useTransacaoForm = (salaoAtual, transacoes, setTransacoes) => {
       ...formData,
       valor: parseFloat(formData.valor),
       dataCriacao: getTodayBR(),
-      dataVencimento: null // Removido vencimento de transações simples
+      dataVencimento: null
     };
 
     if (editingId) {

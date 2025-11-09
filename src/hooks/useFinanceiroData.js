@@ -1,62 +1,14 @@
-// src/hooks/useFinanceiroData.js - COMPLETO ATUALIZADO
+// src/hooks/useFinanceiroData.js - CORRIGIDO
 import { useMemo } from 'react';
 import { dateToISO } from '../utils/masks';
 
-export const useFinanceiroData = (transacoesSalao, despesasFixasSalao, periodo) => {
-  // Gerar transações das despesas fixas do mês atual
-  const transacoesDespesasFixas = useMemo(() => {
-    const hoje = new Date();
-    const mesAtual = hoje.getMonth();
-    const anoAtual = hoje.getFullYear();
-    
-    const despesasAtivas = despesasFixasSalao.filter(d => d.ativa);
-
-    return despesasAtivas.map(despesa => {
-      const dataVencimento = new Date(anoAtual, mesAtual, despesa.diaVencimento);
-      const dataVencimentoBR = dataVencimento.toLocaleDateString('pt-BR');
-      
-      // Verificar se já venceu
-      const hoje = new Date();
-      const venceu = dataVencimento < hoje;
-
-      return {
-        id: `fixa-${despesa.id}-${mesAtual}-${anoAtual}`,
-        tipo: 'despesa',
-        descricao: `${despesa.tipo}${despesa.descricao ? ` - ${despesa.descricao}` : ''}`,
-        categoria: 'Fixas',
-        valor: despesa.valor,
-        formaPagamento: despesa.formaPagamento,
-        data: dataVencimentoBR,
-        dataVencimento: dataVencimentoBR,
-        fornecedor: despesa.fornecedor,
-        status: 'pendente',
-        salaoId: despesa.salaoId,
-        despesaFixaId: despesa.id,
-        observacoes: despesa.observacoes,
-        ehDespesaFixa: true
-      };
-    });
-  }, [despesasFixasSalao]);
-
-  // Combinar transações normais com despesas fixas
-  const todasTransacoes = useMemo(() => {
-    return [...transacoesSalao, ...transacoesDespesasFixas];
-  }, [transacoesSalao, transacoesDespesasFixas]);
-
+export const useFinanceiroData = (transacoesSalao, periodo) => {
   // Função para filtrar por período
   const filtrarPorPeriodo = (transacoes) => {
     const hoje = new Date();
     const inicioHoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
     
     return transacoes.filter(t => {
-      // Para despesas fixas, só considerar se estiver no mês atual
-      if (t.ehDespesaFixa) {
-        const dataVencimento = new Date(dateToISO(t.dataVencimento).split('-').join('/'));
-        const mesVencimento = dataVencimento.getMonth();
-        const anoVencimento = dataVencimento.getFullYear();
-        return mesVencimento === hoje.getMonth() && anoVencimento === hoje.getFullYear();
-      }
-
       const dataTransacao = new Date(dateToISO(t.data).split('-').join('/'));
       
       switch (periodo) {
@@ -85,8 +37,8 @@ export const useFinanceiroData = (transacoesSalao, despesasFixasSalao, periodo) 
 
   // Transações filtradas por período
   const transacoesFiltradas = useMemo(() => {
-    return filtrarPorPeriodo(todasTransacoes);
-  }, [todasTransacoes, periodo]);
+    return filtrarPorPeriodo(transacoesSalao);
+  }, [transacoesSalao, periodo]);
 
   // Calcular totais (apenas transações pagas/recebidas)
   const totalReceitas = useMemo(() => {
@@ -124,7 +76,7 @@ export const useFinanceiroData = (transacoesSalao, despesasFixasSalao, periodo) 
       const dataInicio = new Date(data.getFullYear(), data.getMonth(), 1);
       const dataFim = new Date(data.getFullYear(), data.getMonth() + 1, 1);
 
-      const receita = todasTransacoes
+      const receita = transacoesSalao
         .filter(t => {
           if (t.tipo !== 'receita') return false;
           if (t.status !== 'recebido' && t.status !== 'pago') return false;
@@ -133,7 +85,7 @@ export const useFinanceiroData = (transacoesSalao, despesasFixasSalao, periodo) 
         })
         .reduce((sum, t) => sum + t.valor, 0);
 
-      const despesa = todasTransacoes
+      const despesa = transacoesSalao
         .filter(t => {
           if (t.tipo !== 'despesa') return false;
           if (t.status !== 'pago') return false;
@@ -146,7 +98,7 @@ export const useFinanceiroData = (transacoesSalao, despesasFixasSalao, periodo) 
     }
 
     return dados;
-  }, [todasTransacoes]);
+  }, [transacoesSalao]);
 
   // Distribuição de despesas por categoria (apenas pagas)
   const categoriasDespesas = useMemo(() => {

@@ -1,6 +1,6 @@
-// src/pages/Financeiro.jsx - COMPLETO ATUALIZADO
+// src/pages/Financeiro.jsx - VERSÃO FINAL SIMPLIFICADA
 import { useState, useContext, useEffect } from 'react';
-import { Crown, Plus } from 'lucide-react';
+import { Crown, Calendar } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { hasAccess } from '../utils/planRestrictions';
 
@@ -14,15 +14,11 @@ import { useDespesasFixas } from '../hooks/useDespesasFixas';
 import PlanRestriction from '../components/PlanRestriction';
 import FinanceiroHeader from '../components/financeiro/FinanceiroHeader';
 import FinanceiroStats from '../components/financeiro/FinanceiroStats';
-import FinanceiroCharts from '../components/financeiro/FinanceiroCharts';
-import PeriodoIndicator from '../components/financeiro/PeriodoIndicator';
-import ViewModeTabs from '../components/financeiro/ViewModeTabs';
-import FinanceiroFilters from '../components/financeiro/FinanceiroFilters';
-import FinanceiroTable from '../components/financeiro/FinanceiroTable';
-import ContasPagarReceber from '../components/financeiro/ContasPagarReceber';
+import FinanceiroDetails from '../components/financeiro/FinanceiroDetails';
 import TransacaoModal from '../components/financeiro/TransacaoModal';
 import DespesasFixasList from '../components/financeiro/DespesasFixasList';
 import DespesasFixasModal from '../components/financeiro/DespesasFixasModal';
+import ContasPagarReceber from '../components/financeiro/ContasPagarReceber';
 
 const Financeiro = () => {
   const { 
@@ -36,7 +32,8 @@ const Financeiro = () => {
   
   // Estados principais
   const [periodo, setPeriodo] = useState('mes');
-  const [viewMode, setViewMode] = useState('transacoes');
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [showDespesasFixas, setShowDespesasFixas] = useState(false);
   
   // Estado para despesas fixas (localStorage)
   const [despesasFixas, setDespesasFixas] = useState(() => {
@@ -66,27 +63,18 @@ const Financeiro = () => {
   const transacoesSalao = getTransacoesPorSalao();
   const despesasFixasSalao = despesasFixas.filter(d => d.salaoId === salaoAtual.id);
   
-  // Hook de dados financeiros (agora recebe despesas fixas)
+  // Hook de dados financeiros
   const {
     transacoesFiltradas,
     totalReceitas,
     totalDespesas,
     saldo,
-    ticketMedio,
-    fluxoCaixaData,
-    categoriasDespesas
-  } = useFinanceiroData(transacoesSalao, despesasFixasSalao, periodo);
+    ticketMedio
+  } = useFinanceiroData(transacoesSalao, periodo);
   
   // Hook de filtros
   const {
-    tipoTransacao,
-    setTipoTransacao,
-    showFilters,
-    setShowFilters,
-    filtros,
-    setFiltros,
-    filteredTransacoes,
-    limparFiltros
+    filteredTransacoes
   } = useFinanceiroFilters(transacoesFiltradas);
   
   // Hook do formulário de transação
@@ -114,39 +102,38 @@ const Financeiro = () => {
     handleDelete: handleDeleteFixas,
     handleChange: handleChangeFixas,
     toggleAtiva,
-    tiposDespesasFixas,
-    gerarTransacoesMesAtual
-  } = useDespesasFixas(salaoAtual, despesasFixas, setDespesasFixas);
+    tiposDespesasFixas
+  } = useDespesasFixas(salaoAtual, despesasFixas, setDespesasFixas, transacoes, setTransacoes);
 
-  // Gerar transações das despesas fixas do mês atual e adicionar às transações
-  useEffect(() => {
-    const transacoesDespesasFixas = gerarTransacoesMesAtual();
-    
-    // Verificar quais despesas fixas ainda não foram adicionadas este mês
-    const idsExistentes = transacoes
-      .filter(t => t.ehDespesaFixa)
-      .map(t => t.id);
-    
-    const novasTransacoes = transacoesDespesasFixas.filter(
-      t => !idsExistentes.includes(t.id)
-    );
+  // Handlers para os cards
+  const handleCardClick = (cardType) => {
+    setSelectedCard(cardType);
+    setShowDespesasFixas(false);
+  };
 
-    if (novasTransacoes.length > 0) {
-      setTransacoes([...transacoes, ...novasTransacoes]);
-    }
-  }, [despesasFixas, salaoAtual.id]); // Roda quando despesas fixas mudam
-  
-  // Atualizar salaoId quando mudar de salão
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      salaoId: salaoAtual.id
-    }));
-    setFormDataFixas(prev => ({
-      ...prev,
-      salaoId: salaoAtual.id
-    }));
-  }, [salaoAtual.id]);
+  const handleCloseDetails = () => {
+    setSelectedCard(null);
+  };
+
+  const handleAddReceita = () => {
+    setFormData(prev => ({ ...prev, tipo: 'receita' }));
+    handleOpenModal();
+  };
+
+  const handleAddDespesa = () => {
+    setFormData(prev => ({ ...prev, tipo: 'despesa' }));
+    handleOpenModal();
+  };
+
+  const handleToggleDespesasFixas = () => {
+    setShowDespesasFixas(!showDespesasFixas);
+    setSelectedCard(null);
+  };
+
+  // Contar contas pendentes
+  const contasPendentes = transacoesFiltradas.filter(t => 
+    t.status === 'pendente' && (t.dataVencimento || t.ehDespesaFixa)
+  );
 
   return (
     <div className="space-y-6">
@@ -155,7 +142,6 @@ const Financeiro = () => {
         salaoNome={salaoAtual.nome}
         periodo={periodo}
         setPeriodo={setPeriodo}
-        onNovaTransacao={() => handleOpenModal()}
       />
 
       {/* Info do Plano */}
@@ -168,44 +154,89 @@ const Financeiro = () => {
                 Plano {salaoAtual.plano} - Módulo Financeiro Ativo
               </p>
               <p className="text-xs text-blue-700 mt-1">
-                Gerencie receitas, despesas e despesas fixas mensais
+                Clique nos cards para ver detalhes • Use o botão + para adicionar transações
               </p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Cards de Resumo */}
+      {/* Cards de Resumo (Clicáveis) */}
       <FinanceiroStats 
         totalReceitas={totalReceitas}
         totalDespesas={totalDespesas}
         saldo={saldo}
         ticketMedio={ticketMedio}
         transacoesSalao={transacoesFiltradas}
+        onCardClick={handleCardClick}
+        onAddReceita={handleAddReceita}
+        onAddDespesa={handleAddDespesa}
       />
 
-      {/* Gráficos */}
-      <FinanceiroCharts 
-        fluxoCaixaData={fluxoCaixaData}
-        categoriasDespesas={categoriasDespesas}
-      />
+      {/* Atalhos Rápidos */}
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          onClick={handleToggleDespesasFixas}
+          className={`p-4 rounded-lg border-2 transition-all ${
+            showDespesasFixas
+              ? 'bg-purple-50 border-purple-300 shadow-md'
+              : 'bg-white border-gray-200 hover:border-purple-300 hover:shadow-sm'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <Calendar className="text-purple-600" size={24} />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-800">Despesas Fixas Mensais</p>
+                <p className="text-sm text-gray-600">
+                  {despesasFixasSalao.filter(d => d.ativa).length} ativa(s)
+                </p>
+              </div>
+            </div>
+          </div>
+        </button>
 
-      {/* Indicador de Período */}
-      <PeriodoIndicator periodo={periodo} />
+        <button
+          onClick={() => handleCardClick('contas')}
+          className={`p-4 rounded-lg border-2 transition-all ${
+            selectedCard === 'contas'
+              ? 'bg-yellow-50 border-yellow-300 shadow-md'
+              : 'bg-white border-gray-200 hover:border-yellow-300 hover:shadow-sm'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="bg-yellow-100 p-3 rounded-lg">
+                <Calendar className="text-yellow-600" size={24} />
+              </div>
+              <div className="text-left">
+                <p className="font-semibold text-gray-800">Contas a Pagar/Receber</p>
+                <p className="text-sm text-gray-600">
+                  {contasPendentes.length} pendente(s)
+                </p>
+              </div>
+            </div>
+            {contasPendentes.length > 0 && (
+              <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                {contasPendentes.length}
+              </span>
+            )}
+          </div>
+        </button>
+      </div>
 
-      {/* Tabs de Visualização */}
-      <ViewModeTabs viewMode={viewMode} setViewMode={setViewMode} />
-
-      {/* Conteúdo baseado na visualização */}
-      {viewMode === 'fixas' ? (
-        <>
-          {/* Botão para adicionar despesa fixa */}
-          <div className="flex justify-end">
+      {/* Área de Conteúdo Dinâmico */}
+      {showDespesasFixas ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800">Despesas Fixas Mensais</h2>
             <button 
               onClick={() => handleOpenModalFixas()}
               className="flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
             >
-              <Plus size={20} />
+              <span className="text-xl">+</span>
               <span>Nova Despesa Fixa</span>
             </button>
           </div>
@@ -216,61 +247,63 @@ const Financeiro = () => {
             handleDelete={handleDeleteFixas}
             toggleAtiva={toggleAtiva}
           />
-
-          <DespesasFixasModal
-            showModal={showModalFixas}
-            editingId={editingIdFixas}
-            formData={formDataFixas}
-            setFormData={setFormDataFixas}
-            handleCloseModal={handleCloseModalFixas}
-            handleSubmit={handleSubmitFixas}
-            handleChange={handleChangeFixas}
-            tiposDespesasFixas={tiposDespesasFixas}
-            fornecedoresSalao={fornecedoresSalao}
+        </div>
+      ) : selectedCard === 'contas' ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-800">Contas a Pagar e Receber</h2>
+            <button
+              onClick={handleCloseDetails}
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Fechar
+            </button>
+          </div>
+          <ContasPagarReceber
+            transacoes={filteredTransacoes}
+            handleOpenModal={handleOpenModal}
+            setTransacoes={setTransacoes}
+            allTransacoes={transacoes}
           />
-        </>
-      ) : (
-        <>
-          {/* Filtros */}
-          <FinanceiroFilters
-            tipoTransacao={tipoTransacao}
-            setTipoTransacao={setTipoTransacao}
-            showFilters={showFilters}
-            setShowFilters={setShowFilters}
-            filtros={filtros}
-            setFiltros={setFiltros}
-            limparFiltros={limparFiltros}
-          />
+        </div>
+      ) : selectedCard ? (
+        <FinanceiroDetails
+          cardType={selectedCard}
+          onClose={handleCloseDetails}
+          filteredTransacoes={filteredTransacoes}
+          handleOpenModal={handleOpenModal}
+          handleDelete={handleDelete}
+          totalReceitas={totalReceitas}
+          totalDespesas={totalDespesas}
+          saldo={saldo}
+          ticketMedio={ticketMedio}
+        />
+      ) : null}
 
-          {viewMode === 'transacoes' ? (
-            <FinanceiroTable 
-              filteredTransacoes={filteredTransacoes}
-              handleOpenModal={handleOpenModal}
-              handleDelete={handleDelete}
-            />
-          ) : (
-            <ContasPagarReceber
-              transacoes={filteredTransacoes}
-              handleOpenModal={handleOpenModal}
-              setTransacoes={setTransacoes}
-              allTransacoes={transacoes}
-            />
-          )}
+      {/* Modais */}
+      <TransacaoModal
+        showModal={showModal}
+        editingId={editingId}
+        formData={formData}
+        setFormData={setFormData}
+        handleCloseModal={handleCloseModal}
+        handleSubmit={handleSubmit}
+        handleChange={handleChange}
+        clientesSalao={clientesSalao}
+        fornecedoresSalao={fornecedoresSalao}
+      />
 
-          {/* Modal de Cadastro/Edição de Transação */}
-          <TransacaoModal
-            showModal={showModal}
-            editingId={editingId}
-            formData={formData}
-            setFormData={setFormData}
-            handleCloseModal={handleCloseModal}
-            handleSubmit={handleSubmit}
-            handleChange={handleChange}
-            clientesSalao={clientesSalao}
-            fornecedoresSalao={fornecedoresSalao}
-          />
-        </>
-      )}
+      <DespesasFixasModal
+        showModal={showModalFixas}
+        editingId={editingIdFixas}
+        formData={formDataFixas}
+        setFormData={setFormDataFixas}
+        handleCloseModal={handleCloseModalFixas}
+        handleSubmit={handleSubmitFixas}
+        handleChange={handleChangeFixas}
+        tiposDespesasFixas={tiposDespesasFixas}
+        fornecedoresSalao={fornecedoresSalao}
+      />
     </div>
   );
 };

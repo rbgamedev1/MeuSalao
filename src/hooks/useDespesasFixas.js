@@ -1,12 +1,12 @@
-// src/hooks/useDespesasFixas.js - COMPLETO
-import { useState } from 'react';
+// src/hooks/useDespesasFixas.js - CORRIGIDO FINAL
+import { useState, useEffect } from 'react';
 import { getTodayBR } from '../utils/masks';
 
-export const useDespesasFixas = (salaoAtual, despesasFixas, setDespesasFixas) => {
+export const useDespesasFixas = (salaoAtual, despesasFixas, setDespesasFixas, transacoes, setTransacoes) => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   
-  const [formData, setFormData] = useState({
+  const getInitialFormData = () => ({
     tipo: 'Aluguel',
     descricao: '',
     valor: '',
@@ -15,8 +15,20 @@ export const useDespesasFixas = (salaoAtual, despesasFixas, setDespesasFixas) =>
     fornecedor: '',
     observacoes: '',
     ativa: true,
-    salaoId: salaoAtual.id
+    salaoId: salaoAtual?.id || ''
   });
+
+  const [formData, setFormData] = useState(getInitialFormData());
+
+  // Atualizar salaoId quando mudar
+  useEffect(() => {
+    if (salaoAtual?.id) {
+      setFormData(prev => ({
+        ...prev,
+        salaoId: salaoAtual.id
+      }));
+    }
+  }, [salaoAtual?.id]);
 
   const tiposDespesasFixas = [
     { valor: 'Aluguel', icon: '🏢' },
@@ -32,17 +44,7 @@ export const useDespesasFixas = (salaoAtual, despesasFixas, setDespesasFixas) =>
   ];
 
   const resetForm = () => {
-    setFormData({
-      tipo: 'Aluguel',
-      descricao: '',
-      valor: '',
-      diaVencimento: '5',
-      formaPagamento: 'Boleto',
-      fornecedor: '',
-      observacoes: '',
-      ativa: true,
-      salaoId: salaoAtual.id
-    });
+    setFormData(getInitialFormData());
   };
 
   const handleOpenModal = (despesa = null) => {
@@ -72,6 +74,35 @@ export const useDespesasFixas = (salaoAtual, despesasFixas, setDespesasFixas) =>
     resetForm();
   };
 
+  // Gerar transação da despesa fixa para o mês atual
+  const gerarTransacaoMesAtual = (despesa) => {
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    
+    const dataVencimento = new Date(anoAtual, mesAtual, despesa.diaVencimento);
+    const dataVencimentoBR = dataVencimento.toLocaleDateString('pt-BR');
+
+    const transacaoId = `fixa-${despesa.id}-${mesAtual}-${anoAtual}`;
+
+    return {
+      id: transacaoId,
+      tipo: 'despesa',
+      descricao: `${despesa.tipo}${despesa.descricao ? ` - ${despesa.descricao}` : ''}`,
+      categoria: 'Fixas',
+      valor: despesa.valor,
+      formaPagamento: despesa.formaPagamento,
+      data: dataVencimentoBR,
+      dataVencimento: dataVencimentoBR,
+      fornecedor: despesa.fornecedor,
+      status: 'pendente',
+      salaoId: despesa.salaoId,
+      despesaFixaId: despesa.id,
+      observacoes: despesa.observacoes,
+      ehDespesaFixa: true
+    };
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
@@ -84,66 +115,84 @@ export const useDespesasFixas = (salaoAtual, despesasFixas, setDespesasFixas) =>
     };
 
     if (editingId) {
+      // Editando despesa existente
       setDespesasFixas(despesasFixas.map(d => 
         d.id === editingId ? despesa : d
       ));
+
+      // Atualizar transação gerada desta despesa fixa (se existir)
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth();
+      const anoAtual = hoje.getFullYear();
+      const transacaoId = `fixa-${editingId}-${mesAtual}-${anoAtual}`;
+      
+      const transacaoAtualizada = gerarTransacaoMesAtual(despesa);
+      
+      setTransacoes(transacoes.map(t => 
+        t.id === transacaoId ? transacaoAtualizada : t
+      ));
     } else {
+      // Nova despesa fixa
       setDespesasFixas([...despesasFixas, despesa]);
+      
+      // Gerar transação para o mês atual se estiver ativa
+      if (despesa.ativa) {
+        const novaTransacao = gerarTransacaoMesAtual(despesa);
+        setTransacoes([...transacoes, novaTransacao]);
+      }
     }
     
     handleCloseModal();
   };
 
   const handleDelete = (id) => {
-    if (confirm('Tem certeza que deseja excluir esta despesa fixa?')) {
+    if (confirm('Tem certeza que deseja excluir esta despesa fixa? A transação gerada para este mês também será removida.')) {
+      // Remover despesa fixa
       setDespesasFixas(despesasFixas.filter(d => d.id !== id));
+      
+      // Remover transação gerada desta despesa fixa no mês atual
+      const hoje = new Date();
+      const mesAtual = hoje.getMonth();
+      const anoAtual = hoje.getFullYear();
+      const transacaoId = `fixa-${id}-${mesAtual}-${anoAtual}`;
+      
+      setTransacoes(transacoes.filter(t => t.id !== transacaoId));
     }
   };
 
   const toggleAtiva = (id) => {
+    const despesa = despesasFixas.find(d => d.id === id);
+    const novoEstado = !despesa.ativa;
+    
+    // Atualizar estado da despesa
     setDespesasFixas(despesasFixas.map(d => 
-      d.id === id ? { ...d, ativa: !d.ativa } : d
+      d.id === id ? { ...d, ativa: novoEstado } : d
     ));
+
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth();
+    const anoAtual = hoje.getFullYear();
+    const transacaoId = `fixa-${id}-${mesAtual}-${anoAtual}`;
+
+    if (novoEstado) {
+      // Reativando: criar transação se não existir
+      const transacaoExiste = transacoes.some(t => t.id === transacaoId);
+      if (!transacaoExiste) {
+        const despesaAtualizada = { ...despesa, ativa: true };
+        const novaTransacao = gerarTransacaoMesAtual(despesaAtualizada);
+        setTransacoes([...transacoes, novaTransacao]);
+      }
+    } else {
+      // Pausando: remover transação pendente
+      setTransacoes(transacoes.filter(t => 
+        !(t.id === transacaoId && t.status === 'pendente')
+      ));
+    }
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  // Gerar transações das despesas fixas para o mês atual
-  const gerarTransacoesMesAtual = () => {
-    const hoje = new Date();
-    const mesAtual = hoje.getMonth();
-    const anoAtual = hoje.getFullYear();
-    
-    const despesasAtivasSalao = despesasFixas.filter(d => 
-      d.ativa && d.salaoId === salaoAtual.id
-    );
-
-    const transacoesGeradas = despesasAtivasSalao.map(despesa => {
-      const dataVencimento = new Date(anoAtual, mesAtual, despesa.diaVencimento);
-      const dataVencimentoBR = dataVencimento.toLocaleDateString('pt-BR');
-
-      return {
-        id: `fixa-${despesa.id}-${mesAtual}-${anoAtual}`,
-        tipo: 'despesa',
-        descricao: `${despesa.tipo}${despesa.descricao ? ` - ${despesa.descricao}` : ''}`,
-        categoria: 'Fixas',
-        valor: despesa.valor,
-        formaPagamento: despesa.formaPagamento,
-        data: dataVencimentoBR,
-        dataVencimento: dataVencimentoBR,
-        fornecedor: despesa.fornecedor,
-        status: 'pendente',
-        salaoId: despesa.salaoId,
-        despesaFixaId: despesa.id,
-        observacoes: despesa.observacoes,
-        ehDespesaFixa: true
-      };
-    });
-
-    return transacoesGeradas;
   };
 
   return {
@@ -157,7 +206,6 @@ export const useDespesasFixas = (salaoAtual, despesasFixas, setDespesasFixas) =>
     handleDelete,
     handleChange,
     toggleAtiva,
-    tiposDespesasFixas,
-    gerarTransacoesMesAtual
+    tiposDespesasFixas
   };
 };
