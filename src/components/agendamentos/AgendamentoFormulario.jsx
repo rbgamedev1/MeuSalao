@@ -1,6 +1,5 @@
-// src/components/agendamentos/AgendamentoFormulario.jsx - ATUALIZADO COM SCROLL
+// src/components/agendamentos/AgendamentoFormulario.jsx - SIMPLIFICADO (sem detalhes cliente/serviço)
 
-import { Phone, Mail, Check } from 'lucide-react';
 import { useContext, useMemo } from 'react';
 import MaskedInput from '../MaskedInput';
 import { formatarDuracao, obterHorariosDisponiveisComDuracao } from '../../utils/agendamentoUtils';
@@ -75,27 +74,6 @@ const AgendamentoFormulario = ({
         )}
       </div>
 
-      {/* Informações do Cliente */}
-      {clienteSelecionado && (
-        <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
-          <p className="text-sm font-medium text-purple-900 mb-2">Informações do Cliente:</p>
-          <div className="grid grid-cols-2 gap-2 text-sm text-purple-800">
-            <div>
-              <span className="font-medium">Telefone:</span> {clienteSelecionado.telefone}
-            </div>
-            <div>
-              <span className="font-medium">Email:</span> {clienteSelecionado.email}
-            </div>
-            <div>
-              <span className="font-medium">Última Visita:</span> {clienteSelecionado.ultimaVisita}
-            </div>
-            <div>
-              <span className="font-medium">Total de Visitas:</span> {clienteSelecionado.visitas}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Serviço */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -124,27 +102,6 @@ const AgendamentoFormulario = ({
           </div>
         )}
       </div>
-
-      {/* Informações do Serviço */}
-      {servicoSelecionado && (
-        <div className="p-4 bg-green-50 rounded-lg border border-green-200">
-          <p className="text-sm font-medium text-green-900 mb-2">Detalhes do Serviço:</p>
-          <div className="grid grid-cols-2 gap-2 text-sm text-green-800">
-            <div>
-              <span className="font-medium">Categoria:</span> {servicoSelecionado.categoria}
-            </div>
-            <div>
-              <span className="font-medium">Duração:</span> {formatarDuracao(servicoSelecionado.duracao)}
-            </div>
-            <div>
-              <span className="font-medium">Valor:</span> R$ {servicoSelecionado.valor.toFixed(2)}
-            </div>
-            <div>
-              <span className="font-medium">Comissão:</span> {servicoSelecionado.comissao}%
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Profissional */}
       <div>

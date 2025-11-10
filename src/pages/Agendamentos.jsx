@@ -1,4 +1,4 @@
-// src/pages/Agendamentos.jsx - BLOQUEIOS CORRIGIDOS
+// src/pages/Agendamentos.jsx - FILTROS APENAS NA LISTA
 
 import { useState, useContext, useEffect, useMemo } from 'react';
 import Modal from '../components/Modal';
@@ -329,11 +329,9 @@ const Agendamentos = () => {
     setShowModal(true);
   };
 
-  // ✅ CORRIGIDO: Criar bloqueios com horarioFim e gerar todos os slots
   const handleBloqueioSubmit = (bloqueioData) => {
     const agendamentosAll = JSON.parse(localStorage.getItem('agendamentos') || '[]');
     
-    // Gerar todos os horários de 30 em 30 min entre início e fim
     const gerarSlotsBloqueio = (horarioInicio, horarioFim) => {
       const slots = [];
       const [hInicio, mInicio] = horarioInicio.split(':').map(Number);
@@ -355,14 +353,12 @@ const Agendamentos = () => {
     const slotsBloqueio = gerarSlotsBloqueio(bloqueioData.horarioInicio, bloqueioData.horarioFim);
     
     if (bloqueioData.recorrente) {
-      // Criar bloqueios recorrentes para próximas 12 semanas
       const bloqueios = [];
       for (let semana = 0; semana < 12; semana++) {
         bloqueioData.diasSemana.forEach(diaSemana => {
           const data = new Date();
           data.setDate(data.getDate() + (semana * 7) + (diaSemana - data.getDay()));
           
-          // Criar um bloqueio por slot
           slotsBloqueio.forEach(horario => {
             bloqueios.push({
               id: Math.max(...agendamentosAll.map(a => a.id), 0) + bloqueios.length + 1,
@@ -386,7 +382,6 @@ const Agendamentos = () => {
       
       alert(`✅ ${bloqueios.length} horários bloqueados com sucesso!`);
     } else {
-      // Bloqueio único - criar um por slot
       const bloqueios = slotsBloqueio.map((horario, index) => ({
         id: Math.max(...agendamentosAll.map(a => a.id), 0) + index + 1,
         profissionalId: parseInt(bloqueioData.profissionalId),
@@ -417,7 +412,6 @@ const Agendamentos = () => {
 
   const getAgendamentoCompleto = useMemo(() => {
     return (agendamento) => {
-      // ✅ CORRIGIDO: Não buscar cliente/serviço para bloqueios
       if (agendamento.tipo === 'bloqueio' || agendamento.status === 'bloqueado') {
         const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
         return {
@@ -445,7 +439,6 @@ const Agendamentos = () => {
     return agendamentosSalao
       .map(ag => getAgendamentoCompleto(ag))
       .filter(ag => {
-        // ✅ CORRIGIDO: Filtrar bloqueios da lista (aparecem só nas views dia/semana/mês)
         if (viewMode === 'lista' && (ag.tipo === 'bloqueio' || ag.status === 'bloqueado')) {
           return false;
         }
@@ -504,14 +497,17 @@ const Agendamentos = () => {
         </div>
       )}
 
-      <AgendamentoFiltros 
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        statusFiltro={statusFiltro}
-        setStatusFiltro={setStatusFiltro}
-        dataFiltro={dataFiltro}
-        setDataFiltro={setDataFiltro}
-      />
+      {/* ✅ CORREÇÃO: Mostrar filtros APENAS na view lista */}
+      {viewMode === 'lista' && (
+        <AgendamentoFiltros 
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          statusFiltro={statusFiltro}
+          setStatusFiltro={setStatusFiltro}
+          dataFiltro={dataFiltro}
+          setDataFiltro={setDataFiltro}
+        />
+      )}
 
       {viewMode === 'lista' && (
         <AgendamentoLista 

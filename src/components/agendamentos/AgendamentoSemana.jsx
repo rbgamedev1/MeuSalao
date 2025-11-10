@@ -1,3 +1,4 @@
+// src/components/agendamentos/AgendamentoSemana.jsx - LARGURA FIXA PARA TODOS OS DIAS
 import { useMemo } from 'react';
 import { User, Calendar, Edit, Trash2, Lock } from 'lucide-react';
 import { getStatusColor, formatarDuracao } from '../../utils/agendamentoUtils';
@@ -76,17 +77,20 @@ const AgendamentoSemana = ({
 
               return (
                 <div key={index} className="bg-white min-h-96">
-                  {/* Cabeçalho do dia */}
-                  <div className={`p-4 border-b ${isHoje ? 'bg-purple-50 border-purple-200' : 'bg-gray-50 border-gray-200'}`}>
+                  {/* Cabeçalho do dia - ALTURA FIXA */}
+                  <div className={`p-4 border-b h-24 flex flex-col justify-center ${isHoje ? 'bg-purple-50 border-purple-200' : 'bg-gray-50 border-gray-200'}`}>
                     <p className={`text-xs font-medium uppercase ${isHoje ? 'text-purple-600' : 'text-gray-500'}`}>
                       {diaSemana}
                     </p>
                     <p className={`text-lg font-bold ${isHoje ? 'text-purple-900' : 'text-gray-800'}`}>
                       {dia.getDate()}
                     </p>
-                    {isHoje && (
-                      <p className="text-xs text-purple-600 font-medium mt-1">Hoje</p>
-                    )}
+                    {/* Indicador "Hoje" em linha separada com altura fixa */}
+                    <div className="h-5 mt-1">
+                      {isHoje && (
+                        <p className="text-xs text-purple-600 font-medium">Hoje</p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Agendamentos do dia */}

@@ -1,3 +1,4 @@
+// src/components/agendamentos/AgendamentoHeader.jsx - CORRIGIDO
 import { Plus, List, CalendarDays, ChevronLeft, ChevronRight, Clock, CalendarRange } from 'lucide-react';
 
 const AgendamentoHeader = ({ 
@@ -125,9 +126,14 @@ const AgendamentoHeader = ({
             </button>
             <button
               onClick={() => {
-                if (viewMode === 'calendario') setViewMode('calendario');
-                else if (viewMode === 'semana') changeWeek(0);
-                else changeDay(0);
+                if (viewMode === 'calendario') {
+                  const today = new Date();
+                  changeMonth(today.getMonth() - currentDate.getMonth());
+                } else if (viewMode === 'semana') {
+                  changeWeek(0);
+                } else {
+                  changeDay(0);
+                }
               }}
               className="px-3 py-2 text-sm bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors font-medium"
             >

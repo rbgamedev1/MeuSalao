@@ -1,7 +1,7 @@
-// src/components/layout/Header.jsx - CORRIGIDO: Safe rendering
+// src/components/layout/Header.jsx - COM ALERTAS DE AGENDAMENTOS PASSADOS
 
 import { useState, useContext, useEffect, useMemo } from 'react';
-import { Bell, ChevronDown, Plus, LogOut, User, Calendar, Clock, X, RefreshCw } from 'lucide-react';
+import { Bell, ChevronDown, Plus, LogOut, User, Calendar, Clock, X, RefreshCw, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from "../../contexts/SalaoContext";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -30,6 +30,10 @@ const Header = () => {
     const saved = localStorage.getItem('notificacoesLidas');
     return saved ? JSON.parse(saved) : [];
   });
+  const [alertasPendentesOcultos, setAlertasPendentesOcultos] = useState(() => {
+    const saved = localStorage.getItem('alertasPendentesOcultos');
+    return saved ? JSON.parse(saved) : [];
+  });
   
   const [formData, setFormData] = useState({
     nome: '',
@@ -47,14 +51,56 @@ const Header = () => {
     forceRefresh 
   } = useRealtimeAgendamentos(salaoAtual?.id, 2000);
 
-  // ✅ CORREÇÃO CRÍTICA: Safe filtering com verificação de dados
+  // ✅ NOVO: Função para verificar se um agendamento está atrasado
+  const isAgendamentoAtrasado = (data, horario) => {
+    try {
+      const [dia, mes, ano] = data.split('/').map(Number);
+      const [hora, minuto] = horario.split(':').map(Number);
+      
+      const dataAgendamento = new Date(ano, mes - 1, dia, hora, minuto);
+      const agora = new Date();
+      
+      return dataAgendamento < agora;
+    } catch {
+      return false;
+    }
+  };
+
+  // ✅ NOVO: Agendamentos passados não finalizados
+  const agendamentosAtrasados = useMemo(() => {
+    if (!salaoAtual) return [];
+    
+    try {
+      return agendamentosRealtime
+        .filter(ag => {
+          if (!ag || !ag.salaoId || !ag.id) return false;
+          if (ag.tipo === 'bloqueio' || ag.status === 'bloqueado') return false;
+          
+          return (
+            ag.salaoId === salaoAtual.id && 
+            (ag.status === 'pendente' || ag.status === 'confirmado') &&
+            isAgendamentoAtrasado(ag.data, ag.horario) &&
+            !alertasPendentesOcultos.includes(ag.id)
+          );
+        })
+        .sort((a, b) => {
+          const dateA = new Date(a.criadoEm || 0);
+          const dateB = new Date(b.criadoEm || 0);
+          return dateB - dateA;
+        });
+    } catch (error) {
+      console.error('Erro ao filtrar agendamentos atrasados:', error);
+      return [];
+    }
+  }, [agendamentosRealtime, salaoAtual, alertasPendentesOcultos]);
+
+  // Agendamentos online
   const agendamentosOnline = useMemo(() => {
     if (!salaoAtual) return [];
     
     try {
       return agendamentosRealtime
         .filter(ag => {
-          // Verificação segura
           if (!ag || !ag.salaoId || !ag.id) return false;
           
           return (
@@ -74,31 +120,43 @@ const Header = () => {
     }
   }, [agendamentosRealtime, salaoAtual, notificacoesLidas]);
 
-  const notificacoesNaoLidas = agendamentosOnline.length;
+  // ✅ NOVO: Total de notificações (online + atrasados)
+  const totalNotificacoes = agendamentosOnline.length + agendamentosAtrasados.length;
 
   // Salvar notificações lidas
   useEffect(() => {
     localStorage.setItem('notificacoesLidas', JSON.stringify(notificacoesLidas));
   }, [notificacoesLidas]);
 
+  // Salvar alertas ocultos
+  useEffect(() => {
+    localStorage.setItem('alertasPendentesOcultos', JSON.stringify(alertasPendentesOcultos));
+  }, [alertasPendentesOcultos]);
+
   // Som de notificação
   useEffect(() => {
     const previousCount = parseInt(localStorage.getItem('previousNotificationCount') || '0');
     
-    if (notificacoesNaoLidas > previousCount && previousCount > 0) {
-      console.log('🔔 Novo agendamento online recebido!');
+    if (totalNotificacoes > previousCount && previousCount > 0) {
+      console.log('🔔 Nova notificação!');
     }
     
-    localStorage.setItem('previousNotificationCount', notificacoesNaoLidas.toString());
-  }, [notificacoesNaoLidas]);
+    localStorage.setItem('previousNotificationCount', totalNotificacoes.toString());
+  }, [totalNotificacoes]);
 
   const marcarComoLida = (agendamentoId) => {
     setNotificacoesLidas(prev => [...prev, agendamentoId]);
   };
 
+  const ocultarAlertaPendente = (agendamentoId) => {
+    setAlertasPendentesOcultos(prev => [...prev, agendamentoId]);
+  };
+
   const marcarTodasComoLidas = () => {
     const idsOnline = agendamentosOnline.map(ag => ag.id);
+    const idsAtrasados = agendamentosAtrasados.map(ag => ag.id);
     setNotificacoesLidas(prev => [...prev, ...idsOnline]);
+    setAlertasPendentesOcultos(prev => [...prev, ...idsAtrasados]);
   };
 
   const handleOpenNovoSalaoModal = () => {
@@ -160,7 +218,6 @@ const Header = () => {
     return saloes.length < limite;
   };
 
-  // ✅ CORREÇÃO CRÍTICA: Safe getters com fallback
   const getClienteNome = (clienteId) => {
     try {
       const cliente = clientes.find(c => c.id === clienteId);
@@ -215,6 +272,26 @@ const Header = () => {
       return `Há ${diffDias}d`;
     } catch {
       return 'Recente';
+    }
+  };
+
+  // ✅ NOVO: Calcular atraso
+  const getTempoAtraso = (data, horario) => {
+    try {
+      const [dia, mes, ano] = data.split('/').map(Number);
+      const [hora, minuto] = horario.split(':').map(Number);
+      
+      const dataAgendamento = new Date(ano, mes - 1, dia, hora, minuto);
+      const agora = new Date();
+      const diffMs = agora - dataAgendamento;
+      const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDias = Math.floor(diffHoras / 24);
+      
+      if (diffDias > 0) return `${diffDias} dia${diffDias > 1 ? 's' : ''} atrás`;
+      if (diffHoras > 0) return `${diffHoras}h atrás`;
+      return 'Recente';
+    } catch {
+      return 'Atrasado';
     }
   };
 
@@ -298,9 +375,9 @@ const Header = () => {
                 className="relative p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <Bell size={22} className="text-gray-600" />
-                {notificacoesNaoLidas > 0 && (
+                {totalNotificacoes > 0 && (
                   <span className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-semibold animate-pulse">
-                    {notificacoesNaoLidas > 9 ? '9+' : notificacoesNaoLidas}
+                    {totalNotificacoes > 9 ? '9+' : totalNotificacoes}
                   </span>
                 )}
                 {isUpdating && (
@@ -317,9 +394,9 @@ const Header = () => {
                   <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-semibold text-gray-800">
-                        Notificações {notificacoesNaoLidas > 0 && `(${notificacoesNaoLidas})`}
+                        Notificações {totalNotificacoes > 0 && `(${totalNotificacoes})`}
                       </h3>
-                      {notificacoesNaoLidas > 0 && (
+                      {totalNotificacoes > 0 && (
                         <button
                           onClick={marcarTodasComoLidas}
                           className="text-xs text-purple-600 hover:text-purple-700 font-medium"
@@ -348,80 +425,146 @@ const Header = () => {
 
                   {/* Lista de Notificações */}
                   <div className="max-h-80 overflow-y-auto">
-                    {agendamentosOnline.length > 0 ? (
-                      agendamentosOnline.map(ag => {
-                        // ✅ PROTEÇÃO: Verificar se ag existe
-                        if (!ag) return null;
+                    {(agendamentosOnline.length > 0 || agendamentosAtrasados.length > 0) ? (
+                      <>
+                        {/* ✅ NOVO: Alertas de agendamentos atrasados */}
+                        {agendamentosAtrasados.map(ag => {
+                          if (!ag) return null;
 
-                        return (
-                          <div 
-                            key={ag.id}
-                            className={`p-4 hover:bg-gray-50 border-b border-gray-100 transition-all ${
-                              isUpdating ? 'opacity-50' : 'opacity-100'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between mb-2">
-                              <div className="flex items-center space-x-2">
-                                <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                                  <Calendar size={16} className="text-green-600" />
+                          return (
+                            <div 
+                              key={`atrasado-${ag.id}`}
+                              className="p-4 hover:bg-red-50 border-b border-red-100 bg-red-50 transition-all"
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                                    <AlertCircle size={16} className="text-red-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-red-800">
+                                      Agendamento não finalizado
+                                    </p>
+                                    <p className="text-xs text-red-600">
+                                      {getTempoAtraso(ag.data, ag.horario)}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-800">
-                                    Novo agendamento online
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {getTempoDecorrido(ag.criadoEm)}
-                                  </p>
-                                </div>
+                                <button
+                                  onClick={() => ocultarAlertaPendente(ag.id)}
+                                  className="p-1 hover:bg-red-200 rounded transition-colors"
+                                  title="Ocultar alerta"
+                                >
+                                  <X size={14} className="text-red-400" />
+                                </button>
                               </div>
+
+                              <div className="ml-10 space-y-1">
+                                <p className="text-sm text-red-700">
+                                  <strong>{getClienteNome(ag.clienteId)}</strong> • <strong>{getServicoNome(ag.servicoId)}</strong>
+                                </p>
+                                <div className="flex items-center space-x-3 text-xs text-red-600">
+                                  <div className="flex items-center space-x-1">
+                                    <Calendar size={12} />
+                                    <span>{formatarDataHora(ag.data, ag.horario)}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <User size={12} />
+                                    <span>{getProfissionalNome(ag.profissionalId)}</span>
+                                  </div>
+                                </div>
+                                <p className="text-xs text-red-600 mt-1">
+                                  Status: <span className="font-semibold capitalize">{ag.status}</span>
+                                </p>
+                              </div>
+
                               <button
-                                onClick={() => marcarComoLida(ag.id)}
-                                className="p-1 hover:bg-gray-200 rounded transition-colors"
-                                title="Marcar como lida"
+                                onClick={() => {
+                                  setShowNotifications(false);
+                                  navigate('/agendamentos');
+                                }}
+                                className="ml-10 mt-2 text-xs text-red-700 hover:text-red-800 font-medium"
                               >
-                                <X size={14} className="text-gray-400" />
+                                Atualizar status →
                               </button>
                             </div>
+                          );
+                        })}
 
-                            <div className="ml-10 space-y-1">
-                              <p className="text-sm text-gray-700">
-                                <strong>{getClienteNome(ag.clienteId)}</strong> agendou <strong>{getServicoNome(ag.servicoId)}</strong>
-                              </p>
-                              <div className="flex items-center space-x-3 text-xs text-gray-600">
-                                <div className="flex items-center space-x-1">
-                                  <Calendar size={12} />
-                                  <span>{formatarDataHora(ag.data, ag.horario)}</span>
+                        {/* Agendamentos online */}
+                        {agendamentosOnline.map(ag => {
+                          if (!ag) return null;
+
+                          return (
+                            <div 
+                              key={`online-${ag.id}`}
+                              className={`p-4 hover:bg-gray-50 border-b border-gray-100 transition-all ${
+                                isUpdating ? 'opacity-50' : 'opacity-100'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between mb-2">
+                                <div className="flex items-center space-x-2">
+                                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                                    <Calendar size={16} className="text-green-600" />
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-semibold text-gray-800">
+                                      Novo agendamento online
+                                    </p>
+                                    <p className="text-xs text-gray-500">
+                                      {getTempoDecorrido(ag.criadoEm)}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="flex items-center space-x-1">
-                                  <User size={12} />
-                                  <span>{getProfissionalNome(ag.profissionalId)}</span>
+                                <button
+                                  onClick={() => marcarComoLida(ag.id)}
+                                  className="p-1 hover:bg-gray-200 rounded transition-colors"
+                                  title="Marcar como lida"
+                                >
+                                  <X size={14} className="text-gray-400" />
+                                </button>
+                              </div>
+
+                              <div className="ml-10 space-y-1">
+                                <p className="text-sm text-gray-700">
+                                  <strong>{getClienteNome(ag.clienteId)}</strong> agendou <strong>{getServicoNome(ag.servicoId)}</strong>
+                                </p>
+                                <div className="flex items-center space-x-3 text-xs text-gray-600">
+                                  <div className="flex items-center space-x-1">
+                                    <Calendar size={12} />
+                                    <span>{formatarDataHora(ag.data, ag.horario)}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-1">
+                                    <User size={12} />
+                                    <span>{getProfissionalNome(ag.profissionalId)}</span>
+                                  </div>
                                 </div>
                               </div>
-                            </div>
 
-                            <button
-                              onClick={() => {
-                                setShowNotifications(false);
-                                navigate('/agendamentos');
-                              }}
-                              className="ml-10 mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium"
-                            >
-                              Ver detalhes →
-                            </button>
-                          </div>
-                        );
-                      })
+                              <button
+                                onClick={() => {
+                                  setShowNotifications(false);
+                                  navigate('/agendamentos');
+                                }}
+                                className="ml-10 mt-2 text-xs text-purple-600 hover:text-purple-700 font-medium"
+                              >
+                                Ver detalhes →
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </>
                     ) : (
                       <div className="p-8 text-center text-gray-500">
                         <Bell size={48} className="mx-auto mb-4 opacity-50" />
                         <p className="text-sm">Nenhuma notificação nova</p>
                         <p className="text-xs mt-2">
-                          Agendamentos online aparecerão aqui
+                          Notificações aparecerão aqui
                         </p>
                         {isUpdating && (
                           <div className="mt-3 flex items-center justify-center space-x-2 text-xs text-blue-600">
                             <RefreshCw size={12} className="animate-spin" />
-                            <span>Verificando novos agendamentos...</span>
+                            <span>Verificando...</span>
                           </div>
                         )}
                       </div>
@@ -429,7 +572,7 @@ const Header = () => {
                   </div>
 
                   {/* Footer */}
-                  {agendamentosOnline.length > 0 && (
+                  {totalNotificacoes > 0 && (
                     <div className="p-3 border-t border-gray-200">
                       <button
                         onClick={() => {

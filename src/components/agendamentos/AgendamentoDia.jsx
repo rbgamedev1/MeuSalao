@@ -1,3 +1,4 @@
+// src/components/agendamentos/AgendamentoDia.jsx - CABEÇALHO CORRIGIDO
 import { useMemo } from 'react';
 import { User, Clock, Edit, Trash2, Lock } from 'lucide-react';
 import { getStatusColor, formatarDuracao } from '../../utils/agendamentoUtils';
@@ -81,7 +82,7 @@ const AgendamentoDia = ({
 
     if (!ag) return null;
 
-    // ✅ CORRIGIDO: Tratar bloqueios diferente de agendamentos
+    // Tratar bloqueios diferente de agendamentos
     if (ag.tipo === 'bloqueio' || ag.status === 'bloqueado') {
       const profissional = profissionais.find(p => p.id === ag.profissionalId);
       return {
@@ -170,7 +171,6 @@ const AgendamentoDia = ({
                               }
                             }}
                           >
-                            {/* ✅ CORRIGIDO: Exibir conteúdo diferente para bloqueios */}
                             {agendamento.isBloqueio ? (
                               <>
                                 <div className="flex items-start justify-between mb-2">
