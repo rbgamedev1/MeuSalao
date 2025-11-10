@@ -1,16 +1,29 @@
-// src/pages/Clientes.jsx - CÓDIGO COMPLETO COM RESTRIÇÕES
+// src/pages/Clientes.jsx - ATUALIZADO COM VISUALIZAÇÃO DE HISTÓRICO
 import { useState, useContext } from 'react';
 import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye, Crown, Lock } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
+import ClienteDetalhes from '../components/clientes/ClienteDetalhes';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { isValidDate } from '../utils/masks';
 import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 
 const Clientes = () => {
-  const { salaoAtual, clientes, setClientes, getClientesPorSalao } = useContext(SalaoContext);
+  const { 
+    salaoAtual, 
+    clientes, 
+    setClientes, 
+    getClientesPorSalao,
+    getAgendamentosPorSalao,
+    getTransacoesPorSalao,
+    servicos,
+    profissionais
+  } = useContext(SalaoContext);
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showDetalhesModal, setShowDetalhesModal] = useState(false);
+  const [clienteSelecionado, setClienteSelecionado] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -25,6 +38,8 @@ const Clientes = () => {
 
   // Obter apenas clientes do salão atual
   const clientesSalao = getClientesPorSalao();
+  const agendamentosSalao = getAgendamentosPorSalao();
+  const transacoesSalao = getTransacoesPorSalao();
 
   // Verificar limite do plano
   const canAddCliente = canAddMore(salaoAtual.plano, 'clientes', clientesSalao.length);
@@ -71,6 +86,16 @@ const Clientes = () => {
       status: 'ativo'
     });
     setErrors({});
+  };
+
+  const handleViewCliente = (cliente) => {
+    setClienteSelecionado(cliente);
+    setShowDetalhesModal(true);
+  };
+
+  const handleCloseDetalhes = () => {
+    setShowDetalhesModal(false);
+    setClienteSelecionado(null);
   };
 
   const validateForm = () => {
@@ -206,7 +231,7 @@ const Clientes = () => {
                 Clientes: {clientesSalao.length} {limiteMessage !== 'Ilimitado' ? `/ ${limiteMessage.replace('Máximo: ', '')}` : '(Ilimitado)'}
               </p>
               <p className="text-xs text-blue-700 mt-1">
-                Plano {salaoAtual.plano}
+                Plano {salaoAtual.plano} • 👁️ Clique no ícone do olho para ver o histórico completo
               </p>
             </div>
           </div>
@@ -378,18 +403,24 @@ const Clientes = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center space-x-2">
-                        <button className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+                        <button 
+                          onClick={() => handleViewCliente(cliente)}
+                          className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                          title="Ver Histórico Completo"
+                        >
                           <Eye size={18} />
                         </button>
                         <button 
                           onClick={() => handleOpenModal(cliente)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Editar"
                         >
                           <Edit size={18} />
                         </button>
                         <button 
                           onClick={() => handleDelete(cliente.id)}
                           className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Excluir"
                         >
                           <Trash2 size={18} />
                         </button>
@@ -509,6 +540,18 @@ const Clientes = () => {
           </div>
         </form>
       </Modal>
+
+      {/* Modal de Detalhes do Cliente */}
+      {showDetalhesModal && clienteSelecionado && (
+        <ClienteDetalhes
+          cliente={clienteSelecionado}
+          onClose={handleCloseDetalhes}
+          agendamentos={agendamentosSalao}
+          transacoes={transacoesSalao}
+          servicos={servicos}
+          profissionais={profissionais}
+        />
+      )}
     </div>
   );
 };
