@@ -1,6 +1,6 @@
 // src/pages/Servicos.jsx
 
-import { useState, useContext, useMemo } from 'react';
+import { useState, useContext } from 'react';
 import { Crown, AlertCircle } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { CATEGORIAS_SERVICOS } from '../data/categoriasServicosData';
@@ -19,7 +19,8 @@ const Servicos = () => {
     setServicos, 
     profissionais,
     getServicosPorSalao,
-    getProfissionaisPorSalao
+    getProfissionaisPorSalao,
+    getServicosDisponiveis
   } = useContext(SalaoContext);
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -30,6 +31,7 @@ const Servicos = () => {
   const [formData, setFormData] = useState({
     nome: '',
     categoria: '',
+    subcategoria: '',
     duracao: 30,
     valor: '',
     comissao: '',
@@ -43,25 +45,18 @@ const Servicos = () => {
   // Obter apenas serviços e profissionais do salão atual
   const servicosSalao = getServicosPorSalao();
   const profissionaisSalao = getProfissionaisPorSalao();
-
-  // Obter categorias ativas do salão
-  const categoriasAtivas = useMemo(() => {
-    if (!salaoAtual.categoriasServicos) return [];
-    
-    return Object.entries(salaoAtual.categoriasServicos)
-      .filter(([_, data]) => data.ativa && data.servicos && data.servicos.length > 0)
-      .map(([id, data]) => {
-        const categoriaInfo = CATEGORIAS_SERVICOS.find(c => c.id === id);
-        return {
-          id,
-          nome: categoriaInfo?.nome || id,
-          servicos: data.servicos
-        };
-      });
-  }, [salaoAtual.categoriasServicos]);
+  const servicosDisponiveis = getServicosDisponiveis();
 
   // Verificar se há categorias configuradas
-  const hasCategoriasConfiguradas = categoriasAtivas.length > 0;
+  const hasCategoriasConfiguradas = servicosDisponiveis.length > 0;
+
+  // Obter lista de categorias únicas para filtro
+  const categoriasParaFiltro = [...new Set(
+    servicosDisponiveis.map(s => {
+      const cat = CATEGORIAS_SERVICOS.find(c => c.id === s.categoriaId);
+      return cat?.nome;
+    })
+  )].filter(Boolean);
 
   // Verificar limites do plano
   const canAddServico = canAddMore(salaoAtual.plano, 'servicosPorCategoria', servicosSalao.length);
@@ -85,6 +80,7 @@ const Servicos = () => {
       setFormData({
         nome: servico.nome,
         categoria: servico.categoria,
+        subcategoria: servico.subcategoria,
         duracao: servico.duracao,
         valor: servico.valor.toFixed(2),
         comissao: servico.comissao.toString(),
@@ -97,6 +93,7 @@ const Servicos = () => {
       setFormData({
         nome: '',
         categoria: '',
+        subcategoria: '',
         duracao: 30,
         valor: '',
         comissao: '',
@@ -229,7 +226,7 @@ const Servicos = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-blue-900">
-                Categorias configuradas: {categoriasAtivas.length}
+                Serviços disponíveis para cadastro: {servicosDisponiveis.length}
               </p>
             </div>
           </div>
@@ -242,7 +239,7 @@ const Servicos = () => {
             totalServicos={totalServicos}
             valorMedio={valorMedio}
             servicosPremium={servicosMaisCaros}
-            totalCategorias={categoriasAtivas.length}
+            totalCategorias={categoriasParaFiltro.length}
           />
 
           <ServicosFilters 
@@ -250,7 +247,7 @@ const Servicos = () => {
             setSearchTerm={setSearchTerm}
             categoriaFiltro={categoriaFiltro}
             setCategoriaFiltro={setCategoriaFiltro}
-            categorias={categoriasAtivas.map(c => c.nome)}
+            categorias={categoriasParaFiltro}
           />
 
           <ServicosGrid 
@@ -270,7 +267,7 @@ const Servicos = () => {
         handleChange={handleChange}
         handleProfissionalToggle={handleProfissionalToggle}
         handleSubmit={handleSubmit}
-        categoriasAtivas={categoriasAtivas}
+        servicosDisponiveis={servicosDisponiveis}
         profissionaisSalao={profissionaisSalao}
         durationOptions={durationOptions}
         servicosSalao={servicosSalao}

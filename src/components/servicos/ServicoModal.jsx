@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import { Lock, Crown } from 'lucide-react';
 import Modal from '../Modal';
 import { SalaoContext } from '../../contexts/SalaoContext';
+import { CATEGORIAS_SERVICOS } from '../../data/categoriasServicosData';
 import { canAddMore, getLimitMessage, canAddServiceToCategory } from '../../utils/planRestrictions';
 
 const ServicoModal = ({ 
@@ -14,7 +15,7 @@ const ServicoModal = ({
   handleChange,
   handleProfissionalToggle,
   handleSubmit,
-  categoriasAtivas,
+  servicosDisponiveis,
   profissionaisSalao,
   durationOptions,
   servicosSalao
@@ -50,6 +51,26 @@ const ServicoModal = ({
     handleSubmit(e);
   };
 
+  // Agrupar serviços disponíveis por categoria e subcategoria
+  const servicosAgrupados = servicosDisponiveis.reduce((acc, servico) => {
+    const categoria = CATEGORIAS_SERVICOS.find(c => c.id === servico.categoriaId);
+    const subcategoria = categoria?.subcategorias.find(s => s.id === servico.subcategoriaId);
+    
+    if (!categoria || !subcategoria) return acc;
+    
+    if (!acc[categoria.nome]) {
+      acc[categoria.nome] = {};
+    }
+    
+    if (!acc[categoria.nome][subcategoria.nome]) {
+      acc[categoria.nome][subcategoria.nome] = [];
+    }
+    
+    acc[categoria.nome][subcategoria.nome].push(servico.nome);
+    
+    return acc;
+  }, {});
+
   return (
     <Modal
       isOpen={showModal}
@@ -73,30 +94,28 @@ const ServicoModal = ({
       )}
 
       <form onSubmit={handleSubmitWithValidation} className="space-y-4">
-        {/* Seleção de Categoria e Nome do Serviço */}
+        {/* Seleção de Serviço (Categoria > Subcategoria > Serviço) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Categoria e Serviço *
+            Selecione o Serviço *
           </label>
           <select
             name="nome"
-            value={formData.nome}
+            value={formData.nome ? `${formData.categoria}|||${formData.subcategoria}|||${formData.nome}` : ''}
             onChange={(e) => {
               const selectedValue = e.target.value;
               if (selectedValue) {
-                // Extrair categoria e nome do serviço
-                const [categoriaNome, servicoNome] = selectedValue.split('|||');
+                // Extrair categoria, subcategoria e nome do serviço
+                const [categoriaNome, subcategoriaNome, servicoNome] = selectedValue.split('|||');
+                
                 handleChange({
-                  target: {
-                    name: 'nome',
-                    value: servicoNome
-                  }
+                  target: { name: 'categoria', value: categoriaNome }
                 });
                 handleChange({
-                  target: {
-                    name: 'categoria',
-                    value: categoriaNome
-                  }
+                  target: { name: 'subcategoria', value: subcategoriaNome }
+                });
+                handleChange({
+                  target: { name: 'nome', value: servicoNome }
                 });
               }
             }}
@@ -105,22 +124,26 @@ const ServicoModal = ({
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
           >
             <option value="">Selecione um serviço</option>
-            {categoriasAtivas.map(categoria => (
-              <optgroup key={categoria.id} label={categoria.nome}>
-                {categoria.servicos.map(servico => {
-                  const servicosNaCategoria = servicosSalao.filter(s => s.categoria === categoria.nome).length;
-                  const limiteNumerico = parseInt(limiteServicos.replace('Máximo: ', '')) || Infinity;
-                  const atingiuLimite = servicosNaCategoria >= limiteNumerico;
-                  
-                  return (
-                    <option 
-                      key={servico} 
-                      value={`${categoria.nome}|||${servico}`}
-                    >
-                      {servico} {atingiuLimite && !editingId ? '(Limite atingido)' : ''}
-                    </option>
-                  );
-                })}
+            {Object.entries(servicosAgrupados).map(([categoria, subcategorias]) => (
+              <optgroup key={categoria} label={`📁 ${categoria}`}>
+                {Object.entries(subcategorias).map(([subcategoria, servicos]) => (
+                  <optgroup key={`${categoria}-${subcategoria}`} label={`  ├─ ${subcategoria}`}>
+                    {servicos.map(servico => {
+                      const servicosNaCategoria = servicosSalao.filter(s => s.categoria === categoria).length;
+                      const limiteNumerico = parseInt(limiteServicos.replace('Máximo: ', '')) || Infinity;
+                      const atingiuLimite = servicosNaCategoria >= limiteNumerico;
+                      
+                      return (
+                        <option 
+                          key={servico} 
+                          value={`${categoria}|||${subcategoria}|||${servico}`}
+                        >
+                          {'    └─ '}{servico} {atingiuLimite && !editingId ? '(Limite atingido)' : ''}
+                        </option>
+                      );
+                    })}
+                  </optgroup>
+                ))}
               </optgroup>
             ))}
           </select>

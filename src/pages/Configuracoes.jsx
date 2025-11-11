@@ -125,6 +125,38 @@ const Configuracoes = () => {
         // Se está marcando, inicializa vazio
         novoEstado[categoriaId] = {
           ativa: true,
+          subcategorias: {}
+        };
+      }
+      
+      return novoEstado;
+    });
+  };
+
+  const handleToggleSubcategoria = (categoriaId, subcategoriaId) => {
+    setCategoriasServicos(prev => {
+      const novoEstado = { ...prev };
+      
+      // Garantir que a categoria existe
+      if (!novoEstado[categoriaId]) {
+        novoEstado[categoriaId] = {
+          ativa: true,
+          subcategorias: {}
+        };
+      }
+      
+      if (!novoEstado[categoriaId].subcategorias) {
+        novoEstado[categoriaId].subcategorias = {};
+      }
+      
+      // Toggle da subcategoria
+      if (novoEstado[categoriaId].subcategorias[subcategoriaId]?.ativa) {
+        // Desmarcando - remove a subcategoria
+        delete novoEstado[categoriaId].subcategorias[subcategoriaId];
+      } else {
+        // Marcando - inicializa
+        novoEstado[categoriaId].subcategorias[subcategoriaId] = {
+          ativa: true,
           servicos: []
         };
       }
@@ -133,23 +165,37 @@ const Configuracoes = () => {
     });
   };
 
-  const handleToggleServico = (categoriaId, servico) => {
+  const handleToggleServico = (categoriaId, subcategoriaId, servico) => {
     setCategoriasServicos(prev => {
       const novoEstado = { ...prev };
       
+      // Garantir estrutura existe
       if (!novoEstado[categoriaId]) {
         novoEstado[categoriaId] = {
           ativa: true,
-          servicos: [servico]
+          subcategorias: {}
         };
+      }
+      
+      if (!novoEstado[categoriaId].subcategorias) {
+        novoEstado[categoriaId].subcategorias = {};
+      }
+      
+      if (!novoEstado[categoriaId].subcategorias[subcategoriaId]) {
+        novoEstado[categoriaId].subcategorias[subcategoriaId] = {
+          ativa: true,
+          servicos: []
+        };
+      }
+      
+      const servicos = novoEstado[categoriaId].subcategorias[subcategoriaId].servicos || [];
+      
+      if (servicos.includes(servico)) {
+        // Remove o serviço
+        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = servicos.filter(s => s !== servico);
       } else {
-        const servicos = novoEstado[categoriaId].servicos || [];
-        
-        if (servicos.includes(servico)) {
-          novoEstado[categoriaId].servicos = servicos.filter(s => s !== servico);
-        } else {
-          novoEstado[categoriaId].servicos = [...servicos, servico];
-        }
+        // Adiciona o serviço
+        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = [...servicos, servico];
       }
       
       return novoEstado;
@@ -276,6 +322,7 @@ const Configuracoes = () => {
           <ConfiguracoesCategorias 
             categoriasServicos={categoriasServicos}
             onToggleCategoria={handleToggleCategoria}
+            onToggleSubcategoria={handleToggleSubcategoria}
             onToggleServico={handleToggleServico}
             onSave={handleSaveCategorias}
           />

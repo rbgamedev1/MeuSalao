@@ -205,14 +205,30 @@ export const SalaoProvider = ({ children }) => {
     [transacoes, salaoAtual]
   );
 
-  // Obter categorias ativas do salão
-  const getCategoriasAtivasPorSalao = useMemo(() => 
+  // Obter serviços disponíveis (flatten da estrutura de categorias)
+  const getServicosDisponiveis = useMemo(() => 
     () => {
       if (!salaoAtual || !salaoAtual.categoriasServicos) return [];
       
-      return Object.entries(salaoAtual.categoriasServicos)
-        .filter(([_, data]) => data.ativa)
-        .map(([id, data]) => ({ id, ...data }));
+      const servicosDisponiveis = [];
+      
+      Object.entries(salaoAtual.categoriasServicos).forEach(([categoriaId, categoriaData]) => {
+        if (categoriaData.ativa && categoriaData.subcategorias) {
+          Object.entries(categoriaData.subcategorias).forEach(([subcategoriaId, subcategoriaData]) => {
+            if (subcategoriaData.ativa && subcategoriaData.servicos) {
+              subcategoriaData.servicos.forEach(servico => {
+                servicosDisponiveis.push({
+                  categoriaId,
+                  subcategoriaId,
+                  nome: servico
+                });
+              });
+            }
+          });
+        }
+      });
+      
+      return servicosDisponiveis;
     },
     [salaoAtual]
   );
@@ -246,7 +262,7 @@ export const SalaoProvider = ({ children }) => {
     getProdutosPorSalao,
     getAgendamentosPorSalao,
     getTransacoesPorSalao,
-    getCategoriasAtivasPorSalao
+    getServicosDisponiveis
   }), [
     saloes,
     salaoAtual,
@@ -265,7 +281,7 @@ export const SalaoProvider = ({ children }) => {
     getProdutosPorSalao,
     getAgendamentosPorSalao,
     getTransacoesPorSalao,
-    getCategoriasAtivasPorSalao
+    getServicosDisponiveis
   ]);
 
   // Não renderizar até ter definido o salão atual (se houver usuário logado)
