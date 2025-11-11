@@ -1,4 +1,4 @@
-// src/pages/Configuracoes.jsx - CÓDIGO COMPLETO E CORRIGIDO
+// src/pages/Configuracoes.jsx
 
 import { useState, useContext } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
@@ -167,9 +167,10 @@ const Configuracoes = () => {
 
   const handleToggleServico = (categoriaId, subcategoriaId, servico) => {
     setCategoriasServicos(prev => {
+      // Cria uma cópia rasa do estado superior
       const novoEstado = { ...prev };
       
-      // Garantir estrutura existe
+      // Validações de Ativação
       if (!novoEstado[categoriaId] || !novoEstado[categoriaId].ativa) {
         alert('Por favor, ative a categoria primeiro!');
         return prev;
@@ -181,10 +182,12 @@ const Configuracoes = () => {
         return prev;
       }
       
+      // Garantir que o array de serviços existe
       if (!novoEstado[categoriaId].subcategorias[subcategoriaId].servicos) {
         novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = [];
       }
       
+      // Lógica de Toggle (Mutação segura no objeto clonado)
       const servicos = novoEstado[categoriaId].subcategorias[subcategoriaId].servicos || [];
       
       if (servicos.includes(servico)) {
@@ -195,6 +198,7 @@ const Configuracoes = () => {
         novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = [...servicos, servico];
       }
       
+      // Retorna o novo estado (a cópia rasa modificada)
       return novoEstado;
     });
   };
