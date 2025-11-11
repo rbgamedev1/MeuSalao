@@ -1,243 +1,203 @@
-// src/components/configuracoes/ConfiguracoesCategorias.jsx - CORRIGIDO
+// src/components/configuracoes/ConfiguracoesCategorias.jsx
 
-import { Check, Plus, Minus, Sparkles } from 'lucide-react';
-import { CATEGORIAS_SERVICOS } from '../../data/categoriasServicosData';
 import { useState } from 'react';
+import { ChevronDown, ChevronRight, Check, Save, Info } from 'lucide-react';
+import { CATEGORIAS_SERVICOS } from '../../data/categoriasServicosData';
+import { SERVICOS_DESCRICOES } from '../../data/servicosDescricoesData';
+import ServicoInfoModal from './ServicoInfoModal';
 
 const ConfiguracoesCategorias = ({ 
-  categoriasServicos,
+  categoriasServicos, 
   onToggleCategoria,
   onToggleSubcategoria,
   onToggleServico,
-  onSave
+  onSave 
 }) => {
-  // Estados para expansão (múltipla)
-  const [categoriasAbertas, setCategoriasAbertas] = useState(new Set());
-  const [subcategoriasAbertas, setSubcategoriasAbertas] = useState(new Set());
+  const [expandedCategorias, setExpandedCategorias] = useState({});
+  const [expandedSubcategorias, setExpandedSubcategorias] = useState({});
+  const [infoModal, setInfoModal] = useState({ isOpen: false, servico: null });
 
-  // ✅ FUNÇÕES FALTANTES ADICIONADAS
-  const isCategoriaAberta = (categoriaId) => categoriasAbertas.has(categoriaId);
-  
-  const isSubcategoriaAberta = (subcategoriaKey) => subcategoriasAbertas.has(subcategoriaKey);
-
-  // Funções utilitárias - BASEADAS EM SERVIÇOS SELECIONADOS
-
-  // Categoria é "ativa" se tiver QUALQUER serviço selecionado em qualquer subcategoria
-  const isCategoriaSelected = (categoriaId) => {
-    const subcategorias = categoriasServicos[categoriaId]?.subcategorias;
-    if (!subcategorias) return false;
-    // Verifica se *alguma* subcategoria tem serviços selecionados
-    return Object.values(subcategorias).some(sub => sub.servicos?.length > 0);
-  };
-
-  // Subcategoria é "ativa" se tiver QUALQUER serviço selecionado
-  const isSubcategoriaSelected = (categoriaId, subcategoriaId) => {
-    // Verifica se a subcategoria existe e se o array de servicos tem pelo menos 1 item
-    return (categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.length > 0) || false;
-  };
-
-  const isServicoSelected = (categoriaId, subcategoriaId, servico) => 
-    categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.includes(servico) || false;
-  
-  // Contar subcategorias que possuem serviços selecionados
-  const countSubcategoriasSelecionadas = (categoriaId) => {
-    const subcategorias = categoriasServicos[categoriaId]?.subcategorias;
-    if (!subcategorias) return 0;
-    
-    // Conta quantas subcategorias têm array de servicos com length > 0
-    return Object.values(subcategorias).filter(sub => sub.servicos?.length > 0).length;
-  };
-
-  const countServicosSelecionados = (categoriaId, subcategoriaId) => {
-    return categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.length || 0;
-  };
-
-  // EXPANSÃO CATEGORIA (TOGGLE) - Apenas abre/fecha
   const toggleCategoria = (categoriaId) => {
-    setCategoriasAbertas(prev => {
-      const novoSet = new Set(prev);
-      if (novoSet.has(categoriaId)) {
-        novoSet.delete(categoriaId);
-      } else {
-        novoSet.add(categoriaId);
-      }
-      return novoSet;
-    });
+    setExpandedCategorias(prev => ({
+      ...prev,
+      [categoriaId]: !prev[categoriaId]
+    }));
   };
 
-  // EXPANSÃO SUBCATEGORIA (TOGGLE) - Apenas abre/fecha
   const toggleSubcategoria = (categoriaId, subcategoriaId) => {
     const key = `${categoriaId}-${subcategoriaId}`;
-    setSubcategoriasAbertas(prev => {
-      const novoSet = new Set(prev);
-      if (novoSet.has(key)) {
-        novoSet.delete(key);
-      } else {
-        novoSet.add(key);
-      }
-      return novoSet;
+    setExpandedSubcategorias(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const isCategoriaAtiva = (categoriaId) => {
+    return categoriasServicos[categoriaId]?.subcategorias && 
+           Object.values(categoriasServicos[categoriaId].subcategorias).some(
+             sub => sub.servicos?.length > 0
+           );
+  };
+
+  const isSubcategoriaAtiva = (categoriaId, subcategoriaId) => {
+    return categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.length > 0;
+  };
+
+  const isServicoSelecionado = (categoriaId, subcategoriaId, servico) => {
+    return categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.includes(servico) || false;
+  };
+
+  const handleInfoClick = (servicoNome) => {
+    setInfoModal({
+      isOpen: true,
+      servico: servicoNome
     });
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    onSave();
+  const closeInfoModal = () => {
+    setInfoModal({ isOpen: false, servico: null });
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Header com informação */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-4">
-        <div className="flex items-start gap-3">
-          <Sparkles className="text-purple-600 mt-1 flex-shrink-0" size={24} />
-          <div>
-            <h3 className="font-bold text-gray-900 mb-1">Configure seus serviços</h3>
-            <p className="text-sm text-gray-600">
-              Clique nos <strong>ícones +/-</strong> para expandir categorias e subcategorias. 
-              Selecione os <strong>serviços</strong> que você oferece no seu salão.
-            </p>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          Categorias e Serviços
+        </h3>
+        <p className="text-sm text-gray-600">
+          Selecione os serviços específicos que você oferece em seu salão. 
+          Clique no ícone <Info className="w-4 h-4 inline-block text-purple-600" /> para ver a descrição de cada serviço.
+        </p>
       </div>
 
-      {/* Lista de Categorias */}
       <div className="space-y-3">
         {CATEGORIAS_SERVICOS.map((categoria) => {
-          const categoriaAtiva = isCategoriaSelected(categoria.id);
-          const subcategoriasSelecionadas = countSubcategoriasSelecionadas(categoria.id);
-          const isAberta = isCategoriaAberta(categoria.id);
+          const categoriaAtiva = isCategoriaAtiva(categoria.id);
+          const isExpanded = expandedCategorias[categoria.id];
 
           return (
-            <div 
-              key={categoria.id}
-              className={`border-2 rounded-xl overflow-hidden transition-all duration-300 ${
-                categoriaAtiva 
-                  ? 'border-purple-400 bg-gradient-to-br from-purple-50 to-white shadow-lg' 
-                  : 'border-gray-200 bg-white shadow-sm hover:shadow-md'
-              }`}
-            >
-              {/* Header da Categoria - Clicável para expandir */}
-              <div 
-                className="flex items-center p-4 gap-3 cursor-pointer"
-                onClick={() => toggleCategoria(categoria.id)}
-              >
-                {/* Ícone de Expansão/Recolhimento */}
-                <div 
-                  className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                    isAberta 
-                      ? 'bg-purple-600 text-white shadow-md' 
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {isAberta ? <Minus size={20} /> : <Plus size={20} />}
-                </div>
+            <div key={categoria.id} className="border border-gray-200 rounded-lg overflow-hidden">
+              {/* Header da Categoria */}
+              <div className="bg-gray-50 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <button
+                      onClick={() => toggleCategoria(categoria.id)}
+                      className="text-gray-600 hover:text-gray-800"
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="w-5 h-5" />
+                      ) : (
+                        <ChevronRight className="w-5 h-5" />
+                      )}
+                    </button>
+                    
+                    <h4 className="font-semibold text-gray-800 flex-1">
+                      {categoria.nome}
+                    </h4>
+                    
+                    {categoriaAtiva && (
+                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full">
+                        Ativo
+                      </span>
+                    )}
+                  </div>
 
-                {/* Informações */}
-                <div className="flex-1 min-w-0">
-                  <h3 className={`text-lg font-bold truncate ${
-                    categoriaAtiva ? 'text-purple-900' : 'text-gray-800'
-                  }`}>
-                    {categoria.nome}
-                  </h3>
-                  {/* Status de seleção */}
-                  {categoriaAtiva && subcategoriasSelecionadas > 0 && (
-                    <p className="text-sm text-purple-600 font-medium">
-                      ✓ {subcategoriasSelecionadas} subcategoria{subcategoriasSelecionadas !== 1 ? 's' : ''} ativa{subcategoriasSelecionadas !== 1 ? 's' : ''}
-                    </p>
+                  {categoriaAtiva && (
+                    <button
+                      onClick={() => onToggleCategoria(categoria.id)}
+                      className="ml-3 text-sm text-red-600 hover:text-red-700 font-medium"
+                    >
+                      Desmarcar Tudo
+                    </button>
                   )}
                 </div>
               </div>
 
-              {/* Subcategorias (aparecem quando a categoria está aberta) */}
-              {isAberta && (
-                <div className="px-4 pb-4 space-y-2 animate-fadeIn">
+              {/* Subcategorias */}
+              {isExpanded && (
+                <div className="p-4 space-y-3">
                   {categoria.subcategorias.map((subcategoria) => {
-                    const subcategoriaAtiva = isSubcategoriaSelected(categoria.id, subcategoria.id);
-                    const servicosSelecionados = countServicosSelecionados(categoria.id, subcategoria.id);
-                    const subcategoriaKey = `${categoria.id}-${subcategoria.id}`;
-                    const isSubAberta = isSubcategoriaAberta(subcategoriaKey);
+                    const subcategoriaAtiva = isSubcategoriaAtiva(categoria.id, subcategoria.id);
+                    const isSubExpanded = expandedSubcategorias[`${categoria.id}-${subcategoria.id}`];
 
                     return (
-                      <div 
-                        key={subcategoria.id}
-                        className={`border-2 rounded-lg overflow-hidden transition-all ${
-                          subcategoriaAtiva
-                            ? 'border-pink-300 bg-gradient-to-r from-pink-50 to-white' 
-                            : 'border-gray-200 bg-white'
-                        }`}
-                      >
-                        {/* Header da Subcategoria - Clicável para expandir */}
-                        <div 
-                          className="flex items-center p-3 gap-2 cursor-pointer"
-                          onClick={() => toggleSubcategoria(categoria.id, subcategoria.id)}
-                        >
-                          {/* Ícone de Expansão/Recolhimento */}
-                          <div 
-                            className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center transition-all ${
-                              isSubAberta ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-pink-100'
-                            }`}
-                          >
-                            {isSubAberta ? <Minus size={16} /> : <Plus size={16} />}
-                          </div>
+                      <div key={subcategoria.id} className="border border-gray-200 rounded-lg">
+                        {/* Header da Subcategoria */}
+                        <div className="bg-white p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-1">
+                              <button
+                                onClick={() => toggleSubcategoria(categoria.id, subcategoria.id)}
+                                className="text-gray-600 hover:text-gray-800"
+                              >
+                                {isSubExpanded ? (
+                                  <ChevronDown className="w-4 h-4" />
+                                ) : (
+                                  <ChevronRight className="w-4 h-4" />
+                                )}
+                              </button>
+                              
+                              <h5 className="font-medium text-gray-700 flex-1">
+                                {subcategoria.nome}
+                              </h5>
+                              
+                              {subcategoriaAtiva && (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                  {categoriasServicos[categoria.id]?.subcategorias?.[subcategoria.id]?.servicos?.length || 0} serviços
+                                </span>
+                              )}
+                            </div>
 
-                          {/* Informações */}
-                          <div className="flex-1 min-w-0">
-                            <h4 className={`font-semibold text-sm truncate ${
-                              subcategoriaAtiva ? 'text-pink-900' : 'text-gray-700'
-                            }`}>
-                              {subcategoria.nome}
-                            </h4>
-                            {/* Status de seleção */}
-                            {subcategoriaAtiva && servicosSelecionados > 0 && (
-                              <p className="text-xs text-pink-600 font-medium">
-                                ✓ {servicosSelecionados} serviço{servicosSelecionados !== 1 ? 's' : ''}
-                              </p>
+                            {subcategoriaAtiva && (
+                              <button
+                                onClick={() => onToggleSubcategoria(categoria.id, subcategoria.id)}
+                                className="ml-3 text-sm text-red-600 hover:text-red-700 font-medium"
+                              >
+                                Desmarcar
+                              </button>
                             )}
                           </div>
                         </div>
 
-                        {/* Serviços (aparecem QUANDO subcategoria aberta) */}
-                        {isSubAberta && (
-                          <div className="p-3 pt-0 animate-fadeIn">
-                            <div className="bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-lg p-3">
-                              <p className="text-xs font-semibold text-gray-700 mb-2 flex items-center gap-1">
-                                <div className="w-1 h-3 bg-gradient-to-b from-purple-500 to-pink-500 rounded"></div>
-                                Serviços disponíveis:
-                              </p>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                {subcategoria.servicos.map((servico) => {
-                                  const isSelected = isServicoSelected(categoria.id, subcategoria.id, servico);
-                                  
-                                  return (
-                                    <div 
-                                      key={servico}
-                                      onClick={() => onToggleServico(categoria.id, subcategoria.id, servico)}
-                                      className={`flex items-center gap-2 p-2.5 rounded-lg cursor-pointer transition-all group ${
-                                        isSelected 
-                                          ? 'bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-400' 
-                                          : 'bg-white border-2 border-gray-200 hover:border-green-300 hover:bg-green-50'
-                                      }`}
-                                    >
-                                      {/* Checkmark Visual */}
-                                      <div className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all ${
-                                        isSelected 
-                                          ? 'bg-gradient-to-br from-green-500 to-emerald-500' 
-                                          : 'bg-white border-2 border-gray-300 group-hover:border-green-400'
-                                      }`}>
-                                        {isSelected && <Check className="text-white" size={12} />}
-                                      </div>
-                                      
-                                      {/* Nome do Serviço */}
-                                      <span className={`text-sm font-medium transition-colors ${
-                                        isSelected ? 'text-green-900' : 'text-gray-700 group-hover:text-green-800'
-                                      }`}>
-                                        {servico}
-                                      </span>
+                        {/* Lista de Serviços */}
+                        {isSubExpanded && (
+                          <div className="p-3 bg-gray-50 space-y-2">
+                            {subcategoria.servicos.map((servico) => {
+                              const isSelected = isServicoSelecionado(categoria.id, subcategoria.id, servico);
+
+                              return (
+                                <div
+                                  key={servico}
+                                  className="flex items-center justify-between gap-2 p-2 bg-white rounded border border-gray-200 hover:border-purple-300 transition-colors"
+                                >
+                                  <label className="flex items-center gap-3 flex-1 cursor-pointer">
+                                    <div className="relative">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => onToggleServico(categoria.id, subcategoria.id, servico)}
+                                        className="w-5 h-5 text-purple-600 border-gray-300 rounded focus:ring-purple-500 cursor-pointer"
+                                      />
+                                      {isSelected && (
+                                        <Check className="w-3 h-3 text-white absolute top-1 left-1 pointer-events-none" />
+                                      )}
                                     </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
+                                    <span className="text-sm text-gray-700">
+                                      {servico}
+                                    </span>
+                                  </label>
+
+                                  <button
+                                    onClick={() => handleInfoClick(servico)}
+                                    className="text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded-full p-1 transition-colors"
+                                    title="Ver descrição do serviço"
+                                  >
+                                    <Info className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
                       </div>
@@ -253,31 +213,22 @@ const ConfiguracoesCategorias = ({
       {/* Botão Salvar */}
       <div className="flex justify-end pt-4 border-t border-gray-200">
         <button
-          type="submit"
-          className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-md hover:shadow-lg"
+          onClick={onSave}
+          className="flex items-center gap-2 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
         >
-          Salvar Configurações
+          <Save className="w-4 h-4" />
+          Salvar Alterações
         </button>
       </div>
 
-      {/* Styles para animação */}
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out;
-        }
-      `}</style>
-    </form>
+      {/* Modal de Informação */}
+      <ServicoInfoModal
+        isOpen={infoModal.isOpen}
+        onClose={closeInfoModal}
+        servicoNome={infoModal.servico}
+        servicoDescricao={SERVICOS_DESCRICOES[infoModal.servico]}
+      />
+    </div>
   );
 };
 
