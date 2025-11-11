@@ -11,14 +11,9 @@ export const CATEGORIAS_SERVICOS = [
         servicos: ['Corte Masculino', 'Corte Feminino', 'Corte Infantil']
       },
       {
-        id: 'coloracao',
-        nome: 'Coloração',
-        servicos: ['Coloração', 'Mechas', 'Luzes', 'Balayage', 'Tintura', 'Ombré Hair', 'Reflexo']
-      },
-      {
-        id: 'finalizacao',
-        nome: 'Finalização',
-        servicos: ['Escova', 'Prancha', 'Modelagem', 'Babyliss', 'Chapinha']
+        id: 'colometria',
+        nome: 'Colometria',
+        servicos: ['Coloração', 'Mechas', 'Luzes', 'Balayage']
       },
       {
         id: 'tratamentos',
@@ -28,37 +23,56 @@ export const CATEGORIAS_SERVICOS = [
           'Nutrição',
           'Reconstrução',
           'Cauterização',
+          'Botox capilar',
           'Cronograma Capilar',
-          'Botox Capilar',
-          'Tratamento Antifrizz'
-        ]
-      },
-      {
-        id: 'quimica',
-        nome: 'Química',
-        servicos: [
           'Alisamento',
           'Relaxamento',
-          'Progressiva',
           'Permanente',
-          'Selagem'
+          'Terapia Capilar'
         ]
       },
       {
         id: 'penteados',
         nome: 'Penteados e Tranças',
         servicos: [
-          'Penteado para Festa',
+          'Penteado para Eventos',
           'Penteado para Noiva',
-          'Tranças',
-          'Coque',
-          'Semi Preso'
+          'Tranças'
         ]
       },
       {
         id: 'alongamento',
         nome: 'Alongamento',
-        servicos: ['Mega Hair', 'Aplique', 'Tic Tac']
+        servicos: [
+          'Confecção de Maga Hair Nanoslim',
+          'Confecção de Mega Hair Impercept',
+          'Confecção de Mega Hair Ponto Americano',
+          'Confecção de Mega Hair Queratina',
+          'Confecção de Mega Hair Nó Italiano',
+          'Confecção de Protese Capilar',
+          'Confecção de Topos',
+          'Aplicação Mega Hair NanoSlim', 
+          'Aplicação Mega Hair Impercept', 
+          'Aplicação Mega Hair Ponto Americano', 
+          'Aplicação Mega Hair Queratina',
+          'Aplicação Mega Hair Nó Italiano',
+          'Aplicação de Protese Capilar',
+          'Aplicação de topos',
+          'Manutenção de Mega Hair - NanoSlim',
+          'Manutenção de Mega Hair - Impercept',
+          'Manutenção de Mega Hair - Ponto Americano',
+          'Manutenção de Mega Hair - Queratina',
+          'Manutenção de Mega Hair - Nó Italiano',
+          'Manutenção de Protese Capilar',
+          'Manutenção de Topos',
+          'Remoção de Mega Hair NanoSlim', 
+          'Remoção de Mega Hair Impercept', 
+          'Remoção de Mega Hair Ponto Americano',
+          'Remoção de Mega Hair Queratina',
+          'Remoção de Mega Hair Nó Italiano',
+          'Remoção de Protese Capilar',
+          'Remoção de Topos',
+        ]
       }
     ]
   },
@@ -73,36 +87,18 @@ export const CATEGORIAS_SERVICOS = [
           'Manicure Tradicional',
           'Pedicure Tradicional',
           'Manicure e Pedicure',
+          'Nail art',
+          'Alongamento de unhas em gel',
+          'Alongamento de unhas em acrílico',
+          'Alongamento de unhas em fibra',
+          'Manutenção de alongamento de unhas',
           'Spa dos Pés',
-          'Spa das Mãos'
-        ]
-      },
-      {
-        id: 'esmaltacao',
-        nome: 'Esmaltação',
-        servicos: [
+          'Spa das Mãos',
           'Esmaltação Comum',
           'Esmaltação em Gel',
-          'Nail Art',
           'Francesinha',
           'Degradê',
-          'Unha Decorada'
-        ]
-      },
-      {
-        id: 'alongamento_unhas',
-        nome: 'Alongamento',
-        servicos: [
-          'Alongamento em Gel',
-          'Alongamento em Acrílico',
-          'Alongamento em Fibra',
-          'Manutenção de Alongamento'
-        ]
-      },
-      {
-        id: 'tratamento_unhas',
-        nome: 'Tratamentos',
-        servicos: [
+          'Unha Decorada',
           'Tratamento para Unhas Fracas',
           'Fortalecimento',
           'Cuticulagem',
@@ -201,7 +197,8 @@ export const CATEGORIAS_SERVICOS = [
         servicos: [
           'Maquiagem Artística',
           'Maquiagem para Ensaio Fotográfico',
-          'Automaquiagem (Aula)'
+          'Maquiagem para Carnaval',
+          'Maquiagem para Halloween'
         ]
       }
     ]
@@ -261,16 +258,6 @@ export const CATEGORIAS_SERVICOS = [
           'Shiatsu'
         ]
       },
-      {
-        id: 'day_spa',
-        nome: 'Day Spa',
-        servicos: [
-          'Day Spa Completo',
-          'Spa para Pés',
-          'Spa para Mãos',
-          'Banho de Ofurô'
-        ]
-      }
     ]
   }
 ];
