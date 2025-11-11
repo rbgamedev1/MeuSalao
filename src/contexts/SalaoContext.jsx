@@ -1,4 +1,4 @@
-// src/contexts/SalaoContext.jsx - CORRIGIDO: Sistema vazio para novos usuários
+// src/contexts/SalaoContext.jsx
 
 import { createContext, useState, useEffect, useMemo, useContext } from 'react';
 import { AuthContext } from './AuthContext';
@@ -34,7 +34,6 @@ export const SalaoProvider = ({ children }) => {
   const [salaoAtual, setSalaoAtual] = useState(null);
   const [clientes, setClientes] = useState(() => loadFromStorage('clientes', []));
   const [profissionais, setProfissionais] = useState(() => loadFromStorage('profissionais', []));
-  const [categorias, setCategorias] = useState(() => loadFromStorage('categorias', ['Cabelo', 'Coloração', 'Unhas', 'Tratamento', 'Barbearia']));
   const [servicos, setServicos] = useState(() => loadFromStorage('servicos', []));
   const [fornecedores, setFornecedores] = useState(() => loadFromStorage('fornecedores', []));
   const [produtos, setProdutos] = useState(() => loadFromStorage('produtos', []));
@@ -82,13 +81,6 @@ export const SalaoProvider = ({ children }) => {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      saveToStorage('categorias', categorias);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [categorias]);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
       saveToStorage('servicos', servicos);
     }, 300);
     return () => clearTimeout(timer);
@@ -128,7 +120,8 @@ export const SalaoProvider = ({ children }) => {
       ...dadosSalao,
       id: Math.max(...saloes.map(s => s.id), 0) + 1,
       plano: dadosSalao.plano || 'inicial',
-      userId: currentUser?.id
+      userId: currentUser?.id,
+      categoriasServicos: {} // Inicializar vazio
     };
     setSaloes([...saloes, novoSalao]);
     return novoSalao;
@@ -176,47 +169,6 @@ export const SalaoProvider = ({ children }) => {
     return true;
   };
 
-  // Função para resetar dados do salão atual
-  const resetarDadosSalao = () => {
-    if (!salaoAtual) return;
-    
-    if (confirm(`Tem certeza que deseja resetar todos os dados do salão "${salaoAtual.nome}"? Esta ação não pode ser desfeita!`)) {
-      // Remove apenas os dados do salão atual
-      setClientes(clientes.filter(c => c.salaoId !== salaoAtual.id));
-      setProfissionais(profissionais.filter(p => p.salaoId !== salaoAtual.id));
-      setServicos(servicos.filter(s => s.salaoId !== salaoAtual.id));
-      setFornecedores(fornecedores.filter(f => f.salaoId !== salaoAtual.id));
-      setProdutos(produtos.filter(p => p.salaoId !== salaoAtual.id));
-      setAgendamentos(agendamentos.filter(a => a.salaoId !== salaoAtual.id));
-      setTransacoes(transacoes.filter(t => t.salaoId !== salaoAtual.id));
-      
-      alert('Dados do salão resetados com sucesso!');
-    }
-  };
-
-  // Função para resetar TODOS os dados do USUÁRIO atual
-  const resetarTodosSistema = () => {
-    if (!currentUser) return;
-    
-    if (confirm('Tem certeza que deseja resetar TODOS os seus dados? Todos os seus salões e dados serão perdidos!')) {
-      // Remove apenas dados do usuário atual
-      const saloesUsuario = saloes.filter(s => s.userId === currentUser.id).map(s => s.id);
-      
-      setSaloes(saloes.filter(s => s.userId !== currentUser.id));
-      setClientes(clientes.filter(c => !saloesUsuario.includes(c.salaoId)));
-      setProfissionais(profissionais.filter(p => !saloesUsuario.includes(p.salaoId)));
-      setServicos(servicos.filter(s => !saloesUsuario.includes(s.salaoId)));
-      setFornecedores(fornecedores.filter(f => !saloesUsuario.includes(f.salaoId)));
-      setProdutos(produtos.filter(p => !saloesUsuario.includes(p.salaoId)));
-      setAgendamentos(agendamentos.filter(a => !saloesUsuario.includes(a.salaoId)));
-      setTransacoes(transacoes.filter(t => !saloesUsuario.includes(t.salaoId)));
-      
-      setSalaoAtual(null);
-      
-      alert('Sistema resetado com sucesso!');
-    }
-  };
-
   // Filtrar dados pelo salão atual - usando useMemo para performance
   const getClientesPorSalao = useMemo(() => 
     () => salaoAtual ? clientes.filter(c => c.salaoId === salaoAtual.id) : [],
@@ -253,6 +205,18 @@ export const SalaoProvider = ({ children }) => {
     [transacoes, salaoAtual]
   );
 
+  // Obter categorias ativas do salão
+  const getCategoriasAtivasPorSalao = useMemo(() => 
+    () => {
+      if (!salaoAtual || !salaoAtual.categoriasServicos) return [];
+      
+      return Object.entries(salaoAtual.categoriasServicos)
+        .filter(([_, data]) => data.ativa)
+        .map(([id, data]) => ({ id, ...data }));
+    },
+    [salaoAtual]
+  );
+
   // Valor do contexto memoizado
   const contextValue = useMemo(() => ({
     saloes: saloes.filter(s => s.userId === currentUser?.id),
@@ -265,8 +229,6 @@ export const SalaoProvider = ({ children }) => {
     setClientes,
     profissionais,
     setProfissionais,
-    categorias,
-    setCategorias,
     servicos,
     setServicos,
     fornecedores,
@@ -277,21 +239,19 @@ export const SalaoProvider = ({ children }) => {
     setAgendamentos,
     transacoes,
     setTransacoes,
-    resetarDadosSalao,
-    resetarTodosSistema,
     getClientesPorSalao,
     getProfissionaisPorSalao,
     getServicosPorSalao,
     getFornecedoresPorSalao,
     getProdutosPorSalao,
     getAgendamentosPorSalao,
-    getTransacoesPorSalao
+    getTransacoesPorSalao,
+    getCategoriasAtivasPorSalao
   }), [
     saloes,
     salaoAtual,
     clientes,
     profissionais,
-    categorias,
     servicos,
     fornecedores,
     produtos,
@@ -304,7 +264,8 @@ export const SalaoProvider = ({ children }) => {
     getFornecedoresPorSalao,
     getProdutosPorSalao,
     getAgendamentosPorSalao,
-    getTransacoesPorSalao
+    getTransacoesPorSalao,
+    getCategoriasAtivasPorSalao
   ]);
 
   // Não renderizar até ter definido o salão atual (se houver usuário logado)

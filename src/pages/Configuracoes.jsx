@@ -1,4 +1,4 @@
-// src/pages/Configuracoes.jsx - USANDO PLANOS_DISPONIVEIS
+// src/pages/Configuracoes.jsx
 
 import { useState, useContext } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
@@ -8,11 +8,12 @@ import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 import ConfiguracoesHeader from '../components/configuracoes/ConfiguracoesHeader';
 import ConfiguracoesTabs from '../components/configuracoes/ConfiguracoesTabs';
 import ConfiguracoesGeral from '../components/configuracoes/ConfiguracoesGeral';
+import ConfiguracoesCategorias from '../components/configuracoes/ConfiguracoesCategorias';
 import ConfiguracoesProfissionais from '../components/configuracoes/ConfiguracoesProfissionais';
 import ConfiguracoesPlanos from '../components/configuracoes/ConfiguracoesPlanos';
 import ProfissionalModal from '../components/configuracoes/ProfissionalModal';
 
-// Dados dos planos - TODOS (disponíveis e futuros)
+// Dados dos planos
 import { PLANOS_DATA } from '../data/planosData';
 
 const Configuracoes = () => {
@@ -23,8 +24,6 @@ const Configuracoes = () => {
     deletarSalao,
     profissionais, 
     setProfissionais, 
-    resetarDadosSalao,
-    resetarTodosSistema,
     getProfissionaisPorSalao
   } = useContext(SalaoContext);
   
@@ -48,6 +47,11 @@ const Configuracoes = () => {
     email: '',
     especialidades: []
   });
+
+  // State para categorias e serviços
+  const [categoriasServicos, setCategoriasServicos] = useState(
+    salaoAtual.categoriasServicos || {}
+  );
 
   const [logoPreview, setLogoPreview] = useState(null);
 
@@ -107,6 +111,54 @@ const Configuracoes = () => {
         alert('Salão excluído com sucesso!');
       }
     }
+  };
+
+  // Handlers para Categorias e Serviços
+  const handleToggleCategoria = (categoriaId) => {
+    setCategoriasServicos(prev => {
+      const novoEstado = { ...prev };
+      
+      if (novoEstado[categoriaId]?.ativa) {
+        // Se está desmarcando, remove tudo
+        delete novoEstado[categoriaId];
+      } else {
+        // Se está marcando, inicializa vazio
+        novoEstado[categoriaId] = {
+          ativa: true,
+          servicos: []
+        };
+      }
+      
+      return novoEstado;
+    });
+  };
+
+  const handleToggleServico = (categoriaId, servico) => {
+    setCategoriasServicos(prev => {
+      const novoEstado = { ...prev };
+      
+      if (!novoEstado[categoriaId]) {
+        novoEstado[categoriaId] = {
+          ativa: true,
+          servicos: [servico]
+        };
+      } else {
+        const servicos = novoEstado[categoriaId].servicos || [];
+        
+        if (servicos.includes(servico)) {
+          novoEstado[categoriaId].servicos = servicos.filter(s => s !== servico);
+        } else {
+          novoEstado[categoriaId].servicos = [...servicos, servico];
+        }
+      }
+      
+      return novoEstado;
+    });
+  };
+
+  const handleSaveCategorias = () => {
+    atualizarSalao(salaoAtual.id, { categoriasServicos });
+    alert('Categorias e serviços atualizados com sucesso!');
   };
 
   // Handlers para Profissionais
@@ -182,11 +234,10 @@ const Configuracoes = () => {
     }
   };
 
-  // Handler para Planos - VALIDAÇÃO DE PLANOS DISPONÍVEIS
+  // Handler para Planos
   const handleChangePlano = (planoId) => {
     const planoSelecionado = PLANOS_DATA.find(p => p.id === planoId);
     
-    // Verificar se o plano está disponível
     if (!planoSelecionado.disponivel) {
       alert(`O plano ${planoSelecionado.nome} estará disponível em breve!\n\nEntre em contato conosco para receber novidades sobre este plano.`);
       return;
@@ -200,10 +251,7 @@ const Configuracoes = () => {
 
   return (
     <div className="space-y-6">
-      <ConfiguracoesHeader 
-        onResetSalao={resetarDadosSalao}
-        onResetSistema={resetarTodosSistema}
-      />
+      <ConfiguracoesHeader />
 
       <ConfiguracoesTabs 
         activeTab={activeTab}
@@ -221,6 +269,15 @@ const Configuracoes = () => {
             handleDeletarSalao={handleDeletarSalao}
             logoPreview={logoPreview}
             saloes={saloes}
+          />
+        )}
+
+        {activeTab === 'categorias' && (
+          <ConfiguracoesCategorias 
+            categoriasServicos={categoriasServicos}
+            onToggleCategoria={handleToggleCategoria}
+            onToggleServico={handleToggleServico}
+            onSave={handleSaveCategorias}
           />
         )}
 

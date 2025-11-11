@@ -1,4 +1,5 @@
 // src/components/servicos/ServicoModal.jsx
+
 import { useContext } from 'react';
 import { Lock, Crown } from 'lucide-react';
 import Modal from '../Modal';
@@ -13,7 +14,7 @@ const ServicoModal = ({
   handleChange,
   handleProfissionalToggle,
   handleSubmit,
-  categorias,
+  categoriasAtivas,
   profissionaisSalao,
   durationOptions,
   servicosSalao
@@ -72,50 +73,63 @@ const ServicoModal = ({
       )}
 
       <form onSubmit={handleSubmitWithValidation} className="space-y-4">
+        {/* Seleção de Categoria e Nome do Serviço */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Nome do Serviço *
+            Categoria e Serviço *
           </label>
-          <input
-            type="text"
+          <select
             name="nome"
             value={formData.nome}
-            onChange={handleChange}
+            onChange={(e) => {
+              const selectedValue = e.target.value;
+              if (selectedValue) {
+                // Extrair categoria e nome do serviço
+                const [categoriaNome, servicoNome] = selectedValue.split('|||');
+                handleChange({
+                  target: {
+                    name: 'nome',
+                    value: servicoNome
+                  }
+                });
+                handleChange({
+                  target: {
+                    name: 'categoria',
+                    value: categoriaNome
+                  }
+                });
+              }
+            }}
             required
             disabled={!editingId && (!canAddServico || !canAddToCategory)}
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            placeholder="Ex: Corte Feminino"
-          />
+          >
+            <option value="">Selecione um serviço</option>
+            {categoriasAtivas.map(categoria => (
+              <optgroup key={categoria.id} label={categoria.nome}>
+                {categoria.servicos.map(servico => {
+                  const servicosNaCategoria = servicosSalao.filter(s => s.categoria === categoria.nome).length;
+                  const limiteNumerico = parseInt(limiteServicos.replace('Máximo: ', '')) || Infinity;
+                  const atingiuLimite = servicosNaCategoria >= limiteNumerico;
+                  
+                  return (
+                    <option 
+                      key={servico} 
+                      value={`${categoria.nome}|||${servico}`}
+                    >
+                      {servico} {atingiuLimite && !editingId ? '(Limite atingido)' : ''}
+                    </option>
+                  );
+                })}
+              </optgroup>
+            ))}
+          </select>
+          <p className="text-xs text-gray-500 mt-1">
+            Os serviços disponíveis são baseados nas categorias configuradas em Configurações.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Categoria *
-            </label>
-            <select
-              name="categoria"
-              value={formData.categoria}
-              onChange={handleChange}
-              required
-              disabled={!editingId && (!canAddServico || !canAddToCategory)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-            >
-              <option value="">Selecione uma categoria</option>
-              {categorias.map(cat => {
-                const servicosNaCategoria = servicosSalao.filter(s => s.categoria === cat).length;
-                const limiteNumerico = parseInt(limiteServicos.replace('Máximo: ', '')) || Infinity;
-                const atingiuLimite = servicosNaCategoria >= limiteNumerico;
-                
-                return (
-                  <option key={cat} value={cat}>
-                    {cat} {atingiuLimite && !editingId ? '(Limite atingido)' : `(${servicosNaCategoria})`}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Duração *
@@ -133,9 +147,7 @@ const ServicoModal = ({
               ))}
             </select>
           </div>
-        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Valor (R$) *
@@ -153,24 +165,24 @@ const ServicoModal = ({
               placeholder="0.00"
             />
           </div>
+        </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Comissão (%) *
-            </label>
-            <input
-              type="number"
-              name="comissao"
-              value={formData.comissao}
-              onChange={handleChange}
-              required
-              min="0"
-              max="100"
-              disabled={!editingId && (!canAddServico || !canAddToCategory)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              placeholder="0"
-            />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Comissão (%) *
+          </label>
+          <input
+            type="number"
+            name="comissao"
+            value={formData.comissao}
+            onChange={handleChange}
+            required
+            min="0"
+            max="100"
+            disabled={!editingId && (!canAddServico || !canAddToCategory)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            placeholder="0"
+          />
         </div>
 
         <div>

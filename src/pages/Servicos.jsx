@@ -1,23 +1,22 @@
-// src/pages/Servicos.jsx - CÓDIGO COMPLETO COM RESTRIÇÕES
-import { useState, useContext } from 'react';
-import { Crown, Lock } from 'lucide-react';
+// src/pages/Servicos.jsx
+
+import { useState, useContext, useMemo } from 'react';
+import { Crown, AlertCircle } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
+import { CATEGORIAS_SERVICOS } from '../data/categoriasServicosData';
 import { generateDurationOptions } from '../utils/masks';
-import { canAddMore, getLimitMessage, canAddServiceToCategory } from '../utils/planRestrictions';
+import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 import ServicosHeader from '../components/servicos/ServicosHeader';
 import ServicosStats from '../components/servicos/ServicosStats';
 import ServicosFilters from '../components/servicos/ServicosFilters';
 import ServicosGrid from '../components/servicos/ServicosGrid';
 import ServicoModal from '../components/servicos/ServicoModal';
-import CategoriaModal from '../components/servicos/CategoriaModal';
 
 const Servicos = () => {
   const { 
     salaoAtual,
     servicos, 
     setServicos, 
-    categorias, 
-    setCategorias, 
     profissionais,
     getServicosPorSalao,
     getProfissionaisPorSalao
@@ -25,12 +24,8 @@ const Servicos = () => {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [showCategoriaModal, setShowCategoriaModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [categoriaFiltro, setCategoriaFiltro] = useState('Todos');
-  const [novaCategoria, setNovaCategoria] = useState('');
-  const [categoriaParaEditar, setCategoriaParaEditar] = useState('');
-  const [categoriaEditando, setCategoriaEditando] = useState('');
 
   const [formData, setFormData] = useState({
     nome: '',
@@ -49,13 +44,36 @@ const Servicos = () => {
   const servicosSalao = getServicosPorSalao();
   const profissionaisSalao = getProfissionaisPorSalao();
 
+  // Obter categorias ativas do salão
+  const categoriasAtivas = useMemo(() => {
+    if (!salaoAtual.categoriasServicos) return [];
+    
+    return Object.entries(salaoAtual.categoriasServicos)
+      .filter(([_, data]) => data.ativa && data.servicos && data.servicos.length > 0)
+      .map(([id, data]) => {
+        const categoriaInfo = CATEGORIAS_SERVICOS.find(c => c.id === id);
+        return {
+          id,
+          nome: categoriaInfo?.nome || id,
+          servicos: data.servicos
+        };
+      });
+  }, [salaoAtual.categoriasServicos]);
+
+  // Verificar se há categorias configuradas
+  const hasCategoriasConfiguradas = categoriasAtivas.length > 0;
+
   // Verificar limites do plano
   const canAddServico = canAddMore(salaoAtual.plano, 'servicosPorCategoria', servicosSalao.length);
   const limiteServicos = getLimitMessage(salaoAtual.plano, 'servicosPorCategoria');
-  const canAddCategoria = canAddMore(salaoAtual.plano, 'categorias', categorias.length);
-  const limiteCategorias = getLimitMessage(salaoAtual.plano, 'categorias');
 
   const handleOpenModal = (servico = null) => {
+    // Verificar se há categorias configuradas
+    if (!hasCategoriasConfiguradas) {
+      alert('Você precisa configurar as categorias e serviços do salão antes de cadastrar serviços.\n\nVá em Configurações > Categorias e Serviços para selecionar as categorias que seu salão oferece.');
+      return;
+    }
+
     // Verificar limite ao adicionar novo
     if (!servico && !canAddServico) {
       alert(`Limite de serviços atingido para o plano ${salaoAtual.plano}. ${limiteServicos}\n\nFaça upgrade do seu plano para adicionar mais serviços.`);
@@ -149,53 +167,6 @@ const Servicos = () => {
     }));
   };
 
-  // Gerenciamento de Categorias
-  const handleAddCategoria = () => {
-    if (novaCategoria.trim() && !categorias.includes(novaCategoria.trim())) {
-      setCategorias([...categorias, novaCategoria.trim()]);
-      setNovaCategoria('');
-    }
-  };
-
-  const handleDeleteCategoria = (categoria) => {
-    if (confirm(`Tem certeza que deseja excluir a categoria "${categoria}"?`)) {
-      // Verificar se existem serviços usando esta categoria no salão atual
-      const servicosComCategoria = servicosSalao.filter(s => s.categoria === categoria);
-      if (servicosComCategoria.length > 0) {
-        alert(`Não é possível excluir. Existem ${servicosComCategoria.length} serviço(s) usando esta categoria neste salão.`);
-        return;
-      }
-      setCategorias(categorias.filter(c => c !== categoria));
-    }
-  };
-
-  const handleEditCategoria = (categoriaAntiga) => {
-    setCategoriaEditando(categoriaAntiga);
-    setCategoriaParaEditar(categoriaAntiga);
-  };
-
-  const handleSaveEditCategoria = () => {
-    if (categoriaParaEditar.trim() && categoriaParaEditar !== categoriaEditando) {
-      // Atualizar categoria
-      setCategorias(categorias.map(c => c === categoriaEditando ? categoriaParaEditar.trim() : c));
-      
-      // Atualizar serviços que usam esta categoria
-      setServicos(servicos.map(s => 
-        s.categoria === categoriaEditando 
-          ? { ...s, categoria: categoriaParaEditar.trim() }
-          : s
-      ));
-    }
-    setCategoriaEditando('');
-    setCategoriaParaEditar('');
-  };
-
-  const handleCloseCategoriaModal = () => {
-    setShowCategoriaModal(false);
-    setCategoriaEditando('');
-    setNovaCategoria('');
-  };
-
   const filteredServicos = servicosSalao.filter(servico => {
     const matchSearch = servico.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
                        servico.descricao.toLowerCase().includes(searchTerm.toLowerCase());
@@ -214,12 +185,26 @@ const Servicos = () => {
     <div className="space-y-6">
       <ServicosHeader 
         salaoNome={salaoAtual.nome}
-        onOpenCategoriaModal={() => setShowCategoriaModal(true)}
         onOpenServicoModal={() => handleOpenModal()}
       />
 
+      {/* Alerta se não há categorias configuradas */}
+      {!hasCategoriasConfiguradas && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+          <div className="flex items-start">
+            <AlertCircle className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
+            <div>
+              <p className="font-semibold text-yellow-800">Configure as categorias do seu salão</p>
+              <p className="text-yellow-700 text-sm mt-1">
+                Antes de cadastrar serviços, você precisa selecionar as categorias e serviços que seu salão oferece em <strong>Configurações &gt; Categorias e Serviços</strong>.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Alertas de Limite */}
-      {!canAddServico && (
+      {!canAddServico && hasCategoriasConfiguradas && (
         <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
           <div className="flex items-start">
             <Crown className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
@@ -234,42 +219,48 @@ const Servicos = () => {
       )}
 
       {/* Info do Plano */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium text-blue-900">
-              Serviços: {servicosSalao.length} {limiteServicos !== 'Ilimitado' ? `(${limiteServicos})` : '(Ilimitado)'}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-blue-900">
-              Categorias: {categorias.length} {limiteCategorias !== 'Ilimitado' ? `/ ${limiteCategorias.replace('Máximo: ', '')}` : '(Ilimitado)'}
-            </p>
+      {hasCategoriasConfiguradas && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Serviços cadastrados: {servicosSalao.length} {limiteServicos !== 'Ilimitado' ? `(${limiteServicos})` : '(Ilimitado)'}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Categorias configuradas: {categoriasAtivas.length}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      <ServicosStats 
-        totalServicos={totalServicos}
-        valorMedio={valorMedio}
-        servicosPremium={servicosMaisCaros}
-        totalCategorias={categorias.length}
-      />
+      {hasCategoriasConfiguradas && (
+        <>
+          <ServicosStats 
+            totalServicos={totalServicos}
+            valorMedio={valorMedio}
+            servicosPremium={servicosMaisCaros}
+            totalCategorias={categoriasAtivas.length}
+          />
 
-      <ServicosFilters 
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        categoriaFiltro={categoriaFiltro}
-        setCategoriaFiltro={setCategoriaFiltro}
-        categorias={categorias}
-      />
+          <ServicosFilters 
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            categoriaFiltro={categoriaFiltro}
+            setCategoriaFiltro={setCategoriaFiltro}
+            categorias={categoriasAtivas.map(c => c.nome)}
+          />
 
-      <ServicosGrid 
-        filteredServicos={filteredServicos}
-        profissionais={profissionais}
-        handleOpenModal={handleOpenModal}
-        handleDelete={handleDelete}
-      />
+          <ServicosGrid 
+            filteredServicos={filteredServicos}
+            profissionais={profissionais}
+            handleOpenModal={handleOpenModal}
+            handleDelete={handleDelete}
+          />
+        </>
+      )}
 
       <ServicoModal 
         showModal={showModal}
@@ -279,26 +270,9 @@ const Servicos = () => {
         handleChange={handleChange}
         handleProfissionalToggle={handleProfissionalToggle}
         handleSubmit={handleSubmit}
-        categorias={categorias}
+        categoriasAtivas={categoriasAtivas}
         profissionaisSalao={profissionaisSalao}
         durationOptions={durationOptions}
-        servicosSalao={servicosSalao}
-      />
-
-      <CategoriaModal 
-        showCategoriaModal={showCategoriaModal}
-        handleCloseCategoriaModal={handleCloseCategoriaModal}
-        categorias={categorias}
-        novaCategoria={novaCategoria}
-        setNovaCategoria={setNovaCategoria}
-        handleAddCategoria={handleAddCategoria}
-        categoriaEditando={categoriaEditando}
-        categoriaParaEditar={categoriaParaEditar}
-        setCategoriaEditando={setCategoriaEditando}
-        setCategoriaParaEditar={setCategoriaParaEditar}
-        handleEditCategoria={handleEditCategoria}
-        handleSaveEditCategoria={handleSaveEditCategoria}
-        handleDeleteCategoria={handleDeleteCategoria}
         servicosSalao={servicosSalao}
       />
     </div>
