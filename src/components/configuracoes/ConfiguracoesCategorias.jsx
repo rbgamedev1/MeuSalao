@@ -15,7 +15,12 @@ const ConfiguracoesCategorias = ({
   const [categoriasAbertas, setCategoriasAbertas] = useState(new Set());
   const [subcategoriasAbertas, setSubcategoriasAbertas] = useState(new Set());
 
-  // Funções utilitárias - AGORA BASEADAS EM SERVIÇOS SELECIONADOS
+  // ✅ FUNÇÕES FALTANTES ADICIONADAS
+  const isCategoriaAberta = (categoriaId) => categoriasAbertas.has(categoriaId);
+  
+  const isSubcategoriaAberta = (subcategoriaKey) => subcategoriasAbertas.has(subcategoriaKey);
+
+  // Funções utilitárias - BASEADAS EM SERVIÇOS SELECIONADOS
 
   // Categoria é "ativa" se tiver QUALQUER serviço selecionado em qualquer subcategoria
   const isCategoriaSelected = (categoriaId) => {
@@ -31,7 +36,8 @@ const ConfiguracoesCategorias = ({
     return (categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.length > 0) || false;
   };
 
-  const isServicoSelected = (categoriaId, subcategoriaId, servico) => categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.includes(servico) || false;
+  const isServicoSelected = (categoriaId, subcategoriaId, servico) => 
+    categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.includes(servico) || false;
   
   // Contar subcategorias que possuem serviços selecionados
   const countSubcategoriasSelecionadas = (categoriaId) => {
@@ -46,8 +52,6 @@ const ConfiguracoesCategorias = ({
     return categoriasServicos[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.length || 0;
   };
 
-  // ... (Funções de toggleCategoria e toggleSubcategoria, e o restante do código do componente)
-
   // EXPANSÃO CATEGORIA (TOGGLE) - Apenas abre/fecha
   const toggleCategoria = (categoriaId) => {
     setCategoriasAbertas(prev => {
@@ -61,7 +65,7 @@ const ConfiguracoesCategorias = ({
     });
   };
 
-  // EXPANSÃO SUBACATEGORIA (TOGGLE) - Apenas abre/fecha
+  // EXPANSÃO SUBCATEGORIA (TOGGLE) - Apenas abre/fecha
   const toggleSubcategoria = (categoriaId, subcategoriaId) => {
     const key = `${categoriaId}-${subcategoriaId}`;
     setSubcategoriasAbertas(prev => {
@@ -82,13 +86,26 @@ const ConfiguracoesCategorias = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Info... */}
+      {/* Header com informação */}
+      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-lg p-4">
+        <div className="flex items-start gap-3">
+          <Sparkles className="text-purple-600 mt-1 flex-shrink-0" size={24} />
+          <div>
+            <h3 className="font-bold text-gray-900 mb-1">Configure seus serviços</h3>
+            <p className="text-sm text-gray-600">
+              Clique nos <strong>ícones +/-</strong> para expandir categorias e subcategorias. 
+              Selecione os <strong>serviços</strong> que você oferece no seu salão.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Lista de Categorias */}
       <div className="space-y-3">
         {CATEGORIAS_SERVICOS.map((categoria) => {
-          const categoriaAtiva = isCategoriaSelected(categoria.id); // USA A NOVA LÓGICA
-          const subcategoriasSelecionadas = countSubcategoriasSelecionadas(categoria.id); // USA A NOVA LÓGICA
-          const isAberta = isCategoriaAberta(categoria.id); 
+          const categoriaAtiva = isCategoriaSelected(categoria.id);
+          const subcategoriasSelecionadas = countSubcategoriasSelecionadas(categoria.id);
+          const isAberta = isCategoriaAberta(categoria.id);
 
           return (
             <div 
@@ -104,15 +121,15 @@ const ConfiguracoesCategorias = ({
                 className="flex items-center p-4 gap-3 cursor-pointer"
                 onClick={() => toggleCategoria(categoria.id)}
               >
-                {/* ... Ícone de Expansão/Recolhimento ... */}
+                {/* Ícone de Expansão/Recolhimento */}
                 <div 
-                    className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
-                        isAberta 
-                            ? 'bg-purple-600 text-white shadow-md' 
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
+                  className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-all ${
+                    isAberta 
+                      ? 'bg-purple-600 text-white shadow-md' 
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
                 >
-                    {isAberta ? <Minus size={20} /> : <Plus size={20} />}
+                  {isAberta ? <Minus size={20} /> : <Plus size={20} />}
                 </div>
 
                 {/* Informações */}
@@ -135,7 +152,7 @@ const ConfiguracoesCategorias = ({
               {isAberta && (
                 <div className="px-4 pb-4 space-y-2 animate-fadeIn">
                   {categoria.subcategorias.map((subcategoria) => {
-                    const subcategoriaAtiva = isSubcategoriaSelected(categoria.id, subcategoria.id); // USA A NOVA LÓGICA
+                    const subcategoriaAtiva = isSubcategoriaSelected(categoria.id, subcategoria.id);
                     const servicosSelecionados = countServicosSelecionados(categoria.id, subcategoria.id);
                     const subcategoriaKey = `${categoria.id}-${subcategoria.id}`;
                     const isSubAberta = isSubcategoriaAberta(subcategoriaKey);
@@ -144,24 +161,23 @@ const ConfiguracoesCategorias = ({
                       <div 
                         key={subcategoria.id}
                         className={`border-2 rounded-lg overflow-hidden transition-all ${
-                          subcategoriaAtiva // USA A NOVA LÓGICA
+                          subcategoriaAtiva
                             ? 'border-pink-300 bg-gradient-to-r from-pink-50 to-white' 
                             : 'border-gray-200 bg-white'
                         }`}
                       >
                         {/* Header da Subcategoria - Clicável para expandir */}
                         <div 
-                           className="flex items-center p-3 gap-2 cursor-pointer"
-                           onClick={() => toggleSubcategoria(categoria.id, subcategoria.id)}
+                          className="flex items-center p-3 gap-2 cursor-pointer"
+                          onClick={() => toggleSubcategoria(categoria.id, subcategoria.id)}
                         >
-                          
                           {/* Ícone de Expansão/Recolhimento */}
                           <div 
                             className={`flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center transition-all ${
-                                isSubAberta ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-pink-100'
+                              isSubAberta ? 'bg-pink-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-pink-100'
                             }`}
                           >
-                             {isSubAberta ? <Minus size={16} /> : <Plus size={16} />}
+                            {isSubAberta ? <Minus size={16} /> : <Plus size={16} />}
                           </div>
 
                           {/* Informações */}
@@ -202,7 +218,7 @@ const ConfiguracoesCategorias = ({
                                           : 'bg-white border-2 border-gray-200 hover:border-green-300 hover:bg-green-50'
                                       }`}
                                     >
-                                      {/* Checkmark Visual... */}
+                                      {/* Checkmark Visual */}
                                       <div className={`flex-shrink-0 w-5 h-5 rounded-md flex items-center justify-center transition-all ${
                                         isSelected 
                                           ? 'bg-gradient-to-br from-green-500 to-emerald-500' 
@@ -234,9 +250,33 @@ const ConfiguracoesCategorias = ({
         })}
       </div>
 
-      {/* Botão Salvar... */}
+      {/* Botão Salvar */}
+      <div className="flex justify-end pt-4 border-t border-gray-200">
+        <button
+          type="submit"
+          className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-md hover:shadow-lg"
+        >
+          Salvar Configurações
+        </button>
+      </div>
 
-      {/* Styles... */}
+      {/* Styles para animação */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </form>
   );
 };

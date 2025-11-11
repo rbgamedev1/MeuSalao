@@ -1,4 +1,4 @@
-// src/pages/Configuracoes.jsx
+// src/pages/Configuracoes.jsx - HIERARQUIA CORRIGIDA
 
 import { useState, useContext } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
@@ -26,6 +26,15 @@ const Configuracoes = () => {
     setProfissionais, 
     getProfissionaisPorSalao
   } = useContext(SalaoContext);
+  
+  // ✅ GUARD CLAUSE - Previne crash
+  if (!salaoAtual) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500">Carregando configurações...</p>
+      </div>
+    );
+  }
   
   const [activeTab, setActiveTab] = useState('geral');
   const [showProfissionalModal, setShowProfissionalModal] = useState(false);
@@ -113,92 +122,116 @@ const Configuracoes = () => {
     }
   };
 
-  // ===== HANDLERS PARA CATEGORIAS E SERVIÇOS - CORRIGIDOS =====
+  // ===== HANDLERS PARA CATEGORIAS E SERVIÇOS - HIERARQUIA CORRIGIDA =====
   
-  const handleToggleCategoria = (categoriaId) => {
-    setCategoriasServicos(prev => {
-      const novoEstado = { ...prev };
-      
-      if (novoEstado[categoriaId]?.ativa) {
-        // Se está desmarcando, remove TUDO (categoria + subcategorias + serviços)
-        delete novoEstado[categoriaId];
-      } else {
-        // Se está marcando, inicializa vazio MAS mantém o que já existe
-        novoEstado[categoriaId] = {
-          ativa: true,
-          subcategorias: novoEstado[categoriaId]?.subcategorias || {} // PRESERVA subcategorias existentes
-        };
-      }
-      
-      return novoEstado;
-    });
-  };
+  /**
+   * REMOVIDO - Não é mais necessário porque a "ativação" agora é implícita
+   * Uma categoria está "ativa" se tiver pelo menos 1 serviço selecionado
+   * Uma subcategoria está "ativa" se tiver pelo menos 1 serviço selecionado
+   */
 
-  const handleToggleSubcategoria = (categoriaId, subcategoriaId) => {
+  /**
+   * ✅ HANDLER PARA TOGGLE DE SERVIÇO
+   * Esta é a ÚNICA função que realmente modifica o estado
+   * Ela garante que categoria e subcategoria existam antes de adicionar/remover serviços
+   */
+  const handleToggleServico = (categoriaId, subcategoriaId, servico) => {
     setCategoriasServicos(prev => {
-      const novoEstado = { ...prev };
+      // Cria uma cópia profunda do estado
+      const novoEstado = JSON.parse(JSON.stringify(prev));
       
-      // Garantir que a categoria existe e está ativa
-      if (!novoEstado[categoriaId] || !novoEstado[categoriaId].ativa) {
-        // Se a categoria não está ativa, não permite selecionar subcategoria
-        alert('Por favor, ative a categoria primeiro clicando no checkbox ao lado do nome da categoria!');
-        return prev; // Retorna o estado anterior sem mudanças
+      // ✅ GARANTE QUE A ESTRUTURA EXISTE
+      if (!novoEstado[categoriaId]) {
+        novoEstado[categoriaId] = { subcategorias: {} };
       }
       
       if (!novoEstado[categoriaId].subcategorias) {
         novoEstado[categoriaId].subcategorias = {};
       }
       
-      // Toggle da subcategoria
-      if (novoEstado[categoriaId].subcategorias[subcategoriaId]?.ativa) {
-        // Desmarcando - remove a subcategoria
-        delete novoEstado[categoriaId].subcategorias[subcategoriaId];
+      if (!novoEstado[categoriaId].subcategorias[subcategoriaId]) {
+        novoEstado[categoriaId].subcategorias[subcategoriaId] = { servicos: [] };
+      }
+      
+      if (!novoEstado[categoriaId].subcategorias[subcategoriaId].servicos) {
+        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = [];
+      }
+      
+      // ✅ TOGGLE DO SERVIÇO
+      const servicos = novoEstado[categoriaId].subcategorias[subcategoriaId].servicos;
+      
+      if (servicos.includes(servico)) {
+        // Remove o serviço
+        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = 
+          servicos.filter(s => s !== servico);
+        
+        // ✅ LIMPEZA: Remove subcategoria se ficar vazia
+        if (novoEstado[categoriaId].subcategorias[subcategoriaId].servicos.length === 0) {
+          delete novoEstado[categoriaId].subcategorias[subcategoriaId];
+        }
+        
+        // ✅ LIMPEZA: Remove categoria se ficar vazia
+        if (Object.keys(novoEstado[categoriaId].subcategorias).length === 0) {
+          delete novoEstado[categoriaId];
+        }
       } else {
-        // Marcando - inicializa
-        novoEstado[categoriaId].subcategorias[subcategoriaId] = {
-          ativa: true,
-          servicos: novoEstado[categoriaId].subcategorias[subcategoriaId]?.servicos || [] // PRESERVA serviços existentes
-        };
+        // Adiciona o serviço
+        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos.push(servico);
       }
       
       return novoEstado;
     });
   };
 
-  const handleToggleServico = (categoriaId, subcategoriaId, servico) => {
+  /**
+   * ✅ HANDLER PARA "DESMARCAR TUDO" DE UMA SUBCATEGORIA
+   * Remove todos os serviços de uma subcategoria de uma vez
+   */
+  const handleToggleSubcategoria = (categoriaId, subcategoriaId) => {
     setCategoriasServicos(prev => {
-      // Cria uma cópia rasa do estado superior
-      const novoEstado = { ...prev };
+      const novoEstado = JSON.parse(JSON.stringify(prev));
       
-      // Validações de Ativação
-      if (!novoEstado[categoriaId] || !novoEstado[categoriaId].ativa) {
-        alert('Por favor, ative a categoria primeiro!');
-        return prev;
-      }
+      // Verifica se a subcategoria tem serviços
+      const temServicos = novoEstado[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.length > 0;
       
-      if (!novoEstado[categoriaId].subcategorias || 
-          !novoEstado[categoriaId].subcategorias[subcategoriaId]?.ativa) {
-        alert('Por favor, ative a subcategoria primeiro!');
-        return prev;
-      }
-      
-      // Garantir que o array de serviços existe
-      if (!novoEstado[categoriaId].subcategorias[subcategoriaId].servicos) {
-        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = [];
-      }
-      
-      // Lógica de Toggle (Mutação segura no objeto clonado)
-      const servicos = novoEstado[categoriaId].subcategorias[subcategoriaId].servicos || [];
-      
-      if (servicos.includes(servico)) {
-        // Remove o serviço
-        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = servicos.filter(s => s !== servico);
+      if (temServicos) {
+        // Se tem serviços, remove a subcategoria inteira
+        delete novoEstado[categoriaId].subcategorias[subcategoriaId];
+        
+        // ✅ LIMPEZA: Remove categoria se ficar vazia
+        if (Object.keys(novoEstado[categoriaId].subcategorias).length === 0) {
+          delete novoEstado[categoriaId];
+        }
       } else {
-        // Adiciona o serviço
-        novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = [...servicos, servico];
+        // Se não tem serviços, não faz nada (usuário precisa selecionar serviços individualmente)
+        // Opcionalmente, pode mostrar um aviso
+        alert('Selecione os serviços específicos que você oferece nesta subcategoria.');
       }
       
-      // Retorna o novo estado (a cópia rasa modificada)
+      return novoEstado;
+    });
+  };
+
+  /**
+   * ✅ HANDLER PARA "DESMARCAR TUDO" DE UMA CATEGORIA
+   * Remove todas as subcategorias e serviços de uma categoria de uma vez
+   */
+  const handleToggleCategoria = (categoriaId) => {
+    setCategoriasServicos(prev => {
+      const novoEstado = JSON.parse(JSON.stringify(prev));
+      
+      // Verifica se a categoria tem alguma subcategoria com serviços
+      const temServicos = novoEstado[categoriaId]?.subcategorias && 
+        Object.values(novoEstado[categoriaId].subcategorias).some(sub => sub.servicos?.length > 0);
+      
+      if (temServicos) {
+        // Se tem serviços, remove a categoria inteira
+        delete novoEstado[categoriaId];
+      } else {
+        // Se não tem serviços, não faz nada
+        alert('Selecione os serviços específicos que você oferece nesta categoria.');
+      }
+      
       return novoEstado;
     });
   };
