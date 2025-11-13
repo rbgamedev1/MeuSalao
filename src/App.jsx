@@ -1,4 +1,5 @@
-// src/App.jsx - Atualizado com Autenticação
+// src/App.jsx - Atualizado com rota /perfil
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, useContext } from 'react';
 import { Menu } from 'lucide-react';
@@ -18,6 +19,7 @@ import Produtos from './pages/Produtos';
 import Financeiro from './pages/Financeiro';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
+import Perfil from './pages/Perfil';
 import AgendaOnline from './pages/AgendaOnline';
 import Avaliacao from './pages/Avaliacao';
 import NotificacoesConfig from './pages/NotificacoesConfig';
@@ -155,6 +157,15 @@ function App() {
               <ProtectedRoute>
                 <SystemLayout>
                   <Configuracoes />
+                </SystemLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* ✅ NOVA ROTA: Perfil do Usuário */}
+            <Route path="/perfil" element={
+              <ProtectedRoute>
+                <SystemLayout>
+                  <Perfil />
                 </SystemLayout>
               </ProtectedRoute>
             } />

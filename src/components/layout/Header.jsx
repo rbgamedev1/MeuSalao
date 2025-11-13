@@ -1,7 +1,7 @@
-// src/components/layout/Header.jsx - ATUALIZADO: Plano removido do modal de novo salão
+// src/components/layout/Header.jsx - COMPLETO E ATUALIZADO
 
 import { useState, useContext, useEffect, useMemo } from 'react';
-import { Bell, ChevronDown, Plus, LogOut, User, Calendar, X, RefreshCw, AlertCircle } from 'lucide-react';
+import { Bell, ChevronDown, Plus, LogOut, User, Calendar, X, RefreshCw, AlertCircle, Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from "../../contexts/SalaoContext";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -35,7 +35,6 @@ const Header = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
-  // ✅ ATUALIZADO: Removido campo 'plano' do formData
   const [formData, setFormData] = useState({
     nome: '',
     endereco: '',
@@ -557,6 +556,18 @@ const Header = () => {
                     <p className="font-medium text-gray-800">{currentUser?.nome}</p>
                     <p className="text-sm text-gray-500">{currentUser?.email}</p>
                   </div>
+                  
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      navigate('/perfil');
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center space-x-3"
+                  >
+                    <User size={18} className="text-gray-600" />
+                    <span className="text-gray-700">Meu Perfil</span>
+                  </button>
+
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
@@ -564,9 +575,10 @@ const Header = () => {
                     }}
                     className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors flex items-center space-x-3"
                   >
-                    <User size={18} className="text-gray-600" />
-                    <span className="text-gray-700">Minha Conta</span>
+                    <Settings size={18} className="text-gray-600" />
+                    <span className="text-gray-700">Configurações do Salão</span>
                   </button>
+                  
                   <div className="border-t border-gray-200 mt-2 pt-2">
                     <button
                       onClick={() => {
