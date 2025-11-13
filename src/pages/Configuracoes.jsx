@@ -1,6 +1,6 @@
-// src/pages/Configuracoes.jsx - ATUALIZADO: FormData sincroniza automaticamente com mudança de salão
+// src/pages/Configuracoes.jsx - ATUALIZADO: Especialidades dinâmicas baseadas nos serviços do salão
 
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useMemo } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 
@@ -31,7 +31,10 @@ const Configuracoes = () => {
   if (!salaoAtual) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Carregando configurações...</p>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Carregando configurações...</p>
+        </div>
       </div>
     );
   }
@@ -40,7 +43,7 @@ const Configuracoes = () => {
   const [showProfissionalModal, setShowProfissionalModal] = useState(false);
   const [editingProfissionalId, setEditingProfissionalId] = useState(null);
 
-  // ✅ ATUALIZADO: Form data para informações gerais - inicializa com dados do salão atual
+  // ✅ Form data para informações gerais
   const [formData, setFormData] = useState({
     nome: salaoAtual.nome || '',
     endereco: salaoAtual.endereco || '',
@@ -49,7 +52,7 @@ const Configuracoes = () => {
     logo: salaoAtual.logo || null
   });
 
-  // ✅ NOVO: Efeito para sincronizar formData quando salaoAtual mudar
+  // ✅ Sincronizar formData quando salaoAtual mudar
   useEffect(() => {
     if (salaoAtual) {
       setFormData({
@@ -59,9 +62,9 @@ const Configuracoes = () => {
         email: salaoAtual.email || '',
         logo: salaoAtual.logo || null
       });
-      setLogoPreview(null); // Limpa preview quando muda de salão
+      setLogoPreview(null);
     }
-  }, [salaoAtual.id]); // ✅ Executa quando o ID do salão muda
+  }, [salaoAtual.id]);
 
   // Form data para profissional
   const [profissionalData, setProfissionalData] = useState({
@@ -71,41 +74,67 @@ const Configuracoes = () => {
     especialidades: []
   });
 
-  // ✅ ATUALIZADO: State para categorias e serviços - sincroniza com salão atual
+  // ✅ State para categorias e serviços
   const [categoriasServicos, setCategoriasServicos] = useState(
     salaoAtual.categoriasServicos || {}
   );
 
-  // ✅ NOVO: Sincronizar categoriasServicos quando salaoAtual mudar
+  // ✅ Sincronizar categoriasServicos quando salaoAtual mudar
   useEffect(() => {
     if (salaoAtual) {
       setCategoriasServicos(salaoAtual.categoriasServicos || {});
     }
-  }, [salaoAtual.id]); // ✅ Executa quando o ID do salão muda
+  }, [salaoAtual.id]);
 
   const [logoPreview, setLogoPreview] = useState(null);
 
-  // Obter profissionais do salão atual
-  const profissionaisSalao = getProfissionaisPorSalao();
+  // ✅ Obter profissionais com validação
+  const profissionaisSalao = getProfissionaisPorSalao ? getProfissionaisPorSalao() : [];
 
-  // Verificar limites do plano
-  const canAddProfissional = canAddMore(salaoAtual.plano, 'profissionais', profissionaisSalao.length);
-  const limiteProfissionais = getLimitMessage(salaoAtual.plano, 'profissionais');
+  // ✅ Verificar limites do plano com validação
+  const canAddProfissional = canAddMore && profissionaisSalao 
+    ? canAddMore(salaoAtual.plano, 'profissionais', profissionaisSalao.length)
+    : false;
+    
+  const limiteProfissionais = getLimitMessage 
+    ? getLimitMessage(salaoAtual.plano, 'profissionais')
+    : 'Carregando...';
 
-  const especialidadesDisponiveis = [
-    'Corte',
-    'Coloração',
-    'Escova',
-    'Hidratação',
-    'Manicure',
-    'Pedicure',
-    'Barba',
-    'Design de Sobrancelhas',
-    'Maquiagem',
-    'Depilação'
-  ];
+  // ✅ NOVO: Especialidades disponíveis baseadas nos serviços do salão
+  const especialidadesDisponiveis = useMemo(() => {
+    const servicosAtivos = [];
+    
+    // Extrair todos os serviços ativos do salão
+    if (categoriasServicos && typeof categoriasServicos === 'object') {
+      Object.values(categoriasServicos).forEach(categoria => {
+        if (categoria.subcategorias) {
+          Object.values(categoria.subcategorias).forEach(subcategoria => {
+            if (subcategoria.servicos && Array.isArray(subcategoria.servicos)) {
+              servicosAtivos.push(...subcategoria.servicos);
+            }
+          });
+        }
+      });
+    }
+    
+    // Remover duplicatas e ordenar alfabeticamente
+    return [...new Set(servicosAtivos)].sort();
+  }, [categoriasServicos]);
 
-  // Handlers para Informações Gerais
+  // ✅ NOVO: Limpar especialidades inválidas ao abrir modal
+  useEffect(() => {
+    if (showProfissionalModal && editingProfissionalId) {
+      // Ao editar, remover especialidades que não existem mais nos serviços do salão
+      setProfissionalData(prev => ({
+        ...prev,
+        especialidades: prev.especialidades.filter(esp => 
+          especialidadesDisponiveis.includes(esp)
+        )
+      }));
+    }
+  }, [showProfissionalModal, especialidadesDisponiveis]);
+
+  // ===== HANDLERS PARA INFORMAÇÕES GERAIS =====
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -114,6 +143,10 @@ const Configuracoes = () => {
   const handleLogoUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('O arquivo é muito grande. Tamanho máximo: 2MB');
+        return;
+      }
       const reader = new FileReader();
       reader.onloadend = () => {
         setLogoPreview(reader.result);
@@ -125,37 +158,39 @@ const Configuracoes = () => {
 
   const handleSaveGeral = (e) => {
     e.preventDefault();
-    atualizarSalao(salaoAtual.id, formData);
-    alert('Informações atualizadas com sucesso!');
+    try {
+      atualizarSalao(salaoAtual.id, formData);
+      alert('Informações atualizadas com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar:', error);
+      alert('Erro ao salvar informações. Tente novamente.');
+    }
   };
 
   const handleDeletarSalao = () => {
-    if (saloes.length === 1) {
+    if (!saloes || saloes.length === 1) {
       alert('Você não pode excluir o único salão cadastrado.');
       return;
     }
 
-    if (confirm(`Tem certeza que deseja excluir o salão "${salaoAtual.nome}"? Todos os dados relacionados a este salão serão perdidos permanentemente!`)) {
-      const sucesso = deletarSalao(salaoAtual.id);
-      if (sucesso) {
-        alert('Salão excluído com sucesso!');
+    if (confirm(`Tem certeza que deseja excluir o salão "${salaoAtual.nome}"?\n\nTodos os dados relacionados serão perdidos permanentemente!`)) {
+      try {
+        const sucesso = deletarSalao(salaoAtual.id);
+        if (sucesso) {
+          alert('Salão excluído com sucesso!');
+        }
+      } catch (error) {
+        console.error('Erro ao deletar salão:', error);
+        alert('Erro ao excluir salão. Tente novamente.');
       }
     }
   };
 
-  // ===== HANDLERS PARA CATEGORIAS E SERVIÇOS - HIERARQUIA CORRIGIDA =====
-  
-  /**
-   * ✅ HANDLER PARA TOGGLE DE SERVIÇO
-   * Esta é a ÚNICA função que realmente modifica o estado
-   * Ela garante que categoria e subcategoria existam antes de adicionar/remover serviços
-   */
+  // ===== HANDLERS PARA CATEGORIAS E SERVIÇOS =====
   const handleToggleServico = (categoriaId, subcategoriaId, servico) => {
     setCategoriasServicos(prev => {
-      // Cria uma cópia profunda do estado
       const novoEstado = JSON.parse(JSON.stringify(prev));
       
-      // ✅ GARANTE QUE A ESTRUTURA EXISTE
       if (!novoEstado[categoriaId]) {
         novoEstado[categoriaId] = { subcategorias: {} };
       }
@@ -172,25 +207,20 @@ const Configuracoes = () => {
         novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = [];
       }
       
-      // ✅ TOGGLE DO SERVIÇO
       const servicos = novoEstado[categoriaId].subcategorias[subcategoriaId].servicos;
       
       if (servicos.includes(servico)) {
-        // Remove o serviço
         novoEstado[categoriaId].subcategorias[subcategoriaId].servicos = 
           servicos.filter(s => s !== servico);
         
-        // ✅ LIMPEZA: Remove subcategoria se ficar vazia
         if (novoEstado[categoriaId].subcategorias[subcategoriaId].servicos.length === 0) {
           delete novoEstado[categoriaId].subcategorias[subcategoriaId];
         }
         
-        // ✅ LIMPEZA: Remove categoria se ficar vazia
         if (Object.keys(novoEstado[categoriaId].subcategorias).length === 0) {
           delete novoEstado[categoriaId];
         }
       } else {
-        // Adiciona o serviço
         novoEstado[categoriaId].subcategorias[subcategoriaId].servicos.push(servico);
       }
       
@@ -198,27 +228,19 @@ const Configuracoes = () => {
     });
   };
 
-  /**
-   * ✅ HANDLER PARA "DESMARCAR TUDO" DE UMA SUBCATEGORIA
-   * Remove todos os serviços de uma subcategoria de uma vez
-   */
   const handleToggleSubcategoria = (categoriaId, subcategoriaId) => {
     setCategoriasServicos(prev => {
       const novoEstado = JSON.parse(JSON.stringify(prev));
       
-      // Verifica se a subcategoria tem serviços
       const temServicos = novoEstado[categoriaId]?.subcategorias?.[subcategoriaId]?.servicos?.length > 0;
       
       if (temServicos) {
-        // Se tem serviços, remove a subcategoria inteira
         delete novoEstado[categoriaId].subcategorias[subcategoriaId];
         
-        // ✅ LIMPEZA: Remove categoria se ficar vazia
         if (Object.keys(novoEstado[categoriaId].subcategorias).length === 0) {
           delete novoEstado[categoriaId];
         }
       } else {
-        // Se não tem serviços, não faz nada (usuário precisa selecionar serviços individualmente)
         alert('Selecione os serviços específicos que você oferece nesta subcategoria.');
       }
       
@@ -226,23 +248,16 @@ const Configuracoes = () => {
     });
   };
 
-  /**
-   * ✅ HANDLER PARA "DESMARCAR TUDO" DE UMA CATEGORIA
-   * Remove todas as subcategorias e serviços de uma categoria de uma vez
-   */
   const handleToggleCategoria = (categoriaId) => {
     setCategoriasServicos(prev => {
       const novoEstado = JSON.parse(JSON.stringify(prev));
       
-      // Verifica se a categoria tem alguma subcategoria com serviços
       const temServicos = novoEstado[categoriaId]?.subcategorias && 
         Object.values(novoEstado[categoriaId].subcategorias).some(sub => sub.servicos?.length > 0);
       
       if (temServicos) {
-        // Se tem serviços, remove a categoria inteira
         delete novoEstado[categoriaId];
       } else {
-        // Se não tem serviços, não faz nada
         alert('Selecione os serviços específicos que você oferece nesta categoria.');
       }
       
@@ -251,11 +266,45 @@ const Configuracoes = () => {
   };
 
   const handleSaveCategorias = () => {
-    atualizarSalao(salaoAtual.id, { categoriasServicos });
-    alert('Categorias e serviços atualizados com sucesso!');
+    try {
+      atualizarSalao(salaoAtual.id, { categoriasServicos });
+      
+      // ✅ NOVO: Limpar especialidades dos profissionais que não existem mais
+      const servicosAtivos = [];
+      Object.values(categoriasServicos).forEach(categoria => {
+        if (categoria.subcategorias) {
+          Object.values(categoria.subcategorias).forEach(subcategoria => {
+            if (subcategoria.servicos) {
+              servicosAtivos.push(...subcategoria.servicos);
+            }
+          });
+        }
+      });
+
+      // Atualizar profissionais removendo especialidades inválidas
+      const profissionaisAtualizados = profissionais.map(prof => {
+        if (prof.salaoId === salaoAtual.id && prof.especialidades) {
+          const especialidadesValidas = prof.especialidades.filter(esp => 
+            servicosAtivos.includes(esp)
+          );
+          
+          if (especialidadesValidas.length !== prof.especialidades.length) {
+            return { ...prof, especialidades: especialidadesValidas };
+          }
+        }
+        return prof;
+      });
+
+      setProfissionais(profissionaisAtualizados);
+      
+      alert('Categorias e serviços atualizados com sucesso!\n\nNota: As especialidades dos profissionais foram ajustadas automaticamente.');
+    } catch (error) {
+      console.error('Erro ao salvar categorias:', error);
+      alert('Erro ao salvar categorias. Tente novamente.');
+    }
   };
 
-  // Handlers para Profissionais
+  // ===== HANDLERS PARA PROFISSIONAIS =====
   const handleProfissionalChange = (e) => {
     const { name, value } = e.target;
     setProfissionalData(prev => ({ ...prev, [name]: value }));
@@ -271,18 +320,27 @@ const Configuracoes = () => {
   };
 
   const handleOpenProfissionalModal = (profissional = null) => {
+    // ✅ NOVO: Verificar se há serviços configurados
+    if (especialidadesDisponiveis.length === 0) {
+      alert('⚠️ Configure os serviços do salão primeiro!\n\nAcesse a aba "Categorias e Serviços" e selecione os serviços que seu salão oferece antes de cadastrar profissionais.');
+      setActiveTab('categorias');
+      return;
+    }
+
     if (!profissional && !canAddProfissional) {
-      alert(`Limite de profissionais atingido para o plano ${salaoAtual.plano}. ${limiteProfissionais}\n\nFaça upgrade do seu plano para adicionar mais profissionais.`);
+      alert(`Limite de profissionais atingido!\n\nSeu plano permite: ${limiteProfissionais}\n\nFaça upgrade do seu plano para adicionar mais profissionais.`);
       return;
     }
 
     if (profissional) {
       setEditingProfissionalId(profissional.id);
       setProfissionalData({
-        nome: profissional.nome,
-        telefone: profissional.telefone,
-        email: profissional.email,
-        especialidades: profissional.especialidades || []
+        nome: profissional.nome || '',
+        telefone: profissional.telefone || '',
+        email: profissional.email || '',
+        especialidades: (profissional.especialidades || []).filter(esp => 
+          especialidadesDisponiveis.includes(esp)
+        )
       });
     } else {
       setEditingProfissionalId(null);
@@ -304,45 +362,77 @@ const Configuracoes = () => {
   const handleSubmitProfissional = (e) => {
     e.preventDefault();
     
-    if (editingProfissionalId) {
-      setProfissionais(profissionais.map(p => 
-        p.id === editingProfissionalId 
-          ? { ...profissionalData, id: editingProfissionalId, salaoId: salaoAtual.id }
-          : p
-      ));
-    } else {
-      const newProfissional = {
-        ...profissionalData,
-        id: Math.max(...profissionais.map(p => p.id), 0) + 1,
-        salaoId: salaoAtual.id
-      };
-      setProfissionais([...profissionais, newProfissional]);
+    if (!profissionalData.nome || !profissionalData.telefone || !profissionalData.email) {
+      alert('Preencha todos os campos obrigatórios!');
+      return;
     }
-    
-    handleCloseProfissionalModal();
+
+    if (profissionalData.especialidades.length === 0) {
+      alert('Selecione pelo menos um serviço que o profissional atende!');
+      return;
+    }
+
+    try {
+      if (editingProfissionalId) {
+        setProfissionais(profissionais.map(p => 
+          p.id === editingProfissionalId 
+            ? { ...profissionalData, id: editingProfissionalId, salaoId: salaoAtual.id }
+            : p
+        ));
+        alert('Profissional atualizado com sucesso!');
+      } else {
+        const newProfissional = {
+          ...profissionalData,
+          id: Math.max(...profissionais.map(p => p.id), 0) + 1,
+          salaoId: salaoAtual.id
+        };
+        setProfissionais([...profissionais, newProfissional]);
+        alert('Profissional cadastrado com sucesso!');
+      }
+      
+      handleCloseProfissionalModal();
+    } catch (error) {
+      console.error('Erro ao salvar profissional:', error);
+      alert('Erro ao salvar profissional. Tente novamente.');
+    }
   };
 
   const handleDeleteProfissional = (id) => {
     if (confirm('Tem certeza que deseja excluir este profissional?')) {
-      setProfissionais(profissionais.filter(p => p.id !== id));
+      try {
+        setProfissionais(profissionais.filter(p => p.id !== id));
+        alert('Profissional excluído com sucesso!');
+      } catch (error) {
+        console.error('Erro ao deletar profissional:', error);
+        alert('Erro ao excluir profissional. Tente novamente.');
+      }
     }
   };
 
-  // Handler para Planos
+  // ===== HANDLER PARA PLANOS =====
   const handleChangePlano = (planoId) => {
     const planoSelecionado = PLANOS_DATA.find(p => p.id === planoId);
     
+    if (!planoSelecionado) {
+      alert('Plano não encontrado!');
+      return;
+    }
+
     if (!planoSelecionado.disponivel) {
       alert(`O plano ${planoSelecionado.nome} estará disponível em breve!\n\nEntre em contato conosco para receber novidades sobre este plano.`);
       return;
     }
 
     if (confirm(`Deseja alterar para o ${planoSelecionado.nome}?\n\n⚠️ ATENÇÃO: O plano se aplica a TODOS os seus salões cadastrados.`)) {
-      // ✅ ATUALIZADO: Atualizar o plano de TODOS os salões do usuário
-      saloes.forEach(salao => {
-        atualizarSalao(salao.id, { plano: planoId });
-      });
-      alert('Plano alterado com sucesso para todos os seus salões!');
+      try {
+        saloes.forEach(salao => {
+          atualizarSalao(salao.id, { plano: planoId });
+        });
+        alert('Plano alterado com sucesso para todos os seus salões!');
+      } catch (error) {
+        console.error('Erro ao alterar plano:', error);
+        alert('Erro ao alterar plano. Tente novamente.');
+      }
     }
   };
 
@@ -401,16 +491,18 @@ const Configuracoes = () => {
       </div>
 
       {/* Modal de Profissional */}
-      <ProfissionalModal 
-        isOpen={showProfissionalModal}
-        onClose={handleCloseProfissionalModal}
-        editingId={editingProfissionalId}
-        formData={profissionalData}
-        onChange={handleProfissionalChange}
-        onSubmit={handleSubmitProfissional}
-        especialidadesDisponiveis={especialidadesDisponiveis}
-        onToggleEspecialidade={handleEspecialidadeToggle}
-      />
+      {showProfissionalModal && (
+        <ProfissionalModal 
+          isOpen={showProfissionalModal}
+          onClose={handleCloseProfissionalModal}
+          editingId={editingProfissionalId}
+          formData={profissionalData}
+          onChange={handleProfissionalChange}
+          onSubmit={handleSubmitProfissional}
+          especialidadesDisponiveis={especialidadesDisponiveis}
+          onToggleEspecialidade={handleEspecialidadeToggle}
+        />
+      )}
     </div>
   );
 };

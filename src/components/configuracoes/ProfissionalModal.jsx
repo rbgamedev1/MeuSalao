@@ -1,7 +1,8 @@
-// src/components/configuracoes/ProfissionalModal.jsx
+// src/components/configuracoes/ProfissionalModal.jsx - ATUALIZADO: Especialidades dinâmicas
 
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
+import { AlertCircle } from 'lucide-react';
 
 const ProfissionalModal = ({ 
   isOpen,
@@ -69,23 +70,62 @@ const ProfissionalModal = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Especialidades *
+            Serviços que Atende *
           </label>
-          <div className="grid grid-cols-2 gap-2 p-4 border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
-            {especialidadesDisponiveis.map(esp => (
-              <label key={esp} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                <input
-                  type="checkbox"
-                  checked={formData.especialidades.includes(esp)}
-                  onChange={() => onToggleEspecialidade(esp)}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <span className="text-sm text-gray-700">{esp}</span>
-              </label>
-            ))}
-          </div>
-          {formData.especialidades.length === 0 && (
-            <p className="text-xs text-red-500 mt-1">Selecione pelo menos uma especialidade</p>
+          
+          {especialidadesDisponiveis.length === 0 ? (
+            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} />
+                <div>
+                  <p className="text-sm font-medium text-yellow-800">
+                    Nenhum serviço configurado
+                  </p>
+                  <p className="text-sm text-yellow-700 mt-1">
+                    Configure os serviços do salão na aba "Categorias e Serviços" antes de cadastrar profissionais.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-2 p-4 border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
+                {especialidadesDisponiveis.map(esp => (
+                  <label 
+                    key={esp} 
+                    className="flex items-center space-x-2 cursor-pointer hover:bg-purple-50 p-2 rounded transition-colors"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formData.especialidades.includes(esp)}
+                      onChange={() => onToggleEspecialidade(esp)}
+                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                    />
+                    <span className="text-sm text-gray-700">{esp}</span>
+                  </label>
+                ))}
+              </div>
+              
+              {formData.especialidades.length === 0 && (
+                <p className="text-xs text-red-500 mt-1">
+                  Selecione pelo menos um serviço
+                </p>
+              )}
+              
+              {formData.especialidades.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  <span className="text-xs text-gray-600">Selecionados:</span>
+                  {formData.especialidades.map(esp => (
+                    <span 
+                      key={esp} 
+                      className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full"
+                    >
+                      {esp}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -99,7 +139,7 @@ const ProfissionalModal = ({
           </button>
           <button
             type="submit"
-            disabled={formData.especialidades.length === 0}
+            disabled={formData.especialidades.length === 0 || especialidadesDisponiveis.length === 0}
             className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {editingId ? 'Salvar Alterações' : 'Cadastrar Profissional'}

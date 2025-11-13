@@ -1,6 +1,6 @@
-// src/contexts/SalaoContext.jsx - ATUALIZADO: Novo salão herda plano do primeiro salão do usuário
+// src/contexts/SalaoContext.jsx - CORRIGIDO: Não muda de salão ao salvar
 
-import { createContext, useState, useEffect, useMemo, useContext } from 'react';
+import { createContext, useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { AuthContext } from './AuthContext';
 import { getTodayBR, dateFromISO } from '../utils/masks';
 
@@ -40,22 +40,38 @@ export const SalaoProvider = ({ children }) => {
   const [agendamentos, setAgendamentos] = useState(() => loadFromStorage('agendamentos', []));
   const [transacoes, setTransacoes] = useState(() => loadFromStorage('transacoes', []));
 
-  // Definir salão atual quando usuário estiver logado
+  // ✅ CORREÇÃO: Usar ref para rastrear se já definimos o salão inicial
+  const salaoInicialDefinido = useRef(false);
+
+  // ✅ CORREÇÃO: Definir salão atual APENAS na primeira vez ou quando usuário muda
   useEffect(() => {
-    if (currentUser && saloes.length > 0) {
+    if (currentUser && saloes.length > 0 && !salaoInicialDefinido.current) {
       // Buscar salão do usuário
       const salaoUsuario = saloes.find(s => s.userId === currentUser.id);
       
       if (salaoUsuario) {
         setSalaoAtual(salaoUsuario);
+        salaoInicialDefinido.current = true;
       } else {
-        // Se não encontrou, usar o primeiro salão (fallback)
+        // Se não encontrou, usar o primeiro (fallback)
         setSalaoAtual(saloes[0]);
+        salaoInicialDefinido.current = true;
       }
     } else if (!currentUser) {
       setSalaoAtual(null);
+      salaoInicialDefinido.current = false;
     }
-  }, [currentUser, saloes]);
+  }, [currentUser]); // ✅ Só reage a mudanças no usuário, NÃO em saloes
+
+  // ✅ NOVO: Atualizar salaoAtual quando ele é modificado em saloes
+  useEffect(() => {
+    if (salaoAtual && saloes.length > 0) {
+      const salaoAtualizado = saloes.find(s => s.id === salaoAtual.id);
+      if (salaoAtualizado && JSON.stringify(salaoAtualizado) !== JSON.stringify(salaoAtual)) {
+        setSalaoAtual(salaoAtualizado);
+      }
+    }
+  }, [saloes]);
 
   // Salvar no localStorage sempre que os dados mudarem
   useEffect(() => {
@@ -114,7 +130,7 @@ export const SalaoProvider = ({ children }) => {
     return () => clearTimeout(timer);
   }, [transacoes]);
 
-  // ✅ ATUALIZADO: Função para adicionar novo salão
+  // Função para adicionar novo salão
   const adicionarSalao = (dadosSalao) => {
     // Buscar salões do usuário atual para herdar o plano
     const saloesDoUsuario = saloes.filter(s => s.userId === currentUser?.id);
@@ -123,9 +139,9 @@ export const SalaoProvider = ({ children }) => {
     const novoSalao = {
       ...dadosSalao,
       id: Math.max(...saloes.map(s => s.id), 0) + 1,
-      plano: planoHerdado, // ✅ HERDA O PLANO DO PRIMEIRO SALÃO DO USUÁRIO
+      plano: planoHerdado,
       userId: currentUser?.id,
-      categoriasServicos: {} // Inicializar vazio
+      categoriasServicos: {}
     };
     setSaloes([...saloes, novoSalao]);
     return novoSalao;
@@ -138,6 +154,7 @@ export const SalaoProvider = ({ children }) => {
     );
     setSaloes(saloesAtualizados);
     
+    // ✅ CORREÇÃO: Atualizar salaoAtual se for o mesmo que está sendo editado
     if (salaoAtual && salaoAtual.id === salaoId) {
       setSalaoAtual({ ...salaoAtual, ...dadosAtualizados });
     }

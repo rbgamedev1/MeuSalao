@@ -1,12 +1,12 @@
-// src/components/configuracoes/ConfiguracoesTabs.jsx - ATUALIZADO: Sem aba de Planos
+// src/components/perfil/PerfilTabs.jsx
 
-import { Building2, Users, List } from 'lucide-react';
+import { User, Crown, Lock } from 'lucide-react';
 
-const ConfiguracoesTabs = ({ activeTab, setActiveTab }) => {
+const PerfilTabs = ({ activeTab, setActiveTab }) => {
   const tabs = [
-    { id: 'geral', label: 'Informações Gerais', icon: Building2 },
-    { id: 'categorias', label: 'Categorias e Serviços', icon: List },
-    { id: 'profissionais', label: 'Profissionais', icon: Users }
+    { id: 'dados-pessoais', label: 'Dados Pessoais', icon: User },
+    { id: 'planos', label: 'Planos e Assinatura', icon: Crown },
+    { id: 'seguranca', label: 'Segurança', icon: Lock }
   ];
 
   return (
@@ -34,4 +34,4 @@ const ConfiguracoesTabs = ({ activeTab, setActiveTab }) => {
   );
 };
 
-export default ConfiguracoesTabs;
+export default PerfilTabs;
