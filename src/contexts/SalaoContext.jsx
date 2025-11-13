@@ -1,4 +1,4 @@
-// src/contexts/SalaoContext.jsx
+// src/contexts/SalaoContext.jsx - ATUALIZADO: Novo salão herda plano do primeiro salão do usuário
 
 import { createContext, useState, useEffect, useMemo, useContext } from 'react';
 import { AuthContext } from './AuthContext';
@@ -114,12 +114,16 @@ export const SalaoProvider = ({ children }) => {
     return () => clearTimeout(timer);
   }, [transacoes]);
 
-  // Função para adicionar novo salão
+  // ✅ ATUALIZADO: Função para adicionar novo salão
   const adicionarSalao = (dadosSalao) => {
+    // Buscar salões do usuário atual para herdar o plano
+    const saloesDoUsuario = saloes.filter(s => s.userId === currentUser?.id);
+    const planoHerdado = saloesDoUsuario.length > 0 ? saloesDoUsuario[0].plano : 'inicial';
+
     const novoSalao = {
       ...dadosSalao,
       id: Math.max(...saloes.map(s => s.id), 0) + 1,
-      plano: dadosSalao.plano || 'inicial',
+      plano: planoHerdado, // ✅ HERDA O PLANO DO PRIMEIRO SALÃO DO USUÁRIO
       userId: currentUser?.id,
       categoriasServicos: {} // Inicializar vazio
     };

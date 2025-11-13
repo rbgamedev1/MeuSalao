@@ -1,6 +1,6 @@
-// src/pages/Configuracoes.jsx - HIERARQUIA CORRIGIDA
+// src/pages/Configuracoes.jsx - ATUALIZADO: FormData sincroniza automaticamente com mudança de salão
 
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 
@@ -40,14 +40,28 @@ const Configuracoes = () => {
   const [showProfissionalModal, setShowProfissionalModal] = useState(false);
   const [editingProfissionalId, setEditingProfissionalId] = useState(null);
 
-  // Form data para informações gerais
+  // ✅ ATUALIZADO: Form data para informações gerais - inicializa com dados do salão atual
   const [formData, setFormData] = useState({
-    nome: salaoAtual.nome,
-    endereco: salaoAtual.endereco,
-    telefone: salaoAtual.telefone,
-    email: salaoAtual.email,
-    logo: salaoAtual.logo
+    nome: salaoAtual.nome || '',
+    endereco: salaoAtual.endereco || '',
+    telefone: salaoAtual.telefone || '',
+    email: salaoAtual.email || '',
+    logo: salaoAtual.logo || null
   });
+
+  // ✅ NOVO: Efeito para sincronizar formData quando salaoAtual mudar
+  useEffect(() => {
+    if (salaoAtual) {
+      setFormData({
+        nome: salaoAtual.nome || '',
+        endereco: salaoAtual.endereco || '',
+        telefone: salaoAtual.telefone || '',
+        email: salaoAtual.email || '',
+        logo: salaoAtual.logo || null
+      });
+      setLogoPreview(null); // Limpa preview quando muda de salão
+    }
+  }, [salaoAtual.id]); // ✅ Executa quando o ID do salão muda
 
   // Form data para profissional
   const [profissionalData, setProfissionalData] = useState({
@@ -57,10 +71,17 @@ const Configuracoes = () => {
     especialidades: []
   });
 
-  // State para categorias e serviços
+  // ✅ ATUALIZADO: State para categorias e serviços - sincroniza com salão atual
   const [categoriasServicos, setCategoriasServicos] = useState(
     salaoAtual.categoriasServicos || {}
   );
+
+  // ✅ NOVO: Sincronizar categoriasServicos quando salaoAtual mudar
+  useEffect(() => {
+    if (salaoAtual) {
+      setCategoriasServicos(salaoAtual.categoriasServicos || {});
+    }
+  }, [salaoAtual.id]); // ✅ Executa quando o ID do salão muda
 
   const [logoPreview, setLogoPreview] = useState(null);
 
@@ -124,12 +145,6 @@ const Configuracoes = () => {
 
   // ===== HANDLERS PARA CATEGORIAS E SERVIÇOS - HIERARQUIA CORRIGIDA =====
   
-  /**
-   * REMOVIDO - Não é mais necessário porque a "ativação" agora é implícita
-   * Uma categoria está "ativa" se tiver pelo menos 1 serviço selecionado
-   * Uma subcategoria está "ativa" se tiver pelo menos 1 serviço selecionado
-   */
-
   /**
    * ✅ HANDLER PARA TOGGLE DE SERVIÇO
    * Esta é a ÚNICA função que realmente modifica o estado
@@ -204,7 +219,6 @@ const Configuracoes = () => {
         }
       } else {
         // Se não tem serviços, não faz nada (usuário precisa selecionar serviços individualmente)
-        // Opcionalmente, pode mostrar um aviso
         alert('Selecione os serviços específicos que você oferece nesta subcategoria.');
       }
       
@@ -323,9 +337,12 @@ const Configuracoes = () => {
       return;
     }
 
-    if (confirm(`Deseja alterar para o ${planoSelecionado.nome}?`)) {
-      atualizarSalao(salaoAtual.id, { plano: planoId });
-      alert('Plano alterado com sucesso!');
+    if (confirm(`Deseja alterar para o ${planoSelecionado.nome}?\n\n⚠️ ATENÇÃO: O plano se aplica a TODOS os seus salões cadastrados.`)) {
+      // ✅ ATUALIZADO: Atualizar o plano de TODOS os salões do usuário
+      saloes.forEach(salao => {
+        atualizarSalao(salao.id, { plano: planoId });
+      });
+      alert('Plano alterado com sucesso para todos os seus salões!');
     }
   };
 

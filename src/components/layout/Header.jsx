@@ -1,7 +1,7 @@
-// src/components/layout/Header.jsx - COM ALERTAS DE AGENDAMENTOS PASSADOS
+// src/components/layout/Header.jsx - ATUALIZADO: Plano removido do modal de novo salão
 
 import { useState, useContext, useEffect, useMemo } from 'react';
-import { Bell, ChevronDown, Plus, LogOut, User, Calendar, Clock, X, RefreshCw, AlertCircle } from 'lucide-react';
+import { Bell, ChevronDown, Plus, LogOut, User, Calendar, X, RefreshCw, AlertCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from "../../contexts/SalaoContext";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -35,47 +35,40 @@ const Header = () => {
     return saved ? JSON.parse(saved) : [];
   });
   
+  // ✅ ATUALIZADO: Removido campo 'plano' do formData
   const [formData, setFormData] = useState({
     nome: '',
     endereco: '',
     telefone: '',
-    email: '',
-    plano: 'inicial'
+    email: ''
   });
 
   // Hook de tempo real
   const { 
     agendamentos: agendamentosRealtime, 
     isUpdating, 
-    lastUpdate,
-    forceRefresh 
+    lastUpdate
   } = useRealtimeAgendamentos(salaoAtual?.id, 2000);
 
-  // ✅ NOVO: Função para verificar se um agendamento está atrasado
   const isAgendamentoAtrasado = (data, horario) => {
     try {
       const [dia, mes, ano] = data.split('/').map(Number);
       const [hora, minuto] = horario.split(':').map(Number);
-      
       const dataAgendamento = new Date(ano, mes - 1, dia, hora, minuto);
       const agora = new Date();
-      
       return dataAgendamento < agora;
     } catch {
       return false;
     }
   };
 
-  // ✅ NOVO: Agendamentos passados não finalizados
   const agendamentosAtrasados = useMemo(() => {
     if (!salaoAtual) return [];
-    
     try {
       return agendamentosRealtime
         .filter(ag => {
           if (!ag || !ag.salaoId || !ag.id) return false;
           if (ag.tipo === 'bloqueio' || ag.status === 'bloqueado') return false;
-          
           return (
             ag.salaoId === salaoAtual.id && 
             (ag.status === 'pendente' || ag.status === 'confirmado') &&
@@ -83,64 +76,47 @@ const Header = () => {
             !alertasPendentesOcultos.includes(ag.id)
           );
         })
-        .sort((a, b) => {
-          const dateA = new Date(a.criadoEm || 0);
-          const dateB = new Date(b.criadoEm || 0);
-          return dateB - dateA;
-        });
+        .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0));
     } catch (error) {
       console.error('Erro ao filtrar agendamentos atrasados:', error);
       return [];
     }
   }, [agendamentosRealtime, salaoAtual, alertasPendentesOcultos]);
 
-  // Agendamentos online
   const agendamentosOnline = useMemo(() => {
     if (!salaoAtual) return [];
-    
     try {
       return agendamentosRealtime
         .filter(ag => {
           if (!ag || !ag.salaoId || !ag.id) return false;
-          
           return (
             ag.salaoId === salaoAtual.id && 
             ag.origemAgendamento === 'online' &&
             !notificacoesLidas.includes(ag.id)
           );
         })
-        .sort((a, b) => {
-          const dateA = new Date(a.criadoEm || 0);
-          const dateB = new Date(b.criadoEm || 0);
-          return dateB - dateA;
-        });
+        .sort((a, b) => new Date(b.criadoEm || 0) - new Date(a.criadoEm || 0));
     } catch (error) {
       console.error('Erro ao filtrar agendamentos:', error);
       return [];
     }
   }, [agendamentosRealtime, salaoAtual, notificacoesLidas]);
 
-  // ✅ NOVO: Total de notificações (online + atrasados)
   const totalNotificacoes = agendamentosOnline.length + agendamentosAtrasados.length;
 
-  // Salvar notificações lidas
   useEffect(() => {
     localStorage.setItem('notificacoesLidas', JSON.stringify(notificacoesLidas));
   }, [notificacoesLidas]);
 
-  // Salvar alertas ocultos
   useEffect(() => {
     localStorage.setItem('alertasPendentesOcultos', JSON.stringify(alertasPendentesOcultos));
   }, [alertasPendentesOcultos]);
 
-  // Som de notificação
   useEffect(() => {
     const previousCount = parseInt(localStorage.getItem('previousNotificationCount') || '0');
-    
     if (totalNotificacoes > previousCount && previousCount > 0) {
       console.log('🔔 Nova notificação!');
     }
-    
     localStorage.setItem('previousNotificationCount', totalNotificacoes.toString());
   }, [totalNotificacoes]);
 
@@ -170,31 +146,26 @@ const Header = () => {
       nome: '',
       endereco: '',
       telefone: '',
-      email: '',
-      plano: 'inicial'
+      email: ''
     });
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     const novoSalao = adicionarSalao({
       ...formData,
       logo: null,
       userId: currentUser.id
     });
-    
     setSalaoAtual(novoSalao);
     handleCloseNovoSalaoModal();
-    alert('Salão cadastrado com sucesso!');
+    alert('Salão cadastrado com sucesso! Complete as informações nas Configurações.');
+    navigate('/configuracoes');
   };
 
   const handleLogout = () => {
@@ -213,7 +184,6 @@ const Header = () => {
       'premium': 5,
       'master': Infinity
     };
-
     const limite = planosLimites[salaoAtual.plano] || 1;
     return saloes.length < limite;
   };
@@ -256,18 +226,14 @@ const Header = () => {
   const getTempoDecorrido = (criadoEm) => {
     try {
       if (!criadoEm) return 'Agora';
-      
       const agora = new Date();
       const criado = new Date(criadoEm);
       const diffMs = agora - criado;
       const diffMins = Math.floor(diffMs / 60000);
-      
       if (diffMins < 1) return 'Agora';
       if (diffMins < 60) return `Há ${diffMins} min`;
-      
       const diffHoras = Math.floor(diffMins / 60);
       if (diffHoras < 24) return `Há ${diffHoras}h`;
-      
       const diffDias = Math.floor(diffHoras / 24);
       return `Há ${diffDias}d`;
     } catch {
@@ -275,18 +241,15 @@ const Header = () => {
     }
   };
 
-  // ✅ NOVO: Calcular atraso
   const getTempoAtraso = (data, horario) => {
     try {
       const [dia, mes, ano] = data.split('/').map(Number);
       const [hora, minuto] = horario.split(':').map(Number);
-      
       const dataAgendamento = new Date(ano, mes - 1, dia, hora, minuto);
       const agora = new Date();
       const diffMs = agora - dataAgendamento;
       const diffHoras = Math.floor(diffMs / (1000 * 60 * 60));
       const diffDias = Math.floor(diffHoras / 24);
-      
       if (diffDias > 0) return `${diffDias} dia${diffDias > 1 ? 's' : ''} atrás`;
       if (diffHoras > 0) return `${diffHoras}h atrás`;
       return 'Recente';
@@ -299,7 +262,6 @@ const Header = () => {
     <>
       <header className="bg-white border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between">
-          {/* Seletor de Salão */}
           <div className="relative">
             <button
               onClick={() => setShowSaloes(!showSaloes)}
@@ -366,9 +328,7 @@ const Header = () => {
             )}
           </div>
 
-          {/* Notificações e Menu do Usuário */}
           <div className="flex items-center space-x-4">
-            {/* Notificações */}
             <div className="relative">
               <button 
                 onClick={() => setShowNotifications(!showNotifications)}
@@ -387,10 +347,8 @@ const Header = () => {
                 )}
               </button>
 
-              {/* Dropdown de Notificações */}
               {showNotifications && (
                 <div className="absolute top-full right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden">
-                  {/* Header */}
                   <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between mb-2">
                       <h3 className="font-semibold text-gray-800">
@@ -405,7 +363,6 @@ const Header = () => {
                         </button>
                       )}
                     </div>
-                    
                     <div className={`flex items-center space-x-2 text-xs ${
                       isUpdating ? 'text-blue-600' : 'text-green-600'
                     }`}>
@@ -423,14 +380,11 @@ const Header = () => {
                     </div>
                   </div>
 
-                  {/* Lista de Notificações */}
                   <div className="max-h-80 overflow-y-auto">
                     {(agendamentosOnline.length > 0 || agendamentosAtrasados.length > 0) ? (
                       <>
-                        {/* ✅ NOVO: Alertas de agendamentos atrasados */}
                         {agendamentosAtrasados.map(ag => {
                           if (!ag) return null;
-
                           return (
                             <div 
                               key={`atrasado-${ag.id}`}
@@ -458,7 +412,6 @@ const Header = () => {
                                   <X size={14} className="text-red-400" />
                                 </button>
                               </div>
-
                               <div className="ml-10 space-y-1">
                                 <p className="text-sm text-red-700">
                                   <strong>{getClienteNome(ag.clienteId)}</strong> • <strong>{getServicoNome(ag.servicoId)}</strong>
@@ -477,7 +430,6 @@ const Header = () => {
                                   Status: <span className="font-semibold capitalize">{ag.status}</span>
                                 </p>
                               </div>
-
                               <button
                                 onClick={() => {
                                   setShowNotifications(false);
@@ -491,10 +443,8 @@ const Header = () => {
                           );
                         })}
 
-                        {/* Agendamentos online */}
                         {agendamentosOnline.map(ag => {
                           if (!ag) return null;
-
                           return (
                             <div 
                               key={`online-${ag.id}`}
@@ -524,7 +474,6 @@ const Header = () => {
                                   <X size={14} className="text-gray-400" />
                                 </button>
                               </div>
-
                               <div className="ml-10 space-y-1">
                                 <p className="text-sm text-gray-700">
                                   <strong>{getClienteNome(ag.clienteId)}</strong> agendou <strong>{getServicoNome(ag.servicoId)}</strong>
@@ -540,7 +489,6 @@ const Header = () => {
                                   </div>
                                 </div>
                               </div>
-
                               <button
                                 onClick={() => {
                                   setShowNotifications(false);
@@ -558,9 +506,7 @@ const Header = () => {
                       <div className="p-8 text-center text-gray-500">
                         <Bell size={48} className="mx-auto mb-4 opacity-50" />
                         <p className="text-sm">Nenhuma notificação nova</p>
-                        <p className="text-xs mt-2">
-                          Notificações aparecerão aqui
-                        </p>
+                        <p className="text-xs mt-2">Notificações aparecerão aqui</p>
                         {isUpdating && (
                           <div className="mt-3 flex items-center justify-center space-x-2 text-xs text-blue-600">
                             <RefreshCw size={12} className="animate-spin" />
@@ -571,7 +517,6 @@ const Header = () => {
                     )}
                   </div>
 
-                  {/* Footer */}
                   {totalNotificacoes > 0 && (
                     <div className="p-3 border-t border-gray-200">
                       <button
@@ -595,7 +540,6 @@ const Header = () => {
               )}
             </div>
 
-            {/* Menu do Usuário */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
@@ -613,7 +557,6 @@ const Header = () => {
                     <p className="font-medium text-gray-800">{currentUser?.nome}</p>
                     <p className="text-sm text-gray-500">{currentUser?.email}</p>
                   </div>
-
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
@@ -624,7 +567,6 @@ const Header = () => {
                     <User size={18} className="text-gray-600" />
                     <span className="text-gray-700">Minha Conta</span>
                   </button>
-
                   <div className="border-t border-gray-200 mt-2 pt-2">
                     <button
                       onClick={() => {
@@ -644,7 +586,6 @@ const Header = () => {
         </div>
       </header>
 
-      {/* Modal de Novo Salão */}
       <Modal
         isOpen={showNovoSalaoModal}
         onClose={handleCloseNovoSalaoModal}
@@ -692,6 +633,7 @@ const Header = () => {
               value={formData.telefone}
               onChange={handleChange}
               required
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="(11) 98765-4321"
             />
           </div>
@@ -711,26 +653,9 @@ const Header = () => {
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Plano Inicial *
-            </label>
-            <select
-              name="plano"
-              value={formData.plano}
-              onChange={handleChange}
-              required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-            >
-              <option value="inicial">Inicial (Gratuito)</option>
-              <option value="essencial">Essencial (R$ 29,90)</option>
-              <option value="profissional">Profissional (R$ 79,90)</option>
-            </select>
-          </div>
-
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-800">
-              <strong>Atenção:</strong> O novo salão será criado sem dados. Você poderá adicionar clientes, profissionais e serviços após a criação.
+              <strong>📝 Atenção:</strong> O novo salão será criado com as informações básicas. Você poderá completar o cadastro (logo, categorias, serviços e profissionais) na página de <strong>Configurações</strong>.
             </p>
           </div>
 
