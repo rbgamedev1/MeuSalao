@@ -1,20 +1,15 @@
-// src/pages/Configuracoes.jsx - ATUALIZADO: Especialidades dinâmicas baseadas nos serviços do salão
-
+// src/pages/Configuracoes.jsx
 import { useState, useContext, useEffect, useMemo } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 
-// Componentes modularizados
 import ConfiguracoesHeader from '../components/configuracoes/ConfiguracoesHeader';
 import ConfiguracoesTabs from '../components/configuracoes/ConfiguracoesTabs';
 import ConfiguracoesGeral from '../components/configuracoes/ConfiguracoesGeral';
 import ConfiguracoesCategorias from '../components/configuracoes/ConfiguracoesCategorias';
 import ConfiguracoesProfissionais from '../components/configuracoes/ConfiguracoesProfissionais';
-import ConfiguracoesPlanos from '../components/configuracoes/ConfiguracoesPlanos';
+import ConfiguracoesComunicacoes from '../components/configuracoes/ConfiguracoesComunicacoes';
 import ProfissionalModal from '../components/configuracoes/ProfissionalModal';
-
-// Dados dos planos
-import { PLANOS_DATA } from '../data/planosData';
 
 const Configuracoes = () => {
   const { 
@@ -27,7 +22,6 @@ const Configuracoes = () => {
     getProfissionaisPorSalao
   } = useContext(SalaoContext);
   
-  // ✅ GUARD CLAUSE - Previne crash
   if (!salaoAtual) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -43,7 +37,6 @@ const Configuracoes = () => {
   const [showProfissionalModal, setShowProfissionalModal] = useState(false);
   const [editingProfissionalId, setEditingProfissionalId] = useState(null);
 
-  // ✅ Form data para informações gerais
   const [formData, setFormData] = useState({
     nome: salaoAtual.nome || '',
     endereco: salaoAtual.endereco || '',
@@ -52,7 +45,6 @@ const Configuracoes = () => {
     logo: salaoAtual.logo || null
   });
 
-  // ✅ Sincronizar formData quando salaoAtual mudar
   useEffect(() => {
     if (salaoAtual) {
       setFormData({
@@ -66,7 +58,6 @@ const Configuracoes = () => {
     }
   }, [salaoAtual.id]);
 
-  // Form data para profissional
   const [profissionalData, setProfissionalData] = useState({
     nome: '',
     telefone: '',
@@ -74,12 +65,10 @@ const Configuracoes = () => {
     especialidades: []
   });
 
-  // ✅ State para categorias e serviços
   const [categoriasServicos, setCategoriasServicos] = useState(
     salaoAtual.categoriasServicos || {}
   );
 
-  // ✅ Sincronizar categoriasServicos quando salaoAtual mudar
   useEffect(() => {
     if (salaoAtual) {
       setCategoriasServicos(salaoAtual.categoriasServicos || {});
@@ -88,10 +77,8 @@ const Configuracoes = () => {
 
   const [logoPreview, setLogoPreview] = useState(null);
 
-  // ✅ Obter profissionais com validação
   const profissionaisSalao = getProfissionaisPorSalao ? getProfissionaisPorSalao() : [];
 
-  // ✅ Verificar limites do plano com validação
   const canAddProfissional = canAddMore && profissionaisSalao 
     ? canAddMore(salaoAtual.plano, 'profissionais', profissionaisSalao.length)
     : false;
@@ -100,11 +87,9 @@ const Configuracoes = () => {
     ? getLimitMessage(salaoAtual.plano, 'profissionais')
     : 'Carregando...';
 
-  // ✅ NOVO: Especialidades disponíveis baseadas nos serviços do salão
   const especialidadesDisponiveis = useMemo(() => {
     const servicosAtivos = [];
     
-    // Extrair todos os serviços ativos do salão
     if (categoriasServicos && typeof categoriasServicos === 'object') {
       Object.values(categoriasServicos).forEach(categoria => {
         if (categoria.subcategorias) {
@@ -117,14 +102,11 @@ const Configuracoes = () => {
       });
     }
     
-    // Remover duplicatas e ordenar alfabeticamente
     return [...new Set(servicosAtivos)].sort();
   }, [categoriasServicos]);
 
-  // ✅ NOVO: Limpar especialidades inválidas ao abrir modal
   useEffect(() => {
     if (showProfissionalModal && editingProfissionalId) {
-      // Ao editar, remover especialidades que não existem mais nos serviços do salão
       setProfissionalData(prev => ({
         ...prev,
         especialidades: prev.especialidades.filter(esp => 
@@ -134,7 +116,6 @@ const Configuracoes = () => {
     }
   }, [showProfissionalModal, especialidadesDisponiveis]);
 
-  // ===== HANDLERS PARA INFORMAÇÕES GERAIS =====
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -186,7 +167,6 @@ const Configuracoes = () => {
     }
   };
 
-  // ===== HANDLERS PARA CATEGORIAS E SERVIÇOS =====
   const handleToggleServico = (categoriaId, subcategoriaId, servico) => {
     setCategoriasServicos(prev => {
       const novoEstado = JSON.parse(JSON.stringify(prev));
@@ -269,7 +249,6 @@ const Configuracoes = () => {
     try {
       atualizarSalao(salaoAtual.id, { categoriasServicos });
       
-      // ✅ NOVO: Limpar especialidades dos profissionais que não existem mais
       const servicosAtivos = [];
       Object.values(categoriasServicos).forEach(categoria => {
         if (categoria.subcategorias) {
@@ -281,7 +260,6 @@ const Configuracoes = () => {
         }
       });
 
-      // Atualizar profissionais removendo especialidades inválidas
       const profissionaisAtualizados = profissionais.map(prof => {
         if (prof.salaoId === salaoAtual.id && prof.especialidades) {
           const especialidadesValidas = prof.especialidades.filter(esp => 
@@ -304,7 +282,6 @@ const Configuracoes = () => {
     }
   };
 
-  // ===== HANDLERS PARA PROFISSIONAIS =====
   const handleProfissionalChange = (e) => {
     const { name, value } = e.target;
     setProfissionalData(prev => ({ ...prev, [name]: value }));
@@ -320,7 +297,6 @@ const Configuracoes = () => {
   };
 
   const handleOpenProfissionalModal = (profissional = null) => {
-    // ✅ NOVO: Verificar se há serviços configurados
     if (especialidadesDisponiveis.length === 0) {
       alert('⚠️ Configure os serviços do salão primeiro!\n\nAcesse a aba "Categorias e Serviços" e selecione os serviços que seu salão oferece antes de cadastrar profissionais.');
       setActiveTab('categorias');
@@ -409,33 +385,6 @@ const Configuracoes = () => {
     }
   };
 
-  // ===== HANDLER PARA PLANOS =====
-  const handleChangePlano = (planoId) => {
-    const planoSelecionado = PLANOS_DATA.find(p => p.id === planoId);
-    
-    if (!planoSelecionado) {
-      alert('Plano não encontrado!');
-      return;
-    }
-
-    if (!planoSelecionado.disponivel) {
-      alert(`O plano ${planoSelecionado.nome} estará disponível em breve!\n\nEntre em contato conosco para receber novidades sobre este plano.`);
-      return;
-    }
-
-    if (confirm(`Deseja alterar para o ${planoSelecionado.nome}?\n\n⚠️ ATENÇÃO: O plano se aplica a TODOS os seus salões cadastrados.`)) {
-      try {
-        saloes.forEach(salao => {
-          atualizarSalao(salao.id, { plano: planoId });
-        });
-        alert('Plano alterado com sucesso para todos os seus salões!');
-      } catch (error) {
-        console.error('Erro ao alterar plano:', error);
-        alert('Erro ao alterar plano. Tente novamente.');
-      }
-    }
-  };
-
   return (
     <div className="space-y-6">
       <ConfiguracoesHeader />
@@ -445,7 +394,6 @@ const Configuracoes = () => {
         setActiveTab={setActiveTab}
       />
 
-      {/* Conteúdo das Tabs */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         {activeTab === 'geral' && (
           <ConfiguracoesGeral 
@@ -481,16 +429,11 @@ const Configuracoes = () => {
           />
         )}
 
-        {activeTab === 'planos' && (
-          <ConfiguracoesPlanos 
-            planos={PLANOS_DATA}
-            salaoPlano={salaoAtual.plano}
-            onChangePlano={handleChangePlano}
-          />
+        {activeTab === 'comunicacoes' && (
+          <ConfiguracoesComunicacoes />
         )}
       </div>
 
-      {/* Modal de Profissional */}
       {showProfissionalModal && (
         <ProfissionalModal 
           isOpen={showProfissionalModal}

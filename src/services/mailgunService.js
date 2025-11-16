@@ -1,5 +1,4 @@
-// src/services/mailgunService.js - ATUALIZADO COM NOVOS TEMPLATES
-
+// src/services/mailgunService.js - COM TEMPLATES HTML COMPLETOS E PERSONALIZÁVEIS
 import { 
   mailgunConfig, 
   validateMailgunConfig, 
@@ -19,8 +18,7 @@ class MailgunService {
     const validation = validateMailgunConfig();
     
     if (!validation.isValid) {
-      console.warn('⚠️ Mailgun não configurado corretamente:');
-      validation.errors.forEach(error => console.warn(error));
+      console.warn('⚠️ Mailgun não configurado corretamente');
       return false;
     }
     
@@ -48,7 +46,6 @@ class MailgunService {
 
   async sendEmail(to, subject, body, htmlBody = null) {
     if (!this.isConfigured) {
-      console.warn('⚠️ Mailgun não configurado. Usando modo simulação.');
       return this.sendEmailSimulado(to, subject, body);
     }
 
@@ -91,11 +88,7 @@ class MailgunService {
       this.emailQueue.push(email);
       this.saveQueue();
 
-      console.log('✅ EMAIL ENVIADO COM SUCESSO via Mailgun:', {
-        para: to,
-        assunto: subject,
-        messageId: result.id
-      });
+      console.log('✅ EMAIL ENVIADO via Mailgun:', { para: to, assunto: subject });
 
       return email;
 
@@ -137,22 +130,18 @@ class MailgunService {
         this.emailQueue.push(email);
         this.saveQueue();
 
-        console.log('📧 EMAIL SIMULADO (sem Mailgun):', {
-          para: to,
-          assunto: subject,
-          corpo: body
-        });
+        console.log('📧 EMAIL SIMULADO:', { para: to, assunto: subject });
 
         resolve(email);
       }, 500);
     });
   }
 
-  templates = {
+  // Templates padrão (fallback) - COM HTML COMPLETO
+  defaultTemplates = {
     confirmacao: {
-      subject: '✅ Agendamento Confirmado - {salaoNome}',
-      body: `
-Olá {clienteNome}!
+      subject: '✅ Agendamento Confirmado - {salao_nome}',
+      body: `Olá {cliente_nome}!
 
 Seu agendamento foi confirmado com sucesso! 🎉
 
@@ -160,13 +149,12 @@ Seu agendamento foi confirmado com sucesso! 🎉
 🕐 Horário: {horario}
 ✂️ Serviço: {servico}
 💇 Profissional: {profissional}
-📍 Local: {salaoEndereco}
+📍 Local: {salao_endereco}
 
-📞 Em caso de imprevistos, entre em contato: {salaoTelefone}
+📞 Contato: {salao_telefone}
 
 Aguardamos você!
-Equipe {salaoNome}
-      `,
+Equipe {salao_nome}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -189,7 +177,7 @@ Equipe {salaoNome}
       <h1>✅ Agendamento Confirmado!</h1>
     </div>
     <div class="content">
-      <p>Olá <strong>{clienteNome}</strong>!</p>
+      <p>Olá <strong>{cliente_nome}</strong>!</p>
       <p>Seu agendamento foi confirmado com sucesso! 🎉</p>
       
       <div class="info-box">
@@ -197,42 +185,36 @@ Equipe {salaoNome}
         <div class="info-item">🕐 <strong>Horário:</strong> {horario}</div>
         <div class="info-item">✂️ <strong>Serviço:</strong> {servico}</div>
         <div class="info-item">💇 <strong>Profissional:</strong> {profissional}</div>
-        <div class="info-item">📍 <strong>Local:</strong> {salaoEndereco}</div>
+        <div class="info-item">📍 <strong>Local:</strong> {salao_endereco}</div>
       </div>
       
-      <p>📞 Em caso de imprevistos, entre em contato: <strong>{salaoTelefone}</strong></p>
+      <p>📞 Em caso de imprevistos, entre em contato: <strong>{salao_telefone}</strong></p>
       
       <div class="footer">
         <p>Aguardamos você!</p>
-        <p><strong>Equipe {salaoNome}</strong></p>
+        <p><strong>Equipe {salao_nome}</strong></p>
       </div>
     </div>
   </div>
 </body>
-</html>
-      `
+</html>`
     },
 
-    // ✨ NOVO: Template para alteração de agendamento
     alteracao: {
-      subject: '🔄 Agendamento Alterado - {salaoNome}',
-      body: `
-Olá {clienteNome}!
+      subject: '🔄 Agendamento Alterado - {salao_nome}',
+      body: `Olá {cliente_nome}!
 
 Informamos que seu agendamento foi alterado. 🔄
 
-📅 NOVA DATA: {novaData}
-🕐 NOVO HORÁRIO: {novoHorario}
+📅 NOVA DATA: {data}
+🕐 NOVO HORÁRIO: {horario}
 ✂️ Serviço: {servico}
-💇 NOVO PROFISSIONAL: {novoProfissional}
-📍 Local: {salaoEndereco}
+💇 PROFISSIONAL: {profissional}
+📍 Local: {salao_endereco}
 
-{motivoAlteracao}
+📞 Contato: {salao_telefone}
 
-📞 Em caso de dúvidas, entre em contato: {salaoTelefone}
-
-Equipe {salaoNome}
-      `,
+Equipe {salao_nome}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -244,8 +226,6 @@ Equipe {salaoNome}
     .header { background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
     .content { background: #fffbeb; padding: 30px; border-radius: 0 0 10px 10px; }
     .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
-    .old-info { text-decoration: line-through; color: #999; }
-    .new-info { color: #f59e0b; font-weight: bold; }
     .alert { background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; }
   </style>
 </head>
@@ -255,7 +235,7 @@ Equipe {salaoNome}
       <h1>🔄 Agendamento Alterado</h1>
     </div>
     <div class="content">
-      <p>Olá <strong>{clienteNome}</strong>!</p>
+      <p>Olá <strong>{cliente_nome}</strong>!</p>
       <p>Informamos que seu agendamento foi <strong>alterado</strong>. 🔄</p>
       
       <div class="alert">
@@ -263,39 +243,25 @@ Equipe {salaoNome}
       </div>
       
       <div class="info-box">
-        <div style="margin: 10px 0;">
-          <span class="old-info">📅 Data Anterior: {dataAntiga}</span><br>
-          <span class="new-info">📅 NOVA DATA: {novaData}</span>
-        </div>
-        <div style="margin: 10px 0;">
-          <span class="old-info">🕐 Horário Anterior: {horarioAntigo}</span><br>
-          <span class="new-info">🕐 NOVO HORÁRIO: {novoHorario}</span>
-        </div>
+        <div style="margin: 10px 0;">📅 <strong>NOVA DATA:</strong> {data}</div>
+        <div style="margin: 10px 0;">🕐 <strong>NOVO HORÁRIO:</strong> {horario}</div>
         <div style="margin: 10px 0;">✂️ <strong>Serviço:</strong> {servico}</div>
-        <div style="margin: 10px 0;">
-          <span class="old-info">💇 Profissional Anterior: {profissionalAntigo}</span><br>
-          <span class="new-info">💇 NOVO PROFISSIONAL: {novoProfissional}</span>
-        </div>
-        <div style="margin: 10px 0;">📍 <strong>Local:</strong> {salaoEndereco}</div>
+        <div style="margin: 10px 0;">💇 <strong>PROFISSIONAL:</strong> {profissional}</div>
+        <div style="margin: 10px 0;">📍 <strong>Local:</strong> {salao_endereco}</div>
       </div>
       
-      {motivoAlteracaoHtml}
+      <p>📞 Em caso de dúvidas, entre em contato: <strong>{salao_telefone}</strong></p>
       
-      <p>📞 Em caso de dúvidas, entre em contato: <strong>{salaoTelefone}</strong></p>
-      
-      <p><strong>Equipe {salaoNome}</strong></p>
+      <p><strong>Equipe {salao_nome}</strong></p>
     </div>
   </div>
 </body>
-</html>
-      `
+</html>`
     },
 
-    // ✨ NOVO: Template para avaliação pós-atendimento
     avaliacao: {
-      subject: '⭐ Como foi sua experiência? - {salaoNome}',
-      body: `
-Olá {clienteNome}!
+      subject: '⭐ Como foi sua experiência? - {salao_nome}',
+      body: `Olá {cliente_nome}!
 
 Esperamos que tenha gostado do seu atendimento! ✨
 
@@ -306,13 +272,12 @@ Esperamos que tenha gostado do seu atendimento! ✨
 Sua opinião é muito importante para nós! 
 Clique no link abaixo para avaliar seu atendimento:
 
-{linkAvaliacao}
+{link_avaliacao}
 
 ⭐⭐⭐⭐⭐
 
 Agradecemos sua preferência!
-Equipe {salaoNome}
-      `,
+Equipe {salao_nome}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -334,7 +299,7 @@ Equipe {salaoNome}
       <h1>⭐ Como foi sua experiência?</h1>
     </div>
     <div class="content">
-      <p>Olá <strong>{clienteNome}</strong>!</p>
+      <p>Olá <strong>{cliente_nome}</strong>!</p>
       <p>Esperamos que tenha gostado do seu atendimento! ✨</p>
       
       <div class="info-box">
@@ -348,86 +313,24 @@ Equipe {salaoNome}
       <div class="stars">⭐⭐⭐⭐⭐</div>
       
       <div style="text-align: center;">
-        <a href="{linkAvaliacao}" class="btn">Avaliar Atendimento</a>
+        <a href="{link_avaliacao}" class="btn">Avaliar Atendimento</a>
       </div>
       
       <p style="text-align: center; margin-top: 20px;">Leva menos de 1 minuto! 😊</p>
       
       <div style="text-align: center; margin-top: 30px;">
         <p><strong>Agradecemos sua preferência!</strong></p>
-        <p>Equipe {salaoNome}</p>
+        <p>Equipe {salao_nome}</p>
       </div>
     </div>
   </div>
 </body>
-</html>
-      `
-    },
-
-    lembrete: {
-      subject: '⏰ Lembrete: Agendamento Amanhã - {salaoNome}',
-      body: `
-Olá {clienteNome}!
-
-Este é um lembrete do seu agendamento para amanhã! ⏰
-
-📅 Data: {data}
-🕐 Horário: {horario}
-✂️ Serviço: {servico}
-💇 Profissional: {profissional}
-📍 Local: {salaoEndereco}
-
-Não se esqueça! Estamos esperando você! 💜
-
-📞 Contato: {salaoTelefone}
-
-Equipe {salaoNome}
-      `,
-      html: `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .header { background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
-    .content { background: #fffbeb; padding: 30px; border-radius: 0 0 10px 10px; }
-    .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>⏰ Lembrete de Agendamento</h1>
-    </div>
-    <div class="content">
-      <p>Olá <strong>{clienteNome}</strong>!</p>
-      <p>Este é um lembrete do seu agendamento para <strong>amanhã</strong>! ⏰</p>
-      
-      <div class="info-box">
-        <div>📅 <strong>Data:</strong> {data}</div>
-        <div>🕐 <strong>Horário:</strong> {horario}</div>
-        <div>✂️ <strong>Serviço:</strong> {servico}</div>
-        <div>💇 <strong>Profissional:</strong> {profissional}</div>
-        <div>📍 <strong>Local:</strong> {salaoEndereco}</div>
-      </div>
-      
-      <p>Não se esqueça! Estamos esperando você! 💜</p>
-      <p>📞 Contato: <strong>{salaoTelefone}</strong></p>
-      
-      <p><strong>Equipe {salaoNome}</strong></p>
-    </div>
-  </div>
-</body>
-</html>
-      `
+</html>`
     },
 
     cancelamento: {
-      subject: '❌ Agendamento Cancelado - {salaoNome}',
-      body: `
-Olá {clienteNome},
+      subject: '❌ Agendamento Cancelado - {salao_nome}',
+      body: `Olá {cliente_nome},
 
 Informamos que seu agendamento foi cancelado.
 
@@ -437,11 +340,10 @@ Informamos que seu agendamento foi cancelado.
 
 Para reagendar, entre em contato conosco ou acesse nossa agenda online.
 
-📞 Contato: {salaoTelefone}
-🌐 Agenda Online: {linkAgenda}
+📞 Contato: {salao_telefone}
+🌐 Agenda Online: {link_agenda}
 
-Equipe {salaoNome}
-      `,
+Equipe {salao_nome}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -462,7 +364,7 @@ Equipe {salaoNome}
       <h1>❌ Agendamento Cancelado</h1>
     </div>
     <div class="content">
-      <p>Olá <strong>{clienteNome}</strong>,</p>
+      <p>Olá <strong>{cliente_nome}</strong>,</p>
       <p>Informamos que seu agendamento foi cancelado.</p>
       
       <div class="info-box">
@@ -473,35 +375,159 @@ Equipe {salaoNome}
       
       <p>Para reagendar, entre em contato conosco ou acesse nossa agenda online.</p>
       
-      <a href="{linkAgenda}" class="btn">Agendar Novamente</a>
+      <a href="{link_agenda}" class="btn">Agendar Novamente</a>
       
-      <p style="margin-top: 20px;">📞 Contato: <strong>{salaoTelefone}</strong></p>
+      <p style="margin-top: 20px;">📞 Contato: <strong>{salao_telefone}</strong></p>
       
-      <p><strong>Equipe {salaoNome}</strong></p>
+      <p><strong>Equipe {salao_nome}</strong></p>
     </div>
   </div>
 </body>
-</html>
-      `
+</html>`
+    },
+
+    aniversario: {
+      subject: '🎂 Feliz Aniversário! - {salao_nome}',
+      body: `Feliz Aniversário, {cliente_nome}! 🎉🎂
+
+A equipe {salao_nome} deseja um dia muito especial para você!
+
+🎁 Para comemorar, temos um presente especial!
+[Defina aqui seu presente/desconto]
+
+📞 Contato: {salao_telefone}
+🌐 Agende: {link_agenda}
+
+Com carinho,
+Equipe {salao_nome} 💜`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #ec4899 0%, #f97316 100%); color: white; padding: 40px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #fef3c7; padding: 30px; border-radius: 0 0 10px 10px; }
+    .gift-box { background: white; padding: 25px; border-radius: 12px; margin: 25px 0; border: 3px solid #ec4899; text-align: center; }
+    .btn { display: inline-block; background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; font-size: 16px; }
+    .celebration { font-size: 48px; text-align: center; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="celebration">🎂🎉🎈</div>
+      <h1 style="margin: 10px 0; font-size: 32px;">Feliz Aniversário!</h1>
+      <p style="font-size: 18px; margin: 10px 0;">{cliente_nome}</p>
+    </div>
+    <div class="content">
+      <p style="font-size: 18px; text-align: center; margin-bottom: 20px;">
+        A equipe <strong>{salao_nome}</strong> deseja um dia muito especial para você!
+      </p>
+      
+      <div class="gift-box">
+        <div style="font-size: 48px; margin-bottom: 15px;">🎁</div>
+        <h2 style="color: #ec4899; margin: 10px 0;">Presente Especial!</h2>
+        <p style="font-size: 16px; color: #666; margin: 15px 0;">
+          Para comemorar seu dia, preparamos algo especial para você!
+        </p>
+        <p style="font-size: 14px; color: #888; font-style: italic;">
+          Entre em contato para saber mais sobre sua surpresa! 🎊
+        </p>
+      </div>
+      
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="{link_agenda}" class="btn">Agendar Seu Dia Especial</a>
+      </div>
+      
+      <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 2px dashed #ec4899;">
+        <p>📞 <strong>Contato:</strong> {salao_telefone}</p>
+        <p>📍 <strong>Endereço:</strong> {salao_endereco}</p>
+        <p style="margin-top: 20px; font-size: 18px; color: #ec4899;">
+          <strong>Com muito carinho,</strong><br>
+          Equipe {salao_nome} 💜
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>`
+    },
+
+    lembrete: {
+      subject: '⏰ Lembrete: Agendamento Amanhã - {salao_nome}',
+      body: `Olá {cliente_nome}!
+
+Este é um lembrete do seu agendamento para amanhã! ⏰
+
+📅 Data: {data}
+🕐 Horário: {horario}
+✂️ Serviço: {servico}
+💇 Profissional: {profissional}
+📍 Local: {salao_endereco}
+
+Não se esqueça! Estamos esperando você! 💜
+
+📞 Contato: {salao_telefone}
+
+Equipe {salao_nome}`,
+      html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #f59e0b 0%, #ec4899 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+    .content { background: #fffbeb; padding: 30px; border-radius: 0 0 10px 10px; }
+    .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>⏰ Lembrete de Agendamento</h1>
+    </div>
+    <div class="content">
+      <p>Olá <strong>{cliente_nome}</strong>!</p>
+      <p>Este é um lembrete do seu agendamento para <strong>amanhã</strong>! ⏰</p>
+      
+      <div class="info-box">
+        <div>📅 <strong>Data:</strong> {data}</div>
+        <div>🕐 <strong>Horário:</strong> {horario}</div>
+        <div>✂️ <strong>Serviço:</strong> {servico}</div>
+        <div>💇 <strong>Profissional:</strong> {profissional}</div>
+        <div>📍 <strong>Local:</strong> {salao_endereco}</div>
+      </div>
+      
+      <p>Não se esqueça! Estamos esperando você! 💜</p>
+      <p>📞 Contato: <strong>{salao_telefone}</strong></p>
+      
+      <p><strong>Equipe {salao_nome}</strong></p>
+    </div>
+  </div>
+</body>
+</html>`
     },
 
     novoAgendamento: {
-      subject: '🔔 Novo Agendamento - {salaoNome}',
-      body: `
-Olá {profissionalNome}!
+      subject: '🔔 Novo Agendamento - {salao_nome}',
+      body: `Olá {profissional_nome}!
 
 Você tem um novo agendamento! 📅
 
-👤 Cliente: {clienteNome}
-📞 Telefone: {clienteTelefone}
+👤 Cliente: {cliente_nome}
+📞 Telefone: {cliente_telefone}
 📅 Data: {data}
 🕐 Horário: {horario}
 ✂️ Serviço: {servico}
 
 Prepare-se para oferecer um atendimento incrível! 💪
 
-Equipe {salaoNome}
-      `,
+Equipe {salao_nome}`,
       html: `
 <!DOCTYPE html>
 <html>
@@ -521,12 +547,12 @@ Equipe {salaoNome}
       <h1>🔔 Novo Agendamento!</h1>
     </div>
     <div class="content">
-      <p>Olá <strong>{profissionalNome}</strong>!</p>
+      <p>Olá <strong>{profissional_nome}</strong>!</p>
       <p>Você tem um novo agendamento! 📅</p>
       
       <div class="info-box">
-        <div>👤 <strong>Cliente:</strong> {clienteNome}</div>
-        <div>📞 <strong>Telefone:</strong> {clienteTelefone}</div>
+        <div>👤 <strong>Cliente:</strong> {cliente_nome}</div>
+        <div>📞 <strong>Telefone:</strong> {cliente_telefone}</div>
         <div>📅 <strong>Data:</strong> {data}</div>
         <div>🕐 <strong>Horário:</strong> {horario}</div>
         <div>✂️ <strong>Serviço:</strong> {servico}</div>
@@ -534,15 +560,17 @@ Equipe {salaoNome}
       
       <p>Prepare-se para oferecer um atendimento incrível! 💪</p>
       
-      <p><strong>Equipe {salaoNome}</strong></p>
+      <p><strong>Equipe {salao_nome}</strong></p>
     </div>
   </div>
 </body>
-</html>
-      `
+</html>`
     }
   };
 
+  /**
+   * Substituir variáveis no template
+   */
   replaceVariables(text, variables) {
     let result = text;
     Object.keys(variables).forEach(key => {
@@ -552,150 +580,205 @@ Equipe {salaoNome}
     return result;
   }
 
+  /**
+   * Obter template (customizado ou padrão)
+   */
+  getTemplate(tipo, customTemplate) {
+    if (customTemplate && customTemplate.assunto && customTemplate.corpo) {
+      return {
+        subject: customTemplate.assunto,
+        body: customTemplate.corpo,
+        html: null // Templates personalizados não têm HTML (apenas texto)
+      };
+    }
+    return this.defaultTemplates[tipo];
+  }
+
+  /**
+   * Enviar confirmação de agendamento
+   */
   async sendConfirmacaoAgendamento(data) {
-    const { cliente, servico, profissional, salao, agendamento } = data;
+    const { cliente, servico, profissional, salao, agendamento, customTemplate } = data;
+
+    const template = this.getTemplate('confirmacao', customTemplate);
 
     const variables = {
-      clienteNome: cliente.nome,
+      cliente_nome: cliente.nome,
       data: agendamento.data,
       horario: agendamento.horario,
       servico: servico.nome,
       profissional: profissional.nome,
-      salaoNome: salao.nome,
-      salaoEndereco: salao.endereco,
-      salaoTelefone: salao.telefone
+      salao_nome: salao.nome,
+      salao_endereco: salao.endereco,
+      salao_telefone: salao.telefone,
+      link_agenda: `${window.location.origin}/agenda/${salao.id}`
     };
 
-    const subject = this.replaceVariables(this.templates.confirmacao.subject, variables);
-    const body = this.replaceVariables(this.templates.confirmacao.body, variables);
-    const html = this.replaceVariables(this.templates.confirmacao.html, variables);
+    const subject = this.replaceVariables(template.subject, variables);
+    const body = this.replaceVariables(template.body, variables);
+    const html = template.html ? this.replaceVariables(template.html, variables) : null;
 
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  // ✨ NOVO: Enviar notificação de alteração
+  /**
+   * Enviar notificação de alteração
+   */
   async sendAlteracaoAgendamento(data) {
-    const { cliente, servico, profissional, salao, agendamento, dadosAntigos, motivoAlteracao } = data;
+    const { cliente, servico, profissional, salao, agendamento, dadosAntigos, motivoAlteracao, customTemplate } = data;
+
+    const template = this.getTemplate('alteracao', customTemplate);
 
     const variables = {
-      clienteNome: cliente.nome,
-      novaData: agendamento.data,
-      novoHorario: agendamento.horario,
+      cliente_nome: cliente.nome,
+      data: agendamento.data,
+      horario: agendamento.horario,
       servico: servico.nome,
-      novoProfissional: profissional.nome,
-      salaoEndereco: salao.endereco,
-      salaoTelefone: salao.telefone,
-      salaoNome: salao.nome,
-      dataAntiga: dadosAntigos.data || agendamento.data,
-      horarioAntigo: dadosAntigos.horario || agendamento.horario,
-      profissionalAntigo: dadosAntigos.profissionalNome || profissional.nome,
-      motivoAlteracao: motivoAlteracao ? `\nMotivo: ${motivoAlteracao}` : '',
-      motivoAlteracaoHtml: motivoAlteracao ? `<div class="alert"><p style="margin: 0;"><strong>Motivo:</strong> ${motivoAlteracao}</p></div>` : ''
+      profissional: profissional.nome,
+      salao_endereco: salao.endereco,
+      salao_telefone: salao.telefone,
+      salao_nome: salao.nome,
+      link_agenda: `${window.location.origin}/agenda/${salao.id}`
     };
 
-    const subject = this.replaceVariables(this.templates.alteracao.subject, variables);
-    const body = this.replaceVariables(this.templates.alteracao.body, variables);
-    const html = this.replaceVariables(this.templates.alteracao.html, variables);
+    const subject = this.replaceVariables(template.subject, variables);
+    const body = this.replaceVariables(template.body, variables);
+    const html = template.html ? this.replaceVariables(template.html, variables) : null;
 
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  // ✨ NOVO: Enviar solicitação de avaliação
+  /**
+   * Enviar solicitação de avaliação
+   */
   async sendAvaliacaoAgendamento(data) {
-    const { cliente, servico, profissional, salao, agendamento } = data;
+    const { cliente, servico, profissional, salao, agendamento, customTemplate } = data;
 
-    // Gerar link de avaliação único
+    const template = this.getTemplate('avaliacao', customTemplate);
+
     const avaliacaoToken = `${agendamento.id}-${Date.now()}`;
     const linkAvaliacao = `${window.location.origin}/avaliacao/${salao.id}/${avaliacaoToken}`;
 
     const variables = {
-      clienteNome: cliente.nome,
+      cliente_nome: cliente.nome,
       data: agendamento.data,
       servico: servico.nome,
       profissional: profissional.nome,
-      salaoNome: salao.nome,
-      linkAvaliacao
+      salao_nome: salao.nome,
+      link_avaliacao: linkAvaliacao,
+      salao_telefone: salao.telefone,
+      link_agenda: `${window.location.origin}/agenda/${salao.id}`
     };
 
-    const subject = this.replaceVariables(this.templates.avaliacao.subject, variables);
-    const body = this.replaceVariables(this.templates.avaliacao.body, variables);
-    const html = this.replaceVariables(this.templates.avaliacao.html, variables);
+    const subject = this.replaceVariables(template.subject, variables);
+    const body = this.replaceVariables(template.body, variables);
+    const html = template.html ? this.replaceVariables(template.html, variables) : null;
 
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
+  /**
+   * Enviar mensagem de aniversário
+   */
+  async sendAniversario(data) {
+    const { cliente, salao, customTemplate } = data;
+
+    const template = this.getTemplate('aniversario', customTemplate);
+
+    const variables = {
+      cliente_nome: cliente.nome,
+      salao_nome: salao.nome,
+      salao_telefone: salao.telefone,
+      salao_endereco: salao.endereco,
+      link_agenda: `${window.location.origin}/agenda/${salao.id}`
+    };
+
+    const subject = this.replaceVariables(template.subject, variables);
+    const body = this.replaceVariables(template.body, variables);
+    const html = template.html ? this.replaceVariables(template.html, variables) : null;
+
+    return this.sendEmail(cliente.email, subject, body, html);
+  }
+
+  /**
+   * Enviar lembrete (24h antes)
+   */
   async sendLembreteAgendamento(data) {
-    const { cliente, servico, profissional, salao, agendamento } = data;
+    const { cliente, servico, profissional, salao, agendamento, customTemplate } = data;
+
+    const template = this.getTemplate('lembrete', customTemplate);
 
     const variables = {
-      clienteNome: cliente.nome,
+      cliente_nome: cliente.nome,
       data: agendamento.data,
       horario: agendamento.horario,
       servico: servico.nome,
       profissional: profissional.nome,
-      salaoNome: salao.nome,
-      salaoEndereco: salao.endereco,
-      salaoTelefone: salao.telefone
+      salao_nome: salao.nome,
+      salao_endereco: salao.endereco,
+      salao_telefone: salao.telefone
     };
 
-    const subject = this.replaceVariables(this.templates.lembrete.subject, variables);
-    const body = this.replaceVariables(this.templates.lembrete.body, variables);
-    const html = this.replaceVariables(this.templates.lembrete.html, variables);
+    const subject = this.replaceVariables(template.subject, variables);
+    const body = this.replaceVariables(template.body, variables);
+    const html = template.html ? this.replaceVariables(template.html, variables) : null;
 
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
+  /**
+   * Enviar cancelamento
+   */
   async sendCancelamentoAgendamento(data) {
-    const { cliente, servico, salao, agendamento } = data;
+    const { cliente, servico, salao, agendamento, customTemplate } = data;
+
+    const template = this.getTemplate('cancelamento', customTemplate);
 
     const variables = {
-      clienteNome: cliente.nome,
+      cliente_nome: cliente.nome,
       data: agendamento.data,
       horario: agendamento.horario,
       servico: servico.nome,
-      salaoNome: salao.nome,
-      salaoTelefone: salao.telefone,
-      linkAgenda: `${window.location.origin}/agenda/${salao.id}`
+      salao_nome: salao.nome,
+      salao_telefone: salao.telefone,
+      link_agenda: `${window.location.origin}/agenda/${salao.id}`
     };
 
-    const subject = this.replaceVariables(this.templates.cancelamento.subject, variables);
-    const body = this.replaceVariables(this.templates.cancelamento.body, variables);
-    const html = this.replaceVariables(this.templates.cancelamento.html, variables);
+    const subject = this.replaceVariables(template.subject, variables);
+    const body = this.replaceVariables(template.body, variables);
+    const html = template.html ? this.replaceVariables(template.html, variables) : null;
 
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
+  /**
+   * Notificar profissional sobre novo agendamento
+   */
   async sendNovoAgendamentoProfissional(data) {
     const { cliente, servico, profissional, salao, agendamento } = data;
 
+    const template = this.defaultTemplates.novoAgendamento;
+
     const variables = {
-      profissionalNome: profissional.nome,
-      clienteNome: cliente.nome,
-      clienteTelefone: cliente.telefone,
+      profissional_nome: profissional.nome,
+      cliente_nome: cliente.nome,
+      cliente_telefone: cliente.telefone,
       data: agendamento.data,
       horario: agendamento.horario,
       servico: servico.nome,
-      salaoNome: salao.nome
+      salao_nome: salao.nome
     };
 
-    const subject = this.replaceVariables(this.templates.novoAgendamento.subject, variables);
-    const body = this.replaceVariables(this.templates.novoAgendamento.body, variables);
-    const html = this.replaceVariables(this.templates.novoAgendamento.html, variables);
+    const subject = this.replaceVariables(template.subject, variables);
+    const body = this.replaceVariables(template.body, variables);
+    const html = this.replaceVariables(template.html, variables);
 
     return this.sendEmail(profissional.email, subject, body, html);
   }
 
-  getEmailHistory() {
-    return this.emailQueue.sort((a, b) => 
-      new Date(b.sentAt) - new Date(a.sentAt)
-    );
-  }
-
-  clearHistory() {
-    this.emailQueue = [];
-    this.saveQueue();
-  }
-
+  /**
+   * Email de teste
+   */
   async testEmail(toEmail) {
     try {
       await this.sendEmail(
@@ -729,6 +812,23 @@ Equipe {salaoNome}
       console.error('Erro no teste de email:', error);
       return false;
     }
+  }
+
+  /**
+   * Obter histórico de emails
+   */
+  getEmailHistory() {
+    return this.emailQueue.sort((a, b) => 
+      new Date(b.sentAt) - new Date(a.sentAt)
+    );
+  }
+
+  /**
+   * Limpar histórico
+   */
+  clearHistory() {
+    this.emailQueue = [];
+    this.saveQueue();
   }
 }
 

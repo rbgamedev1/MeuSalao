@@ -1,12 +1,12 @@
-// src/components/configuracoes/ConfiguracoesTabs.jsx - ATUALIZADO: Sem aba de Planos
-
-import { Building2, Users, List } from 'lucide-react';
+// src/components/configuracoes/ConfiguracoesTabs.jsx
+import { Building2, Users, List, Mail } from 'lucide-react';
 
 const ConfiguracoesTabs = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: 'geral', label: 'Informações Gerais', icon: Building2 },
     { id: 'categorias', label: 'Categorias e Serviços', icon: List },
-    { id: 'profissionais', label: 'Profissionais', icon: Users }
+    { id: 'profissionais', label: 'Profissionais', icon: Users },
+    { id: 'comunicacoes', label: 'Comunicações', icon: Mail }
   ];
 
   return (

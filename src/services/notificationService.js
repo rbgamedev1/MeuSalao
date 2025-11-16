@@ -1,7 +1,5 @@
-// src/services/notificationService.js - ATUALIZADO COM NOVOS NÍVEIS
-
+// src/services/notificationService.js - SEM RESTRIÇÕES DE PLANO
 import mailgunService from './mailgunService';
-import { hasNotificationAccess, getAvailableNotifications } from '../utils/planRestrictions';
 
 class NotificationService {
   constructor() {
@@ -19,9 +17,16 @@ class NotificationService {
     this.isRunning = true;
     console.log('🔔 Serviço de notificações iniciado');
 
+    // Verificar avaliações pendentes a cada hora
     this.checkInterval = setInterval(() => {
       this.checkAvaliacoesPendentes();
-    }, 60 * 60 * 1000); // 1 hora
+    }, 60 * 60 * 1000);
+
+    // Verificar aniversários diariamente
+    this.checkAniversarios();
+    setInterval(() => {
+      this.checkAniversarios();
+    }, 24 * 60 * 60 * 1000);
   }
 
   stop() {
@@ -35,29 +40,96 @@ class NotificationService {
   }
 
   /**
-   * Verificar se o plano permite enviar uma notificação
+   * Obter configurações de comunicação do salão
    */
-  canSendNotification(salaoPlano, tipoNotificacao) {
-    const hasAccess = hasNotificationAccess(salaoPlano, tipoNotificacao);
-    
-    if (!hasAccess) {
-      console.log(`⛔ Plano ${salaoPlano} não permite: ${tipoNotificacao}`);
+  getSalaoSettings(salaoId) {
+    try {
+      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
+      const salao = saloes.find(s => s.id === salaoId);
+      
+      if (!salao || !salao.comunicacoes) {
+        // Configurações padrão
+        return {
+          confirmacao: { ativo: true, template: null },
+          cancelamento: { ativo: true, template: null },
+          alteracao: { ativo: true, template: null },
+          avaliacao: { ativo: true, template: null },
+          aniversario: { ativo: false, automatico: true, diasAntecedencia: 0, template: null }
+        };
+      }
+      
+      return salao.comunicacoes;
+    } catch {
+      return {
+        confirmacao: { ativo: true, template: null },
+        cancelamento: { ativo: true, template: null },
+        alteracao: { ativo: true, template: null },
+        avaliacao: { ativo: true, template: null },
+        aniversario: { ativo: false, automatico: true, diasAntecedencia: 0, template: null }
+      };
     }
-    
-    return hasAccess;
   }
 
-  getAvailableNotificationsForPlan(salaoPlano) {
-    return getAvailableNotifications(salaoPlano);
+  /**
+   * Verificar aniversários e enviar mensagens
+   */
+  async checkAniversarios() {
+    try {
+      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
+      const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
+      
+      const hoje = new Date();
+      const diaHoje = hoje.getDate();
+      const mesHoje = hoje.getMonth() + 1;
+
+      for (const salao of saloes) {
+        const settings = this.getSalaoSettings(salao.id);
+        
+        if (!settings.aniversario.ativo || !settings.aniversario.automatico) {
+          continue;
+        }
+
+        // Calcular data de referência baseada nos dias de antecedência
+        const dataReferencia = new Date(hoje);
+        dataReferencia.setDate(dataReferencia.getDate() + settings.aniversario.diasAntecedencia);
+        const diaRef = dataReferencia.getDate();
+        const mesRef = dataReferencia.getMonth() + 1;
+
+        // Filtrar clientes aniversariantes
+        const aniversariantes = clientes.filter(cliente => {
+          if (!cliente.dataNascimento) return false;
+          
+          const [dia, mes] = cliente.dataNascimento.split('/');
+          return parseInt(dia) === diaRef && parseInt(mes) === mesRef;
+        });
+
+        for (const cliente of aniversariantes) {
+          if (cliente.email) {
+            try {
+              await mailgunService.sendAniversario({
+                cliente,
+                salao,
+                customTemplate: settings.aniversario.template
+              });
+              
+              console.log(`🎂 Mensagem de aniversário enviada: ${cliente.nome}`);
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            } catch (error) {
+              console.error('Erro ao enviar aniversário:', error);
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('❌ Erro ao verificar aniversários:', error);
+    }
   }
 
+  /**
+   * Verificar avaliações pendentes
+   */
   async checkAvaliacoesPendentes() {
     try {
-      const settings = this.getSettings();
-      if (!settings.avaliacoes) {
-        return;
-      }
-
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
@@ -89,8 +161,9 @@ class NotificationService {
 
       for (const agendamento of agendamentosConcluidos) {
         const salao = saloes.find(s => s.id === agendamento.salaoId);
+        const settings = this.getSalaoSettings(agendamento.salaoId);
         
-        if (!salao || !this.canSendNotification(salao.plano, 'avaliacoes')) {
+        if (!salao || !settings.avaliacao.ativo) {
           falhas++;
           continue;
         }
@@ -106,7 +179,8 @@ class NotificationService {
               servico,
               profissional,
               salao,
-              agendamento
+              agendamento,
+              customTemplate: settings.avaliacao.template
             });
             sucessos++;
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -126,46 +200,11 @@ class NotificationService {
     }
   }
 
-  getSettings() {
-    try {
-      const saved = localStorage.getItem('notificationSettings');
-      return saved ? JSON.parse(saved) : {
-        confirmacao: true,
-        cancelamento: true,
-        alteracoes: true,
-        avaliacoes: true,
-        autoStart: true
-      };
-    } catch {
-      return {
-        confirmacao: true,
-        cancelamento: true,
-        alteracoes: true,
-        avaliacoes: true,
-        autoStart: true
-      };
-    }
-  }
-
-  saveSettings(settings) {
-    localStorage.setItem('notificationSettings', JSON.stringify(settings));
-    console.log('💾 Configurações salvas:', settings);
-  }
-
-  async testNotification(email) {
-    try {
-      const result = await mailgunService.testEmail(email);
-      return result;
-    } catch (error) {
-      console.error('❌ Erro ao enviar teste:', error);
-      return false;
-    }
-  }
-
+  /**
+   * Notificar novo agendamento
+   */
   async notifyNovoAgendamento(agendamentoId) {
     try {
-      const settings = this.getSettings();
-      
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
@@ -182,21 +221,22 @@ class NotificationService {
 
       if (!cliente || !servico || !profissional || !salao) return;
 
-      // Enviar confirmação (disponível em todos os planos com notificações)
-      if (settings.confirmacao && cliente.email) {
-        if (this.canSendNotification(salao.plano, 'confirmacao')) {
-          try {
-            await mailgunService.sendConfirmacaoAgendamento({
-              cliente,
-              servico,
-              profissional,
-              salao,
-              agendamento
-            });
-            console.log(`✅ Confirmação enviada: ${cliente.email}`);
-          } catch (error) {
-            console.error('❌ Erro ao enviar confirmação:', error);
-          }
+      const settings = this.getSalaoSettings(salao.id);
+
+      // Enviar confirmação
+      if (settings.confirmacao.ativo && cliente.email) {
+        try {
+          await mailgunService.sendConfirmacaoAgendamento({
+            cliente,
+            servico,
+            profissional,
+            salao,
+            agendamento,
+            customTemplate: settings.confirmacao.template
+          });
+          console.log(`✅ Confirmação enviada: ${cliente.email}`);
+        } catch (error) {
+          console.error('❌ Erro ao enviar confirmação:', error);
         }
       }
 
@@ -205,11 +245,11 @@ class NotificationService {
     }
   }
 
+  /**
+   * Notificar alteração de agendamento
+   */
   async notifyAlteracaoAgendamento(agendamentoId, dadosAntigos, motivoAlteracao = '') {
     try {
-      const settings = this.getSettings();
-      if (!settings.alteracoes) return;
-
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
@@ -226,9 +266,10 @@ class NotificationService {
 
       if (!cliente || !cliente.email || !servico || !profissional || !salao) return;
 
-      // Apenas planos Profissional+ permitem notificações de alteração
-      if (!this.canSendNotification(salao.plano, 'alteracoes')) {
-        console.log(`⛔ Plano ${salao.plano} não permite alterações`);
+      const settings = this.getSalaoSettings(salao.id);
+
+      if (!settings.alteracao.ativo) {
+        console.log('⏸️ Notificações de alteração desativadas');
         return;
       }
 
@@ -240,7 +281,8 @@ class NotificationService {
           salao,
           agendamento,
           dadosAntigos,
-          motivoAlteracao
+          motivoAlteracao,
+          customTemplate: settings.alteracao.template
         });
         console.log(`✅ Alteração enviada: ${cliente.email}`);
       } catch (error) {
@@ -252,11 +294,11 @@ class NotificationService {
     }
   }
 
+  /**
+   * Solicitar avaliação manualmente
+   */
   async solicitarAvaliacao(agendamentoId) {
     try {
-      const settings = this.getSettings();
-      if (!settings.avaliacoes) return false;
-
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
       
@@ -274,11 +316,7 @@ class NotificationService {
 
       if (!cliente || !servico || !profissional || !salao || !cliente.email) return false;
 
-      // Apenas planos Premium+ permitem avaliações
-      if (!this.canSendNotification(salao.plano, 'avaliacoes')) {
-        console.log(`⛔ Plano ${salao.plano} não permite avaliações`);
-        return false;
-      }
+      const settings = this.getSalaoSettings(salao.id);
 
       try {
         await mailgunService.sendAvaliacaoAgendamento({
@@ -286,7 +324,8 @@ class NotificationService {
           servico,
           profissional,
           salao,
-          agendamento
+          agendamento,
+          customTemplate: settings.avaliacao.template
         });
 
         const agendamentosAtualizados = agendamentos.map(ag => 
@@ -310,11 +349,11 @@ class NotificationService {
     }
   }
 
+  /**
+   * Notificar cancelamento
+   */
   async notifyCancelamento(agendamentoId) {
     try {
-      const settings = this.getSettings();
-      if (!settings.cancelamento) return;
-
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
@@ -329,9 +368,10 @@ class NotificationService {
 
       if (!cliente || !cliente.email || !servico || !salao) return;
 
-      // Planos Essencial+ permitem cancelamentos
-      if (!this.canSendNotification(salao.plano, 'cancelamento')) {
-        console.log(`⛔ Plano ${salao.plano} não permite cancelamentos`);
+      const settings = this.getSalaoSettings(salao.id);
+
+      if (!settings.cancelamento.ativo) {
+        console.log('⏸️ Notificações de cancelamento desativadas');
         return;
       }
 
@@ -340,7 +380,8 @@ class NotificationService {
           cliente,
           servico,
           salao,
-          agendamento
+          agendamento,
+          customTemplate: settings.cancelamento.template
         });
         console.log(`✅ Cancelamento enviado: ${cliente.email}`);
       } catch (error) {
