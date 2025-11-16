@@ -1,4 +1,4 @@
-// src/pages/AgendaOnline.jsx - CORRIGIDO: Sincronização em tempo real
+// src/pages/AgendaOnline.jsx - COM REGISTRO DE EMAILS
 
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -15,6 +15,7 @@ import mailgunService from '../services/mailgunService';
 import { hasAccess } from '../utils/planRestrictions';
 import { verificarConflitoHorario } from '../utils/agendamentoUtils';
 import { useRealtimeAgendamentos } from '../hooks/useRealtimeAgendamentos';
+import { useEmailHistorico } from '../hooks/useEmailHistorico'; // ✅ NOVO
 
 const AgendaOnline = () => {
   const { salaoId } = useParams();
@@ -30,7 +31,9 @@ const AgendaOnline = () => {
   const [planLimitError, setPlanLimitError] = useState(null);
   const [hasAccessToAgenda, setHasAccessToAgenda] = useState(false);
 
-  // ✅ CORREÇÃO: Usar hook de tempo real
+  // ✅ NOVO: Hook de histórico de emails
+  const { registrarEmail } = useEmailHistorico();
+
   const { 
     agendamentos: agendamentosRealtime, 
     isUpdating, 
@@ -152,7 +155,6 @@ const AgendaOnline = () => {
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
       
       if (servico) {
-        // ✅ CORREÇÃO: Usar agendamentos em tempo real
         const resultado = verificarConflitoHorario(
           formData.horario,
           servico.duracao,
@@ -183,7 +185,6 @@ const AgendaOnline = () => {
       const servico = servicos.find(s => s.id === parseInt(formData.servicoId));
       
       if (servico) {
-        // ✅ CORREÇÃO: Verificar conflito com dados atualizados
         const resultado = verificarConflitoHorario(
           formData.horario,
           servico.duracao,
@@ -237,7 +238,6 @@ const AgendaOnline = () => {
       agendamentosAll.push(novoAgendamento);
       localStorage.setItem('agendamentos', JSON.stringify(agendamentosAll));
 
-      // ✅ CORREÇÃO: Disparar evento storage para sincronização
       window.dispatchEvent(new StorageEvent('storage', {
         key: 'agendamentos',
         newValue: JSON.stringify(agendamentosAll),
@@ -246,6 +246,7 @@ const AgendaOnline = () => {
 
       console.log('✅ Novo agendamento criado:', novoAgendamento);
 
+      // ✅ NOVO: Enviar email E registrar no histórico
       try {
         const profissional = profissionais.find(p => p.id === parseInt(formData.profissionalId));
         
@@ -258,8 +259,32 @@ const AgendaOnline = () => {
         });
         
         console.log('✅ Email de confirmação enviado com sucesso!');
+        
+        // ✅ REGISTRAR EMAIL NO HISTÓRICO
+        registrarEmail({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'confirmacao',
+          assunto: `✅ Agendamento Confirmado - ${salao.nome}`,
+          agendamentoId: novoAgendamento.id,
+          status: 'enviado'
+        });
+        
       } catch (emailError) {
         console.error('❌ Erro ao enviar email:', emailError);
+        
+        // ✅ REGISTRAR FALHA NO HISTÓRICO
+        registrarEmail({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'confirmacao',
+          assunto: `✅ Agendamento Confirmado - ${salao.nome}`,
+          agendamentoId: novoAgendamento.id,
+          status: 'falhado',
+          erro: emailError.message
+        });
       }
 
       setSuccess(true);
@@ -271,7 +296,6 @@ const AgendaOnline = () => {
     }
   };
 
-  // ✅ Memoizar agendamentos para performance
   const agendamentos = useMemo(() => agendamentosRealtime, [agendamentosRealtime]);
 
   if (loading) {
@@ -375,7 +399,6 @@ const AgendaOnline = () => {
         
         <AgendaStepIndicator currentStep={step} />
 
-        {/* ✅ CORREÇÃO: Indicador de sincronização em tempo real */}
         <div className={`mb-4 rounded-lg p-3 transition-all ${
           isUpdating 
             ? 'bg-blue-50 border border-blue-200' 

@@ -1,5 +1,6 @@
-// src/pages/Clientes.jsx - ATUALIZADO COM VISUALIZAÇÃO DE HISTÓRICO
-import { useState, useContext } from 'react';
+// src/pages/Clientes.jsx - COM HISTÓRICO DE EMAILS
+
+import { useState, useContext, useMemo } from 'react';
 import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye, Crown, Lock } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
@@ -7,6 +8,7 @@ import ClienteDetalhes from '../components/clientes/ClienteDetalhes';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { isValidDate } from '../utils/masks';
 import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
+import { useEmailHistorico } from '../hooks/useEmailHistorico'; // ✅ NOVO
 
 const Clientes = () => {
   const { 
@@ -19,6 +21,9 @@ const Clientes = () => {
     servicos,
     profissionais
   } = useContext(SalaoContext);
+  
+  // ✅ NOVO: Hook de histórico de emails
+  const { buscarTodosEmails } = useEmailHistorico();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -36,17 +41,19 @@ const Clientes = () => {
 
   const [errors, setErrors] = useState({});
 
-  // Obter apenas clientes do salão atual
   const clientesSalao = getClientesPorSalao();
   const agendamentosSalao = getAgendamentosPorSalao();
   const transacoesSalao = getTransacoesPorSalao();
 
-  // Verificar limite do plano
+  // ✅ NOVO: Buscar histórico de emails
+  const historicoEmails = useMemo(() => {
+    return buscarTodosEmails();
+  }, []);
+
   const canAddCliente = canAddMore(salaoAtual.plano, 'clientes', clientesSalao.length);
   const limiteMessage = getLimitMessage(salaoAtual.plano, 'clientes');
 
   const handleOpenModal = (cliente = null) => {
-    // Verificar limite ao adicionar novo
     if (!cliente && !canAddCliente) {
       alert(`Limite de clientes atingido para o plano ${salaoAtual.plano}. ${limiteMessage}\n\nFaça upgrade do seu plano para adicionar mais clientes.`);
       return;
@@ -541,7 +548,7 @@ const Clientes = () => {
         </form>
       </Modal>
 
-      {/* Modal de Detalhes do Cliente */}
+      {/* ✅ NOVO: Modal de Detalhes COM histórico de emails */}
       {showDetalhesModal && clienteSelecionado && (
         <ClienteDetalhes
           cliente={clienteSelecionado}
@@ -550,6 +557,7 @@ const Clientes = () => {
           transacoes={transacoesSalao}
           servicos={servicos}
           profissionais={profissionais}
+          historicoEmails={historicoEmails}
         />
       )}
     </div>
