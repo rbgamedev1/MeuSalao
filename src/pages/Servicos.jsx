@@ -1,11 +1,11 @@
-// src/pages/Servicos.jsx
+// src/pages/Servicos.jsx - CORRIGIDO: Melhor tratamento de serviços disponíveis
 
 import { useState, useContext } from 'react';
-import { Crown, AlertCircle } from 'lucide-react';
+import { AlertCircle, Settings } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { CATEGORIAS_SERVICOS } from '../data/categoriasServicosData';
 import { generateDurationOptions } from '../utils/masks';
-import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
 import ServicosHeader from '../components/servicos/ServicosHeader';
 import ServicosStats from '../components/servicos/ServicosStats';
 import ServicosFilters from '../components/servicos/ServicosFilters';
@@ -13,6 +13,7 @@ import ServicosGrid from '../components/servicos/ServicosGrid';
 import ServicoModal from '../components/servicos/ServicoModal';
 
 const Servicos = () => {
+  const navigate = useNavigate();
   const { 
     salaoAtual,
     servicos, 
@@ -58,20 +59,18 @@ const Servicos = () => {
     })
   )].filter(Boolean);
 
-  // Verificar limites do plano
-  const canAddServico = canAddMore(salaoAtual.plano, 'servicosPorCategoria', servicosSalao.length);
-  const limiteServicos = getLimitMessage(salaoAtual.plano, 'servicosPorCategoria');
-
   const handleOpenModal = (servico = null) => {
     // Verificar se há categorias configuradas
     if (!hasCategoriasConfiguradas) {
-      alert('Você precisa configurar as categorias e serviços do salão antes de cadastrar serviços.\n\nVá em Configurações > Categorias e Serviços para selecionar as categorias que seu salão oferece.');
-      return;
-    }
-
-    // Verificar limite ao adicionar novo
-    if (!servico && !canAddServico) {
-      alert(`Limite de serviços atingido para o plano ${salaoAtual.plano}. ${limiteServicos}\n\nFaça upgrade do seu plano para adicionar mais serviços.`);
+      const confirmar = window.confirm(
+        '⚠️ Nenhum serviço configurado!\n\n' +
+        'Você precisa configurar as categorias e serviços do salão antes de cadastrar serviços.\n\n' +
+        'Deseja ir para a página de Configurações agora?'
+      );
+      
+      if (confirmar) {
+        navigate('/configuracoes');
+      }
       return;
     }
 
@@ -96,7 +95,7 @@ const Servicos = () => {
         subcategoria: '',
         duracao: 30,
         valor: '',
-        comissao: '',
+        comissao: '0',
         descricao: '',
         profissionaisHabilitados: [],
         ativo: true
@@ -121,21 +120,23 @@ const Servicos = () => {
               id: editingId,
               duracao: parseInt(formData.duracao),
               valor: parseFloat(formData.valor),
-              comissao: parseInt(formData.comissao),
+              comissao: formData.comissao ? parseInt(formData.comissao) : 0,
               salaoId: salaoAtual.id
             } 
           : s
       ));
+      alert('Serviço atualizado com sucesso!');
     } else {
       const newServico = {
         ...formData,
         id: Math.max(...servicos.map(s => s.id), 0) + 1,
         duracao: parseInt(formData.duracao),
         valor: parseFloat(formData.valor),
-        comissao: parseInt(formData.comissao),
+        comissao: formData.comissao ? parseInt(formData.comissao) : 0,
         salaoId: salaoAtual.id
       };
       setServicos([...servicos, newServico]);
+      alert('Serviço cadastrado com sucesso!');
     }
     
     handleCloseModal();
@@ -144,11 +145,13 @@ const Servicos = () => {
   const handleDelete = (id) => {
     if (confirm('Tem certeza que deseja excluir este serviço?')) {
       setServicos(servicos.filter(s => s.id !== id));
+      alert('Serviço excluído com sucesso!');
     }
   };
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -187,46 +190,47 @@ const Servicos = () => {
 
       {/* Alerta se não há categorias configuradas */}
       {!hasCategoriasConfiguradas && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-          <div className="flex items-start">
-            <AlertCircle className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
-            <div>
-              <p className="font-semibold text-yellow-800">Configure as categorias do seu salão</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                Antes de cadastrar serviços, você precisa selecionar as categorias e serviços que seu salão oferece em <strong>Configurações &gt; Categorias e Serviços</strong>.
+        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-400 rounded-lg p-6 shadow-sm">
+          <div className="flex items-start gap-4">
+            <div className="flex-shrink-0">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <Settings className="text-yellow-600 w-6 h-6" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="font-bold text-yellow-900 text-lg mb-2">
+                Configure os serviços do seu salão primeiro
+              </h3>
+              <p className="text-yellow-800 mb-4">
+                Antes de cadastrar serviços com preços e profissionais, você precisa selecionar 
+                quais categorias e serviços seu salão oferece.
               </p>
+              <button
+                onClick={() => navigate('/configuracoes')}
+                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium"
+              >
+                <Settings className="w-4 h-4" />
+                Ir para Configurações
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Alertas de Limite */}
-      {!canAddServico && hasCategoriasConfiguradas && (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-          <div className="flex items-start">
-            <Crown className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
-            <div>
-              <p className="font-semibold text-yellow-800">Limite de serviços atingido!</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                Seu plano <strong>{salaoAtual.plano}</strong> permite até <strong>{limiteServicos.replace('Máximo: ', '')}</strong> por categoria.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Alertas de Limite - REMOVIDO */}
 
       {/* Info do Plano */}
       {hasCategoriasConfiguradas && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <p className="text-sm font-medium text-blue-900">
-                Serviços cadastrados: {servicosSalao.length} {limiteServicos !== 'Ilimitado' ? `(${limiteServicos})` : '(Ilimitado)'}
+                <span className="font-bold">{servicosSalao.length}</span> serviços cadastrados
               </p>
             </div>
             <div>
               <p className="text-sm font-medium text-blue-900">
-                Serviços disponíveis para cadastro: {servicosDisponiveis.length}
+                <span className="font-bold">{servicosDisponiveis.length}</span> serviços disponíveis para cadastro
               </p>
             </div>
           </div>

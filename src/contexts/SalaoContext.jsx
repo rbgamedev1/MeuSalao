@@ -1,4 +1,4 @@
-// src/contexts/SalaoContext.jsx - CORRIGIDO: Não muda de salão ao salvar
+// src/contexts/SalaoContext.jsx - CORRIGIDO: getServicosDisponiveis agora funciona corretamente
 
 import { createContext, useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { AuthContext } from './AuthContext';
@@ -226,17 +226,20 @@ export const SalaoProvider = ({ children }) => {
     [transacoes, salaoAtual]
   );
 
-  // Obter serviços disponíveis (flatten da estrutura de categorias)
+  // ✅ CORREÇÃO CRÍTICA: Obter serviços disponíveis (flatten da estrutura de categorias)
   const getServicosDisponiveis = useMemo(() => 
     () => {
       if (!salaoAtual || !salaoAtual.categoriasServicos) return [];
       
       const servicosDisponiveis = [];
       
+      // Iterar sobre as categorias configuradas no salão
       Object.entries(salaoAtual.categoriasServicos).forEach(([categoriaId, categoriaData]) => {
-        if (categoriaData.ativa && categoriaData.subcategorias) {
+        // Verificar se tem subcategorias
+        if (categoriaData.subcategorias) {
           Object.entries(categoriaData.subcategorias).forEach(([subcategoriaId, subcategoriaData]) => {
-            if (subcategoriaData.ativa && subcategoriaData.servicos) {
+            // Verificar se tem serviços
+            if (subcategoriaData.servicos && Array.isArray(subcategoriaData.servicos)) {
               subcategoriaData.servicos.forEach(servico => {
                 servicosDisponiveis.push({
                   categoriaId,
