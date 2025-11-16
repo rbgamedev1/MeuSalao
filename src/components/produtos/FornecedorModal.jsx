@@ -1,10 +1,7 @@
-// src/components/produtos/FornecedorModal.jsx - CÓDIGO COMPLETO COM RESTRIÇÕES
-import { Edit, Trash2, Phone, Mail, Crown, Lock } from 'lucide-react';
+// src/components/produtos/FornecedorModal.jsx - SEM RESTRIÇÕES DE PLANO
+import { Edit, Trash2, Phone, Mail } from 'lucide-react';
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
-import { useContext } from 'react';
-import { SalaoContext } from '../../contexts/SalaoContext';
-import { canAddMore, getLimitMessage } from '../../utils/planRestrictions';
 
 const FornecedorModal = ({ 
   showFornecedorModal,
@@ -18,24 +15,6 @@ const FornecedorModal = ({
   handleDeleteFornecedor,
   produtosSalao
 }) => {
-  const { salaoAtual } = useContext(SalaoContext);
-  
-  // Verificar limites
-  const canAddFornecedor = canAddMore(salaoAtual.plano, 'fornecedores', fornecedoresSalao.length);
-  const limiteFornecedores = getLimitMessage(salaoAtual.plano, 'fornecedores');
-
-  const handleSubmitWithValidation = (e) => {
-    e.preventDefault();
-    
-    // Verificar limite apenas ao adicionar (não ao editar)
-    if (!editingFornecedorId && !canAddFornecedor) {
-      alert(`Limite de fornecedores atingido para o plano ${salaoAtual.plano}. ${limiteFornecedores}\n\nFaça upgrade do seu plano para adicionar mais fornecedores.`);
-      return;
-    }
-    
-    handleSubmitFornecedor(e);
-  };
-
   return (
     <Modal
       isOpen={showFornecedorModal}
@@ -43,22 +22,7 @@ const FornecedorModal = ({
       title={editingFornecedorId ? 'Editar Fornecedor' : 'Novo Fornecedor'}
       size="lg"
     >
-      {/* Alerta de Limite */}
-      {!editingFornecedorId && !canAddFornecedor && (
-        <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-          <div className="flex items-start">
-            <Crown className="text-yellow-600 mr-3 flex-shrink-0" size={24} />
-            <div>
-              <p className="font-semibold text-yellow-800">Limite de fornecedores atingido!</p>
-              <p className="text-yellow-700 text-sm mt-1">
-                Seu plano <strong>{salaoAtual.plano}</strong> permite até <strong>{limiteFornecedores.replace('Máximo: ', '')}</strong>.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmitWithValidation} className="space-y-4">
+      <form onSubmit={handleSubmitFornecedor} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Nome do Fornecedor *
@@ -69,8 +33,7 @@ const FornecedorModal = ({
             value={fornecedorData.nome}
             onChange={handleFornecedorChange}
             required
-            disabled={!editingFornecedorId && !canAddFornecedor}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             placeholder="Ex: Distribuidora Beauty"
           />
         </div>
@@ -86,9 +49,7 @@ const FornecedorModal = ({
               value={fornecedorData.telefone}
               onChange={handleFornecedorChange}
               required
-              disabled={!editingFornecedorId && !canAddFornecedor}
               placeholder="(11) 3456-7890"
-              className={!editingFornecedorId && !canAddFornecedor ? "disabled:bg-gray-100 disabled:cursor-not-allowed" : ""}
             />
           </div>
 
@@ -102,8 +63,7 @@ const FornecedorModal = ({
               value={fornecedorData.email}
               onChange={handleFornecedorChange}
               required
-              disabled={!editingFornecedorId && !canAddFornecedor}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
               placeholder="contato@fornecedor.com"
             />
           </div>
@@ -118,8 +78,7 @@ const FornecedorModal = ({
             name="cnpj"
             value={fornecedorData.cnpj}
             onChange={handleFornecedorChange}
-            disabled={!editingFornecedorId && !canAddFornecedor}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             placeholder="00.000.000/0000-00"
           />
         </div>
@@ -133,8 +92,7 @@ const FornecedorModal = ({
             name="endereco"
             value={fornecedorData.endereco}
             onChange={handleFornecedorChange}
-            disabled={!editingFornecedorId && !canAddFornecedor}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
             placeholder="Rua, número - bairro"
           />
         </div>
@@ -149,15 +107,9 @@ const FornecedorModal = ({
           </button>
           <button
             type="submit"
-            disabled={!editingFornecedorId && !canAddFornecedor}
-            className={`px-6 py-2 rounded-lg transition-all flex items-center space-x-2 ${
-              (!editingFornecedorId && !canAddFornecedor)
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white hover:from-purple-700 hover:to-pink-700'
-            }`}
+            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
           >
-            {(!editingFornecedorId && !canAddFornecedor) && <Lock size={16} />}
-            <span>{editingFornecedorId ? 'Salvar Alterações' : 'Cadastrar Fornecedor'}</span>
+            {editingFornecedorId ? 'Salvar Alterações' : 'Cadastrar Fornecedor'}
           </button>
         </div>
       </form>
@@ -170,7 +122,7 @@ const FornecedorModal = ({
               Fornecedores Cadastrados neste Salão
             </h4>
             <span className="text-xs text-gray-600">
-              {fornecedoresSalao.length} {limiteFornecedores !== 'Ilimitado' ? `/ ${limiteFornecedores.replace('Máximo: ', '')}` : ''}
+              {fornecedoresSalao.length} fornecedor(es)
             </span>
           </div>
           <div className="space-y-3 max-h-64 overflow-y-auto">

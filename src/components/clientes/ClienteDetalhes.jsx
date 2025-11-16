@@ -1,4 +1,4 @@
-// src/components/clientes/ClienteDetalhes.jsx
+// src/components/clientes/ClienteDetalhes.jsx - CORRIGIDO
 import { useState, useMemo } from 'react';
 import { X, User, Phone, Mail, Calendar, DollarSign, Clock, Package, TrendingUp, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
 
@@ -31,13 +31,13 @@ const ClienteDetalhes = ({
       });
   }, [agendamentos, cliente.id, servicos, profissionais]);
 
-  // Filtrar compras (transações) do cliente - APENAS vendas de PRODUTOS
+  // ✅ CORREÇÃO: Filtrar compras (transações) do cliente - vendas de PRODUTOS
   const comprasCliente = useMemo(() => {
     return transacoes
       .filter(t => 
         t.tipo === 'receita' && 
-        t.cliente === cliente.nome &&
-        t.categoria === 'Produtos' // Apenas vendas de produtos
+        t.cliente === cliente.nome && // Comparação exata com o nome do cliente
+        t.categoria === 'Venda de Produtos' // ✅ CORRIGIDO: nome correto da categoria
       )
       .sort((a, b) => {
         // Ordenar por data decrescente
@@ -59,7 +59,7 @@ const ClienteDetalhes = ({
       .reduce((acc, ag) => acc + (ag.servico?.valor || 0), 0);
     const totalGastoCompras = comprasCliente.reduce((acc, c) => acc + c.valor, 0);
     const totalGeral = totalGastoAgendamentos + totalGastoCompras;
-    const ticketMedio = totalAgendamentos > 0 ? totalGeral / agendamentosConcluidos : 0;
+    const ticketMedio = agendamentosConcluidos > 0 ? totalGeral / agendamentosConcluidos : 0;
 
     return {
       totalAgendamentos,
@@ -381,7 +381,7 @@ const ClienteDetalhes = ({
                     <Package size={48} className="mx-auto mb-4 opacity-50" />
                     <p>Nenhuma compra de produto encontrada para este cliente.</p>
                     <p className="text-xs text-gray-400 mt-2">
-                      💡 Apenas vendas de produtos aparecem aqui. Serviços ficam em "Agendamentos".
+                      💡 Apenas vendas de produtos do PDV aparecem aqui. Serviços ficam em "Agendamentos".
                     </p>
                   </div>
                 ) : (
@@ -428,8 +428,8 @@ const ClienteDetalhes = ({
                               </div>
                             </div>
                             {compra.observacoes && (
-                              <p className="text-xs text-gray-500 mt-2 italic">
-                                {compra.observacoes}
+                              <p className="text-xs text-gray-500 mt-2 italic border-t border-gray-300 pt-2">
+                                📦 Itens: {compra.observacoes}
                               </p>
                             )}
                           </div>
@@ -451,6 +451,11 @@ const ClienteDetalhes = ({
           {/* Footer */}
           <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
             <div className="flex justify-between items-center">
+              <div className="text-sm text-gray-600">
+                {comprasCliente.length > 0 && (
+                  <p>✅ Vendas do PDV vinculadas ao cliente estão sendo exibidas</p>
+                )}
+              </div>
               <button
                 onClick={onClose}
                 className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"

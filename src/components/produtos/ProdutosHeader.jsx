@@ -1,4 +1,7 @@
-// src/components/produtos/ProdutosHeader.jsx
+// src/components/produtos/ProdutosHeader.jsx - ATUALIZADO
+// Este componente não é mais usado na nova estrutura com tabs
+// Mantido apenas para compatibilidade caso seja necessário
+
 import { Plus, Package } from 'lucide-react';
 
 const ProdutosHeader = ({ salaoNome, onOpenFornecedorModal, onOpenProdutoModal }) => {
