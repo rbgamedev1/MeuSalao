@@ -1,7 +1,8 @@
-// src/utils/planRestrictions/planLimits.js
+// src/utils/planRestrictions/planLimits.js - SEM RESTRIÇÕES DE NOTIFICAÇÕES
 
 /**
  * Definição de limites quantitativos e recursos por plano
+ * ✅ NOTIFICAÇÕES E COMUNICAÇÕES: Sempre liberadas para todos os planos
  */
 export const PLAN_LIMITS = {
   inicial: {
@@ -19,7 +20,8 @@ export const PLAN_LIMITS = {
     relatorios: false,
     exportacao: false,
     agendamentoOnline: false,
-    notificacoes: 'minimo',
+    notificacoes: true, // ✅ SEMPRE LIBERADO
+    comunicacoes: true, // ✅ SEMPRE LIBERADO
     comissoes: false
   },
   
@@ -36,7 +38,8 @@ export const PLAN_LIMITS = {
     relatorios: 'basico',
     exportacao: false,
     agendamentoOnline: true,
-    notificacoes: 'basico',
+    notificacoes: true, // ✅ SEMPRE LIBERADO
+    comunicacoes: true, // ✅ SEMPRE LIBERADO
     comissoes: false
   },
   
@@ -53,7 +56,8 @@ export const PLAN_LIMITS = {
     relatorios: 'basico',
     exportacao: false,
     agendamentoOnline: true,
-    notificacoes: 'basico',
+    notificacoes: true, // ✅ SEMPRE LIBERADO
+    comunicacoes: true, // ✅ SEMPRE LIBERADO
     comissoes: true
   },
   
@@ -70,7 +74,8 @@ export const PLAN_LIMITS = {
     relatorios: 'completo',
     exportacao: true,
     agendamentoOnline: true,
-    notificacoes: 'avancado',
+    notificacoes: true, // ✅ SEMPRE LIBERADO
+    comunicacoes: true, // ✅ SEMPRE LIBERADO
     comissoes: true,
     appProfissionais: true
   },
@@ -88,7 +93,8 @@ export const PLAN_LIMITS = {
     relatorios: 'completo',
     exportacao: true,
     agendamentoOnline: true,
-    notificacoes: 'completo',
+    notificacoes: true, // ✅ SEMPRE LIBERADO
+    comunicacoes: true, // ✅ SEMPRE LIBERADO
     comissoes: true,
     appProfissionais: true,
     relatoriosMultiSalao: true
@@ -107,7 +113,8 @@ export const PLAN_LIMITS = {
     relatorios: 'avancado',
     exportacao: true,
     agendamentoOnline: true,
-    notificacoes: 'completo',
+    notificacoes: true, // ✅ SEMPRE LIBERADO
+    comunicacoes: true, // ✅ SEMPRE LIBERADO
     comissoes: true,
     appProfissionais: true,
     appPersonalizado: true,

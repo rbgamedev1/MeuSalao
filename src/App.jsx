@@ -1,4 +1,4 @@
-// src/App.jsx - Atualizado com rota /perfil
+// src/App.jsx - CORRIGIDO: Proteção contra erro do notificationService
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, useContext } from 'react';
@@ -22,7 +22,6 @@ import Configuracoes from './pages/Configuracoes';
 import Perfil from './pages/Perfil';
 import AgendaOnline from './pages/AgendaOnline';
 import Avaliacao from './pages/Avaliacao';
-import NotificacoesConfig from './pages/NotificacoesConfig';
 import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import { SalaoProvider } from './contexts/SalaoContext';
 import notificationService from './services/notificationService';
@@ -51,11 +50,27 @@ const SystemLayout = ({ children }) => {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   useEffect(() => {
-    const settings = notificationService.getSettings();
-    if (settings.autoStart) {
-      notificationService.start();
+    // ✅ CORREÇÃO: Verificar se o serviço existe e tem o método getSettings
+    try {
+      if (notificationService && typeof notificationService.getSettings === 'function') {
+        const settings = notificationService.getSettings();
+        if (settings?.autoStart) {
+          notificationService.start();
+        }
+      }
+    } catch (error) {
+      console.warn('Notification service not available:', error);
     }
-    return () => notificationService.stop();
+    
+    return () => {
+      try {
+        if (notificationService && typeof notificationService.stop === 'function') {
+          notificationService.stop();
+        }
+      } catch (error) {
+        console.warn('Error stopping notification service:', error);
+      }
+    };
   }, []);
 
   return (
@@ -161,19 +176,10 @@ function App() {
               </ProtectedRoute>
             } />
 
-            {/* ✅ NOVA ROTA: Perfil do Usuário */}
             <Route path="/perfil" element={
               <ProtectedRoute>
                 <SystemLayout>
                   <Perfil />
-                </SystemLayout>
-              </ProtectedRoute>
-            } />
-
-            <Route path="/notificacoes" element={
-              <ProtectedRoute>
-                <SystemLayout>
-                  <NotificacoesConfig />
                 </SystemLayout>
               </ProtectedRoute>
             } />

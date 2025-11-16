@@ -1,110 +1,52 @@
-// src/utils/planRestrictions/notificationLevels.js
+// src/utils/planRestrictions/notificationLevels.js - SIMPLIFICADO SEM RESTRIÇÕES
 
 /**
- * Recursos de notificação por nível
+ * ✅ TODAS AS NOTIFICAÇÕES DISPONÍVEIS PARA TODOS OS PLANOS
+ * Não há mais níveis ou restrições de notificação
  */
+
 export const NOTIFICATION_FEATURES = {
-  minimo: ['confirmacao'],
-  basico: ['confirmacao', 'cancelamento'],
-  avancado: ['confirmacao', 'cancelamento', 'alteracoes'],
-  completo: ['confirmacao', 'cancelamento', 'alteracoes', 'avaliacoes']
-};
-
-/**
- * Informações detalhadas sobre níveis de notificação
- */
-export const NOTIFICATION_LEVELS_INFO = {
-  minimo: {
-    name: 'Notificações Básicas',
-    description: 'Confirmações de agendamento',
-    features: ['Email de confirmação ao criar agendamento']
-  },
-  basico: {
-    name: 'Notificações Essenciais',
-    description: 'Confirmações e cancelamentos',
-    features: [
-      'Email de confirmação ao criar agendamento',
-      'Email de cancelamento quando necessário'
-    ]
-  },
-  avancado: {
-    name: 'Notificações Avançadas',
-    description: 'Confirmações, alterações e cancelamentos',
-    features: [
-      'Email de confirmação ao criar agendamento',
-      'Email de alteração quando mudar data/horário/profissional',
-      'Email de cancelamento quando necessário'
-    ]
-  },
-  completo: {
-    name: 'Notificações Completas',
-    description: 'Todas as notificações incluindo feedback',
-    features: [
-      'Email de confirmação ao criar agendamento',
-      'Email de alteração quando mudar data/horário/profissional',
-      'Email de cancelamento quando necessário',
-      'Email de solicitação de avaliação após atendimento concluído'
-    ]
-  }
+  todas: ['confirmacao', 'cancelamento', 'alteracao', 'avaliacao', 'aniversario']
 };
 
 /**
  * Verificar se plano permite tipo de notificação
+ * ✅ SEMPRE RETORNA TRUE - Sem restrições
  */
 export const hasNotificationAccess = (plano, tipoNotificacao) => {
-  const limits = PLAN_LIMITS[plano] || PLAN_LIMITS.inicial;
-  const nivelNotificacoes = limits.notificacoes;
-  
-  if (!nivelNotificacoes || nivelNotificacoes === false) return false;
-  
-  const features = NOTIFICATION_FEATURES[nivelNotificacoes] || [];
-  return features.includes(tipoNotificacao);
+  return true; // ✅ Todas as notificações liberadas para todos os planos
 };
 
 /**
  * Obter notificações disponíveis para o plano
+ * ✅ SEMPRE RETORNA TODAS - Sem restrições
  */
 export const getAvailableNotifications = (plano) => {
-  const limits = PLAN_LIMITS[plano] || PLAN_LIMITS.inicial;
-  const nivelNotificacoes = limits.notificacoes;
-  
-  if (!nivelNotificacoes || nivelNotificacoes === false) return [];
-  
-  return NOTIFICATION_FEATURES[nivelNotificacoes] || [];
+  return NOTIFICATION_FEATURES.todas; // ✅ Todas as notificações disponíveis
 };
 
 /**
  * Obter informações sobre nível de notificação
+ * ✅ SEMPRE RETORNA COMPLETO - Sem restrições
  */
 export const getNotificationLevelInfo = (plano) => {
-  const limits = PLAN_LIMITS[plano] || PLAN_LIMITS.inicial;
-  const nivelNotificacoes = limits.notificacoes;
-  
-  if (!nivelNotificacoes || nivelNotificacoes === false) {
-    return {
-      name: 'Sem Notificações',
-      description: 'Plano não inclui sistema de notificações',
-      features: []
-    };
-  }
-  
-  return NOTIFICATION_LEVELS_INFO[nivelNotificacoes] || NOTIFICATION_LEVELS_INFO.minimo;
+  return {
+    name: 'Sistema de Notificações Completo',
+    description: 'Todas as notificações disponíveis',
+    features: [
+      'Email de confirmação ao criar agendamento',
+      'Email de alteração quando mudar data/horário/profissional',
+      'Email de cancelamento quando necessário',
+      'Email de solicitação de avaliação após atendimento concluído',
+      'Email de aniversário (configurável)'
+    ]
+  };
 };
 
 /**
  * Obter plano mínimo para notificação
+ * ✅ SEMPRE RETORNA 'inicial' - Disponível para todos
  */
 export const getMinimumPlanForNotification = (tipoNotificacao) => {
-  const planos = ['inicial', 'essencial', 'plus', 'profissional', 'premium', 'master'];
-  
-  for (const plano of planos) {
-    if (hasNotificationAccess(plano, tipoNotificacao)) {
-      return plano;
-    }
-  }
-  
-  return 'master';
+  return 'inicial'; // ✅ Disponível desde o plano inicial
 };
-
-// Importar PLAN_LIMITS do módulo correto
-import { PLAN_LIMITS } from './planLimits';

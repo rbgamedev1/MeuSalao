@@ -1,4 +1,4 @@
-// src/components/configuracoes/ConfiguracoesComunicacoes.jsx
+// src/components/configuracoes/ConfiguracoesComunicacoes.jsx - CORRIGIDO E SIMPLIFICADO
 import { useState, useContext } from 'react';
 import { Mail, Link2, Calendar, Star, Copy, Check, ExternalLink, Save, Edit2, Info } from 'lucide-react';
 import { SalaoContext } from '../../contexts/SalaoContext';
@@ -9,31 +9,54 @@ const ConfiguracoesComunicacoes = () => {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [showVariables, setShowVariables] = useState(false);
 
-  // Configurações de comunicação do salão
-  const [settings, setSettings] = useState({
-    confirmacao: {
-      ativo: salaoAtual.comunicacoes?.confirmacao?.ativo ?? true,
-      template: salaoAtual.comunicacoes?.confirmacao?.template || null
-    },
-    cancelamento: {
-      ativo: salaoAtual.comunicacoes?.cancelamento?.ativo ?? true,
-      template: salaoAtual.comunicacoes?.cancelamento?.template || null
-    },
-    alteracao: {
-      ativo: salaoAtual.comunicacoes?.alteracao?.ativo ?? true,
-      template: salaoAtual.comunicacoes?.alteracao?.template || null
-    },
-    avaliacao: {
-      ativo: salaoAtual.comunicacoes?.avaliacao?.ativo ?? true,
-      template: salaoAtual.comunicacoes?.avaliacao?.template || null
-    },
-    aniversario: {
-      ativo: salaoAtual.comunicacoes?.aniversario?.ativo ?? false,
-      automatico: salaoAtual.comunicacoes?.aniversario?.automatico ?? true,
-      diasAntecedencia: salaoAtual.comunicacoes?.aniversario?.diasAntecedencia ?? 0,
-      template: salaoAtual.comunicacoes?.aniversario?.template || null
+  // ✅ CORREÇÃO: Inicialização segura das configurações
+  const initializeSettings = () => {
+    const defaultSettings = {
+      confirmacao: { ativo: true, template: null },
+      cancelamento: { ativo: true, template: null },
+      alteracao: { ativo: true, template: null },
+      avaliacao: { ativo: true, template: null },
+      aniversario: { 
+        ativo: false, 
+        automatico: true, 
+        diasAntecedencia: 0, 
+        template: null 
+      }
+    };
+
+    // Verificar se salaoAtual.comunicacoes existe
+    if (!salaoAtual?.comunicacoes) {
+      return defaultSettings;
     }
-  });
+
+    // Mesclar com valores salvos
+    return {
+      confirmacao: {
+        ativo: salaoAtual.comunicacoes.confirmacao?.ativo ?? true,
+        template: salaoAtual.comunicacoes.confirmacao?.template || null
+      },
+      cancelamento: {
+        ativo: salaoAtual.comunicacoes.cancelamento?.ativo ?? true,
+        template: salaoAtual.comunicacoes.cancelamento?.template || null
+      },
+      alteracao: {
+        ativo: salaoAtual.comunicacoes.alteracao?.ativo ?? true,
+        template: salaoAtual.comunicacoes.alteracao?.template || null
+      },
+      avaliacao: {
+        ativo: salaoAtual.comunicacoes.avaliacao?.ativo ?? true,
+        template: salaoAtual.comunicacoes.avaliacao?.template || null
+      },
+      aniversario: {
+        ativo: salaoAtual.comunicacoes.aniversario?.ativo ?? false,
+        automatico: salaoAtual.comunicacoes.aniversario?.automatico ?? true,
+        diasAntecedencia: salaoAtual.comunicacoes.aniversario?.diasAntecedencia ?? 0,
+        template: salaoAtual.comunicacoes.aniversario?.template || null
+      }
+    };
+  };
+
+  const [settings, setSettings] = useState(initializeSettings());
 
   // Templates padrão
   const defaultTemplates = {
@@ -157,10 +180,10 @@ Equipe {salao_nome} 💜`
   const handleSaveSettings = () => {
     try {
       atualizarSalao(salaoAtual.id, { comunicacoes: settings });
-      alert('Configurações de comunicação salvas com sucesso!');
+      alert('✅ Configurações de comunicação salvas com sucesso!');
     } catch (error) {
       console.error('Erro ao salvar:', error);
-      alert('Erro ao salvar configurações.');
+      alert('❌ Erro ao salvar configurações. Tente novamente.');
     }
   };
 
@@ -187,6 +210,7 @@ Equipe {salao_nome} 💜`
       }
     }));
     setEditingTemplate(null);
+    alert('✅ Template personalizado salvo! Clique em "Salvar Configurações" no final da página para confirmar.');
   };
 
   const handleResetTemplate = (tipo) => {
@@ -195,6 +219,7 @@ Equipe {salao_nome} 💜`
         ...prev,
         [tipo]: { ...prev[tipo], template: null }
       }));
+      alert('✅ Template restaurado para o padrão!');
     }
   };
 
@@ -238,6 +263,21 @@ Equipe {salao_nome} 💜`
 
   return (
     <div className="space-y-6">
+      {/* Banner informativo */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 rounded-lg p-4">
+        <div className="flex items-start space-x-3">
+          <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="text-sm font-medium text-blue-900">
+              ✅ Sistema de Comunicações Completo
+            </p>
+            <p className="text-xs text-blue-700 mt-1">
+              Todas as funcionalidades de notificação estão disponíveis. Configure e personalize as mensagens enviadas aos seus clientes.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Links Compartilháveis */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg p-6 text-white">
         <h3 className="text-xl font-semibold mb-4 flex items-center">
@@ -259,12 +299,14 @@ Equipe {salao_nome} 💜`
               <button
                 onClick={() => handleCopyLink('agenda')}
                 className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                title="Copiar link"
               >
                 {linkCopied === 'agenda' ? <Check size={18} /> : <Copy size={18} />}
               </button>
               <button
                 onClick={() => window.open(`${window.location.origin}/agenda/${salaoAtual.id}`, '_blank')}
                 className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                title="Abrir em nova aba"
               >
                 <ExternalLink size={18} />
               </button>
@@ -284,6 +326,7 @@ Equipe {salao_nome} 💜`
               <button
                 onClick={() => handleCopyLink('avaliacao')}
                 className="px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-purple-50 transition-colors"
+                title="Copiar link"
               >
                 {linkCopied === 'avaliacao' ? <Check size={18} /> : <Copy size={18} />}
               </button>
@@ -309,8 +352,8 @@ Equipe {salao_nome} 💜`
         <div className="p-6 space-y-4">
           {comunicacoes.map((comunicacao) => {
             const Icon = comunicacao.icon;
-            const isAtivo = settings[comunicacao.id].ativo;
-            const hasCustomTemplate = settings[comunicacao.id].template !== null;
+            const isAtivo = settings[comunicacao.id]?.ativo ?? true;
+            const hasCustomTemplate = settings[comunicacao.id]?.template !== null;
 
             return (
               <div key={comunicacao.id} className="border border-gray-200 rounded-lg p-4">
@@ -348,7 +391,7 @@ Equipe {salao_nome} 💜`
                     <label className="flex items-center space-x-2">
                       <input
                         type="checkbox"
-                        checked={settings.aniversario.automatico}
+                        checked={settings.aniversario?.automatico ?? true}
                         onChange={(e) => setSettings(prev => ({
                           ...prev,
                           aniversario: { ...prev.aniversario, automatico: e.target.checked }
@@ -361,7 +404,7 @@ Equipe {salao_nome} 💜`
                     <div className="flex items-center space-x-3">
                       <label className="text-sm text-gray-700">Enviar com antecedência:</label>
                       <select
-                        value={settings.aniversario.diasAntecedencia}
+                        value={settings.aniversario?.diasAntecedencia ?? 0}
                         onChange={(e) => setSettings(prev => ({
                           ...prev,
                           aniversario: { ...prev.aniversario, diasAntecedencia: parseInt(e.target.value) }
@@ -406,7 +449,7 @@ Equipe {salao_nome} 💜`
       <div className="flex justify-end">
         <button
           onClick={handleSaveSettings}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
+          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
         >
           <Save size={20} />
           <span>Salvar Configurações</span>
