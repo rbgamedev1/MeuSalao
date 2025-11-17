@@ -1,4 +1,4 @@
-// src/services/notificationService.js - SEM RESTRIÇÕES DE PLANO
+// src/services/notificationService.js - COMPLETO COM HISTÓRICO E DEBUG
 import mailgunService from './mailgunService';
 
 class NotificationService {
@@ -6,6 +6,41 @@ class NotificationService {
     this.checkInterval = null;
     this.isRunning = false;
     this.lastCheckTime = null;
+  }
+
+  /**
+   * 📧 Registrar email no histórico
+   */
+  registrarHistorico(emailData) {
+    try {
+      const historicoKey = `emailHistorico_${emailData.salaoId}`;
+      const historicoExistente = JSON.parse(localStorage.getItem(historicoKey) || '[]');
+
+      const novoEmail = {
+        id: Date.now().toString(),
+        clienteId: emailData.clienteId,
+        clienteNome: emailData.clienteNome,
+        clienteEmail: emailData.clienteEmail,
+        tipo: emailData.tipo,
+        assunto: emailData.assunto,
+        agendamentoId: emailData.agendamentoId || null,
+        status: emailData.status || 'enviado',
+        erro: emailData.erro || null,
+        dataEnvio: new Date().toISOString(),
+        salaoId: emailData.salaoId
+      };
+
+      const novoHistorico = [novoEmail, ...historicoExistente];
+      const historicoLimitado = novoHistorico.slice(0, 1000);
+      
+      localStorage.setItem(historicoKey, JSON.stringify(historicoLimitado));
+      console.log('📧 Email registrado no histórico:', emailData.tipo);
+      
+      return novoEmail;
+    } catch (error) {
+      console.error('❌ Erro ao registrar email no histórico:', error);
+      return null;
+    }
   }
 
   start() {
@@ -17,12 +52,10 @@ class NotificationService {
     this.isRunning = true;
     console.log('🔔 Serviço de notificações iniciado');
 
-    // Verificar avaliações pendentes a cada hora
     this.checkInterval = setInterval(() => {
       this.checkAvaliacoesPendentes();
     }, 60 * 60 * 1000);
 
-    // Verificar aniversários diariamente
     this.checkAniversarios();
     setInterval(() => {
       this.checkAniversarios();
@@ -39,16 +72,12 @@ class NotificationService {
     console.log('🔕 Serviço de notificações parado');
   }
 
-  /**
-   * Obter configurações de comunicação do salão
-   */
   getSalaoSettings(salaoId) {
     try {
       const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
       const salao = saloes.find(s => s.id === salaoId);
       
       if (!salao || !salao.comunicacoes) {
-        // Configurações padrão
         return {
           confirmacao: { ativo: true, template: null },
           cancelamento: { ativo: true, template: null },
@@ -70,9 +99,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Verificar aniversários e enviar mensagens
-   */
   async checkAniversarios() {
     try {
       const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
@@ -89,16 +115,13 @@ class NotificationService {
           continue;
         }
 
-        // Calcular data de referência baseada nos dias de antecedência
         const dataReferencia = new Date(hoje);
         dataReferencia.setDate(dataReferencia.getDate() + settings.aniversario.diasAntecedencia);
         const diaRef = dataReferencia.getDate();
         const mesRef = dataReferencia.getMonth() + 1;
 
-        // Filtrar clientes aniversariantes
         const aniversariantes = clientes.filter(cliente => {
           if (!cliente.dataNascimento) return false;
-          
           const [dia, mes] = cliente.dataNascimento.split('/');
           return parseInt(dia) === diaRef && parseInt(mes) === mesRef;
         });
@@ -112,9 +135,29 @@ class NotificationService {
                 customTemplate: settings.aniversario.template
               });
               
+              this.registrarHistorico({
+                clienteId: cliente.id,
+                clienteNome: cliente.nome,
+                clienteEmail: cliente.email,
+                tipo: 'aniversario',
+                assunto: `🎂 Feliz Aniversário, ${cliente.nome.split(' ')[0]}!`,
+                salaoId: salao.id,
+                status: 'enviado'
+              });
+              
               console.log(`🎂 Mensagem de aniversário enviada: ${cliente.nome}`);
               await new Promise(resolve => setTimeout(resolve, 1000));
             } catch (error) {
+              this.registrarHistorico({
+                clienteId: cliente.id,
+                clienteNome: cliente.nome,
+                clienteEmail: cliente.email,
+                tipo: 'aniversario',
+                assunto: `🎂 Feliz Aniversário, ${cliente.nome.split(' ')[0]}!`,
+                salaoId: salao.id,
+                status: 'falhado',
+                erro: error.message
+              });
               console.error('Erro ao enviar aniversário:', error);
             }
           }
@@ -125,9 +168,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Verificar avaliações pendentes
-   */
   async checkAvaliacoesPendentes() {
     try {
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
@@ -182,9 +222,32 @@ class NotificationService {
               agendamento,
               customTemplate: settings.avaliacao.template
             });
+            
+            this.registrarHistorico({
+              clienteId: cliente.id,
+              clienteNome: cliente.nome,
+              clienteEmail: cliente.email,
+              tipo: 'avaliacao',
+              assunto: `⭐ Como foi seu atendimento no ${salao.nome}?`,
+              agendamentoId: agendamento.id,
+              salaoId: salao.id,
+              status: 'enviado'
+            });
+            
             sucessos++;
             await new Promise(resolve => setTimeout(resolve, 1000));
           } catch (error) {
+            this.registrarHistorico({
+              clienteId: cliente.id,
+              clienteNome: cliente.nome,
+              clienteEmail: cliente.email,
+              tipo: 'avaliacao',
+              assunto: `⭐ Como foi seu atendimento no ${salao.nome}?`,
+              agendamentoId: agendamento.id,
+              salaoId: salao.id,
+              status: 'falhado',
+              erro: error.message
+            });
             console.error('Erro ao enviar avaliação:', error);
             falhas++;
           }
@@ -200,10 +263,9 @@ class NotificationService {
     }
   }
 
-  /**
-   * Notificar novo agendamento
-   */
   async notifyNovoAgendamento(agendamentoId) {
+    console.log('📧 notifyNovoAgendamento chamado para ID:', agendamentoId);
+    
     try {
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
@@ -212,20 +274,27 @@ class NotificationService {
       const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
 
       const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
-      if (!agendamento) return;
+      if (!agendamento) {
+        console.log('⚠️ Agendamento não encontrado');
+        return;
+      }
 
       const cliente = clientes.find(c => c.id === agendamento.clienteId);
       const servico = servicos.find(s => s.id === agendamento.servicoId);
       const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
       const salao = saloes.find(s => s.id === agendamento.salaoId);
 
-      if (!cliente || !servico || !profissional || !salao) return;
+      if (!cliente || !servico || !profissional || !salao) {
+        console.log('⚠️ Dados incompletos');
+        return;
+      }
 
       const settings = this.getSalaoSettings(salao.id);
 
-      // Enviar confirmação
       if (settings.confirmacao.ativo && cliente.email) {
         try {
+          console.log('📧 Enviando email de CONFIRMAÇÃO...');
+          
           await mailgunService.sendConfirmacaoAgendamento({
             cliente,
             servico,
@@ -234,8 +303,31 @@ class NotificationService {
             agendamento,
             customTemplate: settings.confirmacao.template
           });
+          
+          this.registrarHistorico({
+            clienteId: cliente.id,
+            clienteNome: cliente.nome,
+            clienteEmail: cliente.email,
+            tipo: 'confirmacao',
+            assunto: `✅ Agendamento Confirmado - ${salao.nome}`,
+            agendamentoId: agendamento.id,
+            salaoId: salao.id,
+            status: 'enviado'
+          });
+          
           console.log(`✅ Confirmação enviada: ${cliente.email}`);
         } catch (error) {
+          this.registrarHistorico({
+            clienteId: cliente.id,
+            clienteNome: cliente.nome,
+            clienteEmail: cliente.email,
+            tipo: 'confirmacao',
+            assunto: `✅ Agendamento Confirmado - ${salao.nome}`,
+            agendamentoId: agendamento.id,
+            salaoId: salao.id,
+            status: 'falhado',
+            erro: error.message
+          });
           console.error('❌ Erro ao enviar confirmação:', error);
         }
       }
@@ -245,9 +337,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Notificar alteração de agendamento
-   */
   async notifyAlteracaoAgendamento(agendamentoId, dadosAntigos, motivoAlteracao = '') {
     try {
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
@@ -284,8 +373,31 @@ class NotificationService {
           motivoAlteracao,
           customTemplate: settings.alteracao.template
         });
+        
+        this.registrarHistorico({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'alteracao',
+          assunto: `🔄 Alteração no Agendamento - ${salao.nome}`,
+          agendamentoId: agendamento.id,
+          salaoId: salao.id,
+          status: 'enviado'
+        });
+        
         console.log(`✅ Alteração enviada: ${cliente.email}`);
       } catch (error) {
+        this.registrarHistorico({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'alteracao',
+          assunto: `🔄 Alteração no Agendamento - ${salao.nome}`,
+          agendamentoId: agendamento.id,
+          salaoId: salao.id,
+          status: 'falhado',
+          erro: error.message
+        });
         console.error('❌ Erro ao enviar alteração:', error);
       }
 
@@ -294,15 +406,19 @@ class NotificationService {
     }
   }
 
-  /**
-   * Solicitar avaliação manualmente
-   */
   async solicitarAvaliacao(agendamentoId) {
+    console.log('🔍 solicitarAvaliacao chamado para agendamento:', agendamentoId);
+    
     try {
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
       const agendamento = agendamentos.find(ag => ag.id === agendamentoId);
       
-      if (!agendamento || agendamento.avaliacaoSolicitada) return false;
+      console.log('📋 Agendamento encontrado:', agendamento);
+      
+      if (!agendamento || agendamento.avaliacaoSolicitada) {
+        console.log('⚠️ Agendamento não encontrado ou avaliação já solicitada');
+        return false;
+      }
 
       const clientes = JSON.parse(localStorage.getItem('clientes') || '[]');
       const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
@@ -314,11 +430,22 @@ class NotificationService {
       const profissional = profissionais.find(p => p.id === agendamento.profissionalId);
       const salao = saloes.find(s => s.id === agendamento.salaoId);
 
-      if (!cliente || !servico || !profissional || !salao || !cliente.email) return false;
+      console.log('👤 Cliente:', cliente?.nome);
+      console.log('✂️ Serviço:', servico?.nome);
+      console.log('💇 Profissional:', profissional?.nome);
+      console.log('🏢 Salão:', salao?.nome);
+
+      if (!cliente || !servico || !profissional || !salao || !cliente.email) {
+        console.log('❌ Dados incompletos para enviar avaliação');
+        return false;
+      }
 
       const settings = this.getSalaoSettings(salao.id);
+      console.log('⚙️ Settings de avaliação:', settings.avaliacao);
 
       try {
+        console.log('📧 Chamando mailgunService.sendAvaliacaoAgendamento...');
+        
         await mailgunService.sendAvaliacaoAgendamento({
           cliente,
           servico,
@@ -328,6 +455,8 @@ class NotificationService {
           customTemplate: settings.avaliacao.template
         });
 
+        console.log('✅ Email de AVALIAÇÃO enviado com sucesso!');
+
         const agendamentosAtualizados = agendamentos.map(ag => 
           ag.id === agendamentoId 
             ? { ...ag, avaliacaoSolicitada: true, avaliacaoSolicitadaEm: new Date().toISOString() }
@@ -335,11 +464,35 @@ class NotificationService {
         );
         localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
 
+        this.registrarHistorico({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'avaliacao',
+          assunto: `⭐ Como foi seu atendimento no ${salao.nome}?`,
+          agendamentoId: agendamento.id,
+          salaoId: salao.id,
+          status: 'enviado'
+        });
+
         console.log(`✅ Avaliação solicitada: ${cliente.email}`);
         return true;
 
       } catch (error) {
-        console.error('❌ Erro ao enviar avaliação:', error);
+        console.error('❌ ERRO ao enviar avaliação:', error);
+        
+        this.registrarHistorico({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'avaliacao',
+          assunto: `⭐ Como foi seu atendimento no ${salao.nome}?`,
+          agendamentoId: agendamento.id,
+          salaoId: salao.id,
+          status: 'falhado',
+          erro: error.message
+        });
+        
         return false;
       }
 
@@ -349,9 +502,6 @@ class NotificationService {
     }
   }
 
-  /**
-   * Notificar cancelamento
-   */
   async notifyCancelamento(agendamentoId) {
     try {
       const agendamentos = JSON.parse(localStorage.getItem('agendamentos') || '[]');
@@ -383,8 +533,31 @@ class NotificationService {
           agendamento,
           customTemplate: settings.cancelamento.template
         });
+        
+        this.registrarHistorico({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'cancelamento',
+          assunto: `❌ Cancelamento de Agendamento - ${salao.nome}`,
+          agendamentoId: agendamento.id,
+          salaoId: salao.id,
+          status: 'enviado'
+        });
+        
         console.log(`✅ Cancelamento enviado: ${cliente.email}`);
       } catch (error) {
+        this.registrarHistorico({
+          clienteId: cliente.id,
+          clienteNome: cliente.nome,
+          clienteEmail: cliente.email,
+          tipo: 'cancelamento',
+          assunto: `❌ Cancelamento de Agendamento - ${salao.nome}`,
+          agendamentoId: agendamento.id,
+          salaoId: salao.id,
+          status: 'falhado',
+          erro: error.message
+        });
         console.error('❌ Erro ao enviar cancelamento:', error);
       }
 

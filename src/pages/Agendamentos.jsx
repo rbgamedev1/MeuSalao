@@ -1,4 +1,4 @@
-// src/pages/Agendamentos.jsx - FILTROS APENAS NA LISTA
+// src/pages/Agendamentos.jsx - VERSÃO FINAL CORRIGIDA
 
 import { useState, useContext, useEffect, useMemo } from 'react';
 import Modal from '../components/Modal';
@@ -192,13 +192,16 @@ const Agendamentos = () => {
     if (editingId) {
       const agendamentoAntigo = agendamentosAll.find(ag => ag.id === editingId);
       
+      // Verificar se foi marcado como concluído
       const foiConcluido = dadosOriginais.status !== 'concluido' && formData.status === 'concluido';
       
+      // Verificar se houve alteração de data/horário/profissional
       const houveAlteracao = 
         dadosOriginais.data !== formData.data ||
         dadosOriginais.horario !== formData.horario ||
         dadosOriginais.profissionalId !== parseInt(formData.profissionalId);
       
+      // Atualizar no localStorage
       const updated = agendamentosAll.map(ag => 
         ag.id === editingId ? { ...agendamentoData, id: editingId } : ag
       );
@@ -212,19 +215,45 @@ const Agendamentos = () => {
         url: window.location.href
       }));
 
+      console.log('🔍 Verificando qual email enviar...');
+      console.log('Status antigo:', dadosOriginais.status);
+      console.log('Status novo:', formData.status);
+      console.log('Foi concluído?', foiConcluido);
+      console.log('Houve alteração?', houveAlteracao);
+
+      // LÓGICA DE ENVIO DE EMAILS
       if (agendamentoAntigo.status !== 'cancelado' && formData.status === 'cancelado') {
+        // 1. CANCELAMENTO
+        console.log('📧 Caso 1: Enviando email de CANCELAMENTO');
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyCancelamento(editingId);
         }
       } else if (foiConcluido) {
-        const settings = notificationService.getSettings();
-        if (settings.avaliacoes && clienteSelecionado?.email) {
+        // 2. CONCLUÍDO - Enviar AVALIAÇÃO
+        console.log('📧 Caso 2: Enviando email de AVALIAÇÃO (status mudou para concluído)');
+        const settings = notificationService.getSalaoSettings(salaoAtual.id);
+        
+        console.log('⚙️ Configurações:', settings.avaliacao);
+        
+        if (settings.avaliacao.ativo && clienteSelecionado?.email) {
+          console.log('✅ Avaliações ativas, enviando...');
           const sucesso = await notificationService.solicitarAvaliacao(editingId);
           if (sucesso) {
             alert('✅ Solicitação de avaliação enviada para o cliente!');
+          } else {
+            alert('⚠️ Erro ao enviar solicitação de avaliação.');
+          }
+        } else {
+          if (!settings.avaliacao.ativo) {
+            console.log('⏸️ Avaliações desativadas nas configurações');
+          }
+          if (!clienteSelecionado?.email) {
+            console.log('⚠️ Cliente não tem email cadastrado');
           }
         }
       } else if (houveAlteracao) {
+        // 3. ALTERAÇÃO de data/horário/profissional
+        console.log('📧 Caso 3: Enviando email de ALTERAÇÃO');
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyAlteracaoAgendamento(
             editingId,
@@ -234,11 +263,15 @@ const Agendamentos = () => {
           alert('✅ Email de alteração enviado para o cliente!');
         }
       } else {
+        // 4. Apenas mudou status ou outras informações - envia CONFIRMAÇÃO
+        console.log('📧 Caso 4: Enviando email de CONFIRMAÇÃO (apenas atualização)');
         if (formData.notificarCliente && clienteSelecionado?.email) {
           await notificationService.notifyNovoAgendamento(editingId);
         }
       }
     } else {
+      // NOVO AGENDAMENTO
+      console.log('📧 Novo agendamento: Enviando email de CONFIRMAÇÃO');
       const newAgendamento = {
         ...agendamentoData,
         id: Math.max(...agendamentosAll.map(a => a.id), 0) + 1,
@@ -497,7 +530,6 @@ const Agendamentos = () => {
         </div>
       )}
 
-      {/* ✅ CORREÇÃO: Mostrar filtros APENAS na view lista */}
       {viewMode === 'lista' && (
         <AgendamentoFiltros 
           searchTerm={searchTerm}
