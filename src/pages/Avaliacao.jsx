@@ -36,9 +36,20 @@ const Avaliacao = () => {
       const servicos = JSON.parse(localStorage.getItem('servicos') || '[]');
       const profissionais = JSON.parse(localStorage.getItem('profissionais') || '[]');
 
-      const salaoEncontrado = saloes.find(s => s.id === parseInt(salaoId));
+      console.log('🔍 DEBUG Avaliação:', {
+        salaoId,
+        token,
+        'saloes disponíveis': saloes.map(s => ({ id: s.id, nome: s.nome })),
+        'agendamentos disponíveis': agendamentos.length
+      });
+
+      // Tentar encontrar o salão com ID como string ou número
+      const salaoEncontrado = saloes.find(s => 
+        String(s.id) === String(salaoId) || s.id === parseInt(salaoId)
+      );
       
       if (!salaoEncontrado) {
+        console.error('❌ Salão não encontrado:', { salaoId, saloes });
         setError('Salão não encontrado');
         setLoading(false);
         return;
@@ -46,12 +57,19 @@ const Avaliacao = () => {
 
       // Extrair agendamentoId do token
       const agendamentoId = parseInt(token.split('-')[0]);
+      console.log('🔍 Procurando agendamento:', { agendamentoId, salaoId });
+      
       const agendamentoEncontrado = agendamentos.find(a => 
         a.id === agendamentoId && 
-        a.salaoId === parseInt(salaoId)
+        (String(a.salaoId) === String(salaoId) || a.salaoId === parseInt(salaoId))
       );
 
       if (!agendamentoEncontrado) {
+        console.error('❌ Agendamento não encontrado:', { 
+          agendamentoId, 
+          salaoId,
+          agendamentos: agendamentos.map(a => ({ id: a.id, salaoId: a.salaoId }))
+        });
         setError('Agendamento não encontrado');
         setLoading(false);
         return;
@@ -68,6 +86,13 @@ const Avaliacao = () => {
       const servicoEncontrado = servicos.find(s => s.id === agendamentoEncontrado.servicoId);
       const profissionalEncontrado = profissionais.find(p => p.id === agendamentoEncontrado.profissionalId);
 
+      console.log('✅ Dados carregados com sucesso:', {
+        salao: salaoEncontrado.nome,
+        cliente: clienteEncontrado?.nome,
+        servico: servicoEncontrado?.nome,
+        profissional: profissionalEncontrado?.nome
+      });
+
       setSalao(salaoEncontrado);
       setAgendamento(agendamentoEncontrado);
       setCliente(clienteEncontrado);
@@ -76,7 +101,7 @@ const Avaliacao = () => {
       setLoading(false);
 
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
+      console.error('❌ Erro ao carregar dados:', error);
       setError('Erro ao carregar informações');
       setLoading(false);
     }
@@ -126,6 +151,8 @@ const Avaliacao = () => {
           : ag
       );
       localStorage.setItem('agendamentos', JSON.stringify(agendamentosAtualizados));
+
+      console.log('✅ Avaliação salva com sucesso:', novaAvaliacao);
 
       setSuccess(true);
       

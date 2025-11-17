@@ -283,14 +283,35 @@ Equipe {salao_nome}`,
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
     .header { background: linear-gradient(135deg, #10b981 0%, #3b82f6 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
     .content { background: #f0fdf4; padding: 30px; border-radius: 0 0 10px 10px; }
     .info-box { background: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #10b981; }
-    .btn { display: inline-block; background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%); color: white; padding: 15px 30px; text-decoration: none; border-radius: 8px; margin: 20px 0; font-weight: bold; }
+    .btn { 
+      display: inline-block; 
+      background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%); 
+      color: white !important; 
+      padding: 15px 30px; 
+      text-decoration: none; 
+      border-radius: 8px; 
+      margin: 20px 0; 
+      font-weight: bold;
+      font-size: 16px;
+    }
+    .btn:hover { opacity: 0.9; }
     .stars { text-align: center; font-size: 32px; margin: 20px 0; }
+    .link-box { 
+      background: white; 
+      padding: 15px; 
+      border-radius: 8px; 
+      margin: 20px 0; 
+      word-break: break-all;
+      border: 2px dashed #10b981;
+    }
+    .link-box a { color: #3b82f6; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -313,10 +334,15 @@ Equipe {salao_nome}`,
       <div class="stars">⭐⭐⭐⭐⭐</div>
       
       <div style="text-align: center;">
-        <a href="{link_avaliacao}" class="btn">Avaliar Atendimento</a>
+        <a href="{link_avaliacao}" class="btn" style="color: white;">Avaliar Atendimento</a>
       </div>
       
       <p style="text-align: center; margin-top: 20px;">Leva menos de 1 minuto! 😊</p>
+      
+      <div class="link-box">
+        <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Ou copie e cole este link no seu navegador:</p>
+        <a href="{link_avaliacao}" style="font-size: 14px;">{link_avaliacao}</a>
+      </div>
       
       <div style="text-align: center; margin-top: 30px;">
         <p><strong>Agradecemos sua preferência!</strong></p>
@@ -568,9 +594,6 @@ Equipe {salao_nome}`,
     }
   };
 
-  /**
-   * Substituir variáveis no template
-   */
   replaceVariables(text, variables) {
     let result = text;
     Object.keys(variables).forEach(key => {
@@ -580,26 +603,19 @@ Equipe {salao_nome}`,
     return result;
   }
 
-  /**
-   * Obter template (customizado ou padrão)
-   */
   getTemplate(tipo, customTemplate) {
     if (customTemplate && customTemplate.assunto && customTemplate.corpo) {
       return {
         subject: customTemplate.assunto,
         body: customTemplate.corpo,
-        html: null // Templates personalizados não têm HTML (apenas texto)
+        html: null
       };
     }
     return this.defaultTemplates[tipo];
   }
 
-  /**
-   * Enviar confirmação de agendamento
-   */
   async sendConfirmacaoAgendamento(data) {
     const { cliente, servico, profissional, salao, agendamento, customTemplate } = data;
-
     const template = this.getTemplate('confirmacao', customTemplate);
 
     const variables = {
@@ -621,12 +637,8 @@ Equipe {salao_nome}`,
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Enviar notificação de alteração
-   */
   async sendAlteracaoAgendamento(data) {
     const { cliente, servico, profissional, salao, agendamento, dadosAntigos, motivoAlteracao, customTemplate } = data;
-
     const template = this.getTemplate('alteracao', customTemplate);
 
     const variables = {
@@ -648,16 +660,21 @@ Equipe {salao_nome}`,
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Enviar solicitação de avaliação
-   */
   async sendAvaliacaoAgendamento(data) {
     const { cliente, servico, profissional, salao, agendamento, customTemplate } = data;
-
     const template = this.getTemplate('avaliacao', customTemplate);
 
     const avaliacaoToken = `${agendamento.id}-${Date.now()}`;
-    const linkAvaliacao = `${window.location.origin}/avaliacao/${salao.id}/${avaliacaoToken}`;
+    const salaoId = String(salao.id || agendamento.salaoId);
+    const linkAvaliacao = `${window.location.origin}/avaliacao/${salaoId}/${avaliacaoToken}`;
+
+    console.log('🔗 DEBUG - Link de avaliação:', {
+      linkAvaliacao,
+      salaoId,
+      'salao.id': salao.id,
+      'agendamento.salaoId': agendamento.salaoId,
+      'agendamento.id': agendamento.id
+    });
 
     const variables = {
       cliente_nome: cliente.nome,
@@ -667,7 +684,7 @@ Equipe {salao_nome}`,
       salao_nome: salao.nome,
       link_avaliacao: linkAvaliacao,
       salao_telefone: salao.telefone,
-      link_agenda: `${window.location.origin}/agenda/${salao.id}`
+      link_agenda: `${window.location.origin}/agenda/${salaoId}`
     };
 
     const subject = this.replaceVariables(template.subject, variables);
@@ -677,12 +694,8 @@ Equipe {salao_nome}`,
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Enviar mensagem de aniversário
-   */
   async sendAniversario(data) {
     const { cliente, salao, customTemplate } = data;
-
     const template = this.getTemplate('aniversario', customTemplate);
 
     const variables = {
@@ -700,12 +713,8 @@ Equipe {salao_nome}`,
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Enviar lembrete (24h antes)
-   */
   async sendLembreteAgendamento(data) {
     const { cliente, servico, profissional, salao, agendamento, customTemplate } = data;
-
     const template = this.getTemplate('lembrete', customTemplate);
 
     const variables = {
@@ -726,12 +735,8 @@ Equipe {salao_nome}`,
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Enviar cancelamento
-   */
   async sendCancelamentoAgendamento(data) {
     const { cliente, servico, salao, agendamento, customTemplate } = data;
-
     const template = this.getTemplate('cancelamento', customTemplate);
 
     const variables = {
@@ -751,12 +756,8 @@ Equipe {salao_nome}`,
     return this.sendEmail(cliente.email, subject, body, html);
   }
 
-  /**
-   * Notificar profissional sobre novo agendamento
-   */
   async sendNovoAgendamentoProfissional(data) {
     const { cliente, servico, profissional, salao, agendamento } = data;
-
     const template = this.defaultTemplates.novoAgendamento;
 
     const variables = {
@@ -776,9 +777,6 @@ Equipe {salao_nome}`,
     return this.sendEmail(profissional.email, subject, body, html);
   }
 
-  /**
-   * Email de teste
-   */
   async testEmail(toEmail) {
     try {
       await this.sendEmail(
@@ -814,18 +812,12 @@ Equipe {salao_nome}`,
     }
   }
 
-  /**
-   * Obter histórico de emails
-   */
   getEmailHistory() {
     return this.emailQueue.sort((a, b) => 
       new Date(b.sentAt) - new Date(a.sentAt)
     );
   }
 
-  /**
-   * Limpar histórico
-   */
   clearHistory() {
     this.emailQueue = [];
     this.saveQueue();
