@@ -1036,6 +1036,1851 @@ Cada descrição é profissional e objetiva, adequada para exibição ao cliente
 
 ---
 
-Aguardando o próximo grupo de arquivos para continuar a documentação! 📄✨
+---
+
+## 🎣 Hooks Customizados
+
+### 📅 `AgendamentoHooks.jsx`
+Collection de hooks para gerenciar agendamentos via Firebase (se integrado).
+
+**Hooks disponíveis:**
+
+**`useAgendamentos(dataAtual)`**
+Busca agendamentos do mês atual com sincronização em tempo real.
+```javascript
+const { agendamentos, loading, error } = useAgendamentos(new Date());
+```
+
+**`useClientes()`**
+Lista todos os clientes do usuário.
+```javascript
+const { clientes, loading } = useClientes();
+```
+
+**`useServicos()`**
+Lista todos os serviços cadastrados.
+
+**`usePlanoUsuario()`**
+Verifica o plano atual do usuário.
+```javascript
+const { plano, isEssencial } = usePlanoUsuario();
+```
+
+**`useAgendamentoOperacoes()`**
+Operações CRUD para agendamentos.
+```javascript
+const { 
+  criarAgendamento, 
+  atualizarAgendamento, 
+  deletarAgendamento 
+} = useAgendamentoOperacoes();
+```
+
+**`useAgendaOnline()`**
+Gerencia configurações da agenda online pública.
+
+---
+
+### 📧 `useEmailHistorico.js`
+Hook para gerenciar histórico de emails enviados aos clientes.
+
+**Funcionalidades:**
+
+**`registrarEmail(emailData)`**
+Registra um email no histórico do salão.
+```javascript
+const { registrarEmail } = useEmailHistorico();
+
+registrarEmail({
+  clienteId: 123,
+  clienteNome: 'João Silva',
+  clienteEmail: 'joao@email.com',
+  tipo: 'confirmacao', // confirmacao, cancelamento, alteracao, avaliacao, aniversario
+  assunto: 'Agendamento Confirmado',
+  agendamentoId: 456, // opcional
+  status: 'enviado', // enviado, falhado
+  erro: null // string caso tenha falhado
+});
+```
+
+**`buscarEmailsCliente(clienteId)`**
+Retorna histórico de emails de um cliente específico.
+
+**`buscarTodosEmails()`**
+Retorna histórico completo de emails do salão (últimos 1000).
+
+**`limparHistorico()`**
+Remove todo o histórico (use com cuidado!).
+
+**Estrutura do registro:**
+```javascript
+{
+  id: "1234567890",
+  clienteId: 123,
+  clienteNome: "João Silva",
+  clienteEmail: "joao@email.com",
+  tipo: "confirmacao",
+  assunto: "Agendamento Confirmado",
+  agendamentoId: 456,
+  status: "enviado",
+  erro: null,
+  dataEnvio: "2025-11-17T10:30:00.000Z",
+  salaoId: 1
+}
+```
+
+---
+
+### 💰 `useFinanceiroData.js`
+Hook para processar dados financeiros com filtros e cálculos.
+
+**Retorna:**
+```javascript
+const {
+  transacoesFiltradas,    // Transações do período
+  totalReceitas,          // Soma das receitas
+  totalDespesas,          // Soma das despesas
+  saldo,                  // Receitas - Despesas
+  ticketMedio,            // Receita média por venda
+  fluxoCaixaData,        // Dados para gráfico (6 meses)
+  categoriasDespesas     // Despesas por categoria (%)
+} = useFinanceiroData(transacoesSalao, periodo);
+```
+
+**Períodos suportados:**
+- `dia` - Apenas transações de hoje
+- `semana` - Última semana
+- `mes` - Mês atual
+- `ano` - Ano atual
+- `todas` - Sem filtro
+
+**Exemplo de uso:**
+```javascript
+const [periodo, setPeriodo] = useState('mes');
+const data = useFinanceiroData(transacoes, periodo);
+
+console.log(`Saldo do mês: R$ ${data.saldo.toFixed(2)}`);
+```
+
+---
+
+### 🔍 `useFinanceiroFilters.js`
+Hook para filtros avançados de transações financeiras.
+
+**Retorna:**
+```javascript
+const {
+  tipoTransacao,        // 'todas', 'receita', 'despesa'
+  setTipoTransacao,
+  showFilters,          // Controle de visibilidade
+  setShowFilters,
+  filtros,              // Objeto com todos os filtros
+  setFiltros,
+  filteredTransacoes,   // Transações filtradas
+  limparFiltros         // Reseta todos os filtros
+} = useFinanceiroFilters(transacoesFiltradas);
+```
+
+**Filtros disponíveis:**
+```javascript
+{
+  dataInicio: 'DD/MM/AAAA',
+  dataFim: 'DD/MM/AAAA',
+  categoria: 'Salários',
+  status: 'pago',
+  formaPagamento: 'Pix',
+  busca: 'termo de busca'
+}
+```
+
+---
+
+### 🛒 `usePDV.js`
+Hook completo para o Ponto de Venda (PDV).
+
+**Funcionalidades:**
+```javascript
+const {
+  carrinho,                    // Array de itens
+  clienteSelecionado,          // Nome do cliente
+  setClienteSelecionado,
+  showPagamentoModal,
+  setShowPagamentoModal,
+  desconto,                    // Porcentagem 0-100
+  setDesconto,
+  adicionarAoCarrinho,         // (produto)
+  removerDoCarrinho,           // (produtoId)
+  alterarQuantidade,           // (produtoId, novaQuantidade)
+  subtotal,                    // Soma sem desconto
+  valorDesconto,               // Valor do desconto em R$
+  total,                       // Subtotal - desconto
+  lucroTotal,                  // Lucro estimado
+  finalizarVenda,              // (formaPagamento)
+  limparCarrinho               // Esvazia carrinho
+} = usePDV(salaoAtual, produtos, setProdutos, transacoes, setTransacoes, clientesSalao);
+```
+
+**Fluxo de uso:**
+1. Adicionar produtos ao carrinho
+2. Selecionar cliente (opcional)
+3. Aplicar desconto (opcional)
+4. Finalizar venda com forma de pagamento
+5. Sistema registra venda no financeiro e atualiza estoque
+
+**Validações automáticas:**
+- Verificação de estoque disponível
+- Cálculo automático de lucro
+- Registro de transação financeira
+- Atualização de estoque
+
+---
+
+### 🔄 `useRealtimeAgendamentos.js`
+Hook para sincronização em tempo real de agendamentos.
+
+**Uso principal:**
+```javascript
+const { 
+  agendamentos,      // Lista atualizada
+  isUpdating,        // Boolean: está sincronizando?
+  lastUpdate,        // Date: última atualização
+  forceRefresh       // Function: forçar refresh
+} = useRealtimeAgendamentos(salaoId, 2000); // 2000ms de intervalo
+```
+
+**Características:**
+- ⚡ Atualização automática a cada X ms
+- 🔔 Detecta mudanças de outras abas (storage event)
+- 🎯 Filtra automaticamente por salão
+- 📊 Mostra status de sincronização
+- 🔄 Permite refresh manual
+
+**Hook genérico para qualquer chave:**
+```javascript
+const { data, isUpdating, lastUpdate, forceRefresh } = useRealtimeStorage(
+  'produtos',           // chave do localStorage
+  [],                   // valor padrão
+  (items) => items.filter(i => i.ativo),  // filtro opcional
+  3000                  // intervalo em ms
+);
+```
+
+---
+
+### 📝 `useTransacaoForm.js`
+Hook para formulário de transações financeiras.
+
+**Retorna:**
+```javascript
+const {
+  showModal,
+  editingId,
+  formData,
+  setFormData,
+  handleOpenModal,      // (transacao?)
+  handleCloseModal,
+  handleSubmit,         // (event)
+  handleDelete,         // (id)
+  handleChange          // (event)
+} = useTransacaoForm(salaoAtual, transacoes, setTransacoes);
+```
+
+**Estrutura do formData:**
+```javascript
+{
+  tipo: 'receita' | 'despesa',
+  descricao: string,
+  categoria: string,
+  valor: string,
+  formaPagamento: string,
+  data: 'DD/MM/AAAA',
+  cliente: string,
+  fornecedor: string,
+  status: 'pago' | 'pendente' | 'recebido',
+  salaoId: number,
+  observacoes: string
+}
+```
+
+**Uso típico:**
+```javascript
+// Abrir para nova receita
+setFormData({ tipo: 'receita', ... });
+handleOpenModal();
+
+// Abrir para editar
+handleOpenModal(transacaoExistente);
+```
+
+---
+
+## 📄 Páginas Principais
+
+### 🏠 `Landing.jsx`
+Página inicial pública com apresentação do sistema.
+
+**Seções:**
+1. **Hero** - Call-to-action principal
+2. **Features** - 6 recursos principais
+3. **Pricing** - Tabela de planos
+4. **CTA** - Chamada final
+5. **Footer** - Links e informações
+
+**Modais integrados:**
+- RegisterModal - Cadastro de novo usuário
+- LoginModal - Login de usuário existente
+
+**Navegação:**
+- `/` - Landing page
+- `/about` - Sobre o projeto
+- `/contact` - Formulário de contato
+- `/demo` - Demonstração interativa
+- `/help` - Central de ajuda
+- `/documentation` - Documentação completa
+
+---
+
+### 📊 `Dashboard.jsx`
+Visão geral executiva do salão com métricas principais.
+
+**Cards de Estatísticas:**
+1. Agendamentos Hoje
+2. Clientes Ativos
+3. Faturamento Hoje
+4. Faturamento Mês
+
+**Gráficos:**
+1. **Faturamento Semanal** - LineChart dos últimos 7 dias
+2. **Serviços por Categoria** - BarChart com distribuição
+
+**Lista:**
+- **Próximos Agendamentos** - 4 próximos agendamentos do dia
+
+**Resumo do Salão:**
+- Total de profissionais
+- Serviços cadastrados
+- Clientes cadastrados
+
+**Nota:** Todos os dados são baseados em informações reais do localStorage, não são simulados.
+
+---
+
+### 📅 `Agendamentos.jsx`
+Página completa de gerenciamento de agendamentos.
+
+**Modos de Visualização:**
+1. **Lista** - Tabela com todos os agendamentos
+2. **Dia** - Grade horária por profissional
+3. **Semana** - Visão semanal compacta
+4. **Calendário** - Visão mensal
+
+**Funcionalidades principais:**
+- ✅ Criar agendamento com validação de conflitos
+- ✏️ Editar agendamento (envia email de alteração)
+- 🗑️ Excluir agendamento (envia email de cancelamento)
+- 🔒 Bloquear horários (almoço, reuniões, folgas)
+- 📧 Sistema de notificações automáticas
+- 🔄 Sincronização em tempo real
+
+**Sistema de Emails Automáticos:**
+- **Confirmação** - Ao criar novo agendamento
+- **Alteração** - Ao mudar data/horário/profissional
+- **Cancelamento** - Ao excluir agendamento
+- **Avaliação** - Ao marcar como "concluído"
+
+**Validações:**
+- Conflito de horários
+- Duração do serviço
+- Profissional habilitado
+- Bloqueios de horário
+
+---
+
+### 📝 `AgendaOnline.jsx`
+Página pública para agendamentos online por clientes.
+
+**Fluxo de Agendamento:**
+1. **Passo 1: Dados Pessoais** - Nome, telefone, email
+2. **Passo 2: Escolha do Serviço** - Cards com serviços disponíveis
+3. **Passo 3: Data e Horário** - Seleção com validação em tempo real
+
+**Features especiais:**
+- ⚡ **Sincronização em tempo real** dos horários
+- 🔄 Atualização automática a cada 2 segundos
+- ⚠️ Alerta se horário ficar ocupado
+- ✅ Validação de conflitos antes de confirmar
+- 📧 Email de confirmação automático
+- 📝 Registro no histórico de emails
+
+**Verificação de Plano:**
+- Agenda online disponível a partir do Plano Essencial
+- Tela de bloqueio amigável se plano não permite
+- Opções de contato alternativas exibidas
+
+**Página de Sucesso:**
+- Resumo completo do agendamento
+- Informações de contato do salão
+- Botão para novo agendamento
+
+---
+
+### ⭐ `Avaliacao.jsx`
+Página de avaliação pós-atendimento (acesso via email).
+
+**URL:** `/avaliacao/:salaoId/:token`
+
+**Formulário de Avaliação:**
+1. **Nota** - 1 a 5 estrelas (obrigatório)
+2. **Recomendaria?** - Sim/Não (obrigatório)
+3. **Comentário** - Texto livre (opcional)
+
+**Validações:**
+- Link único por agendamento
+- Não permite avaliar 2 vezes
+- Exibe informações do atendimento
+- Salva no localStorage
+
+**Fluxo:**
+1. Cliente recebe email com link
+2. Acessa página de avaliação
+3. Preenche formulário
+4. Avaliação é salva
+5. Agendamento marcado como "avaliacaoRealizada"
+6. Página fecha automaticamente
+
+**Estados:**
+- Loading - Carregando dados
+- Erro - Salão não encontrado / Já avaliado
+- Formulário - Pronto para avaliar
+- Sucesso - Avaliação enviada
+
+---
+
+### 👥 `Clientes.jsx`
+Gestão completa de clientes com histórico detalhado.
+
+**Cards de Estatísticas:**
+1. Total de Clientes
+2. Clientes Ativos
+3. Novos Este Mês
+4. Ticket Médio
+
+**Tabela de Clientes:**
+- Nome e data de nascimento
+- Telefone e email
+- Última visita
+- Número de visitas
+- Total gasto
+- Status (ativo/inativo)
+
+**Ações disponíveis:**
+- 👁️ Ver histórico completo
+- ✏️ Editar informações
+- 🗑️ Excluir cliente
+
+**Modal de Detalhes (ClienteDetalhes):**
+
+**Aba 1: Informações**
+- Dados pessoais completos
+- Estatísticas (agendamentos, total gasto, ticket médio)
+
+**Aba 2: Agendamentos**
+- Histórico completo de atendimentos
+- Data, serviço, profissional, valor
+- Status de cada agendamento
+
+**Aba 3: Compras**
+- Produtos adquiridos no PDV
+- Data, itens, valores
+
+**Aba 4: Emails** ✨ NOVO
+- Histórico completo de emails enviados
+- Tipo (confirmação, alteração, cancelamento, avaliação, aniversário)
+- Status (enviado/falhado)
+- Data e horário
+- Link para agendamento relacionado
+
+**Validação de Plano:**
+- Limite de clientes por plano
+- Alerta visual quando limite atingido
+- Botão bloqueado se exceder
+
+---
+
+### ⚙️ `Configuracoes.jsx`
+Configurações gerais do salão.
+
+**Abas disponíveis:**
+
+**1. Informações Gerais**
+- Upload de logo
+- Nome do salão
+- Endereço completo
+- Telefone e email
+- Botão de excluir salão
+
+**2. Categorias e Serviços**
+- Estrutura hierárquica (Categoria → Subcategoria → Serviços)
+- Expandir/colapsar níveis
+- Marcar/desmarcar serviços
+- Modal informativo com descrições
+- 150+ serviços disponíveis
+
+**3. Profissionais**
+- Lista de profissionais cadastrados
+- Adicionar novo (respeitando limite do plano)
+- Editar especialidades
+- Excluir profissional
+- Validação: pelo menos 1 serviço selecionado
+
+**4. Comunicações** ✨ DESTAQUE
+- **Links Compartilháveis:**
+  - Link da agenda online
+  - Link base de avaliação
+  - Botões para copiar/abrir
+
+- **Sistema de Notificações:**
+  - ✅ Toggle on/off para cada tipo
+  - 📧 Editor de templates personalizados
+  - 🔄 Restaurar template padrão
+  
+  **Tipos de Notificação:**
+  1. **Confirmação** - Novo agendamento
+  2. **Alteração** - Mudança de data/horário
+  3. **Cancelamento** - Agendamento cancelado
+  4. **Avaliação** - Solicita feedback pós-atendimento
+  5. **Aniversário** - Parabéns automático
+     - Configurar dias de antecedência (0-7)
+     - Envio automático ou manual
+
+- **Editor de Templates:**
+  - Assunto personalizável
+  - Corpo da mensagem
+  - Variáveis disponíveis: `{cliente_nome}`, `{data}`, `{horario}`, `{servico}`, `{profissional}`, etc.
+  - Preview em tempo real
+
+**Importante:** As configurações de comunicação são salvas por salão no objeto `salao.comunicacoes`.
+
+---
+
+### 🏢 `Perfil.jsx`
+Gerenciamento de perfil do usuário.
+
+**Abas:**
+
+**1. Dados Pessoais**
+- Nome completo
+- Email (não editável)
+- Telefone
+- Visualização read-only
+
+**2. Planos**
+- Plano atual de cada salão
+- Cards com informações dos planos
+- Botões de upgrade/downgrade
+- Comparação de recursos
+
+**3. Segurança**
+- Alterar senha
+- Histórico de acessos (futuro)
+- Configurações de privacidade
+
+---
+
+### 🛒 `Produtos.jsx`
+Gestão de produtos, estoque e PDV.
+
+**3 Seções principais:**
+
+**1. PDV - Ponto de Venda** 🟢
+- Grid de produtos disponíveis
+- Adicionar ao carrinho
+- Seleção de cliente (opcional)
+- Aplicar desconto (%)
+- Carrinho lateral com:
+  - Itens, quantidades
+  - Subtotal, desconto, total
+  - Lucro estimado
+- Modal de pagamento com formas disponíveis
+- Finalização automática:
+  - Atualiza estoque
+  - Registra venda no financeiro
+  - Vincula cliente (se selecionado)
+
+**2. Estoque** 🟣
+- Tabela com todos os produtos
+- Adicionar novo produto
+- Editar produto existente
+- Excluir produto
+- Informações exibidas:
+  - Nome, marca, categoria
+  - Estoque atual / mínimo
+  - Valor de custo / venda
+  - Fornecedor
+  - Código de barras
+
+**3. Fornecedores** 🔵
+- Lista de fornecedores
+- Adicionar novo
+- Editar informações
+- Excluir (valida se há produtos vinculados)
+- Dados: Nome, CNPJ, telefone, email, endereço
+
+**Alertas:**
+- Estoque baixo (abaixo do mínimo)
+- Produtos sem fornecedor
+- Produtos sem código
+
+---
+
+### 💰 `Financeiro.jsx`
+Controle financeiro completo.
+
+**Restrição de Plano:**
+- Disponível a partir do Plano Plus
+- Tela de upgrade se não tiver acesso
+
+**Seletor de Período:**
+- Dia, Semana, Mês, Ano, Todos
+
+**Cards Principais (Clicáveis):**
+1. **Receitas** 🟢
+   - Total de receitas do período
+   - Botão + para adicionar
+   - Clique para ver detalhes
+
+2. **Despesas** 🔴
+   - Total de despesas do período
+   - Botão + para adicionar
+   - Clique para ver detalhes
+
+3. **Saldo** 🔵
+   - Receitas - Despesas
+   - Indicador de lucro/prejuízo
+
+4. **Ticket Médio** 📊
+   - Receita média por transação
+
+**Área de Detalhes:**
+Ao clicar em um card, abre lista completa:
+- Filtros avançados (data, categoria, status, busca)
+- Tabela com todas as transações
+- Ações: editar, excluir
+- Estatísticas do período
+
+**Modal de Transação:**
+- Tipo (receita/despesa)
+- Descrição
+- Categoria
+- Valor
+- Forma de pagamento
+- Data
+- Cliente/Fornecedor
+- Status
+- Observações
+
+**Categorias predefinidas:**
+- **Receitas:** Serviços, Produtos, Outros
+- **Despesas:** Aluguel, Salários, Produtos, Contas, Manutenção, Marketing, Outros
+
+---
+
+### 📊 `Relatorios.jsx`
+Análises e relatórios detalhados do negócio.
+
+**Restrição de Plano:**
+- Básico: Plano Essencial
+- Completo: Plano Profissional+
+
+**Filtros:**
+- Período início/fim
+- Tipo de relatório (geral, financeiro, serviços, clientes, profissionais)
+
+**Cards de Estatísticas:**
+1. Faturamento Total
+2. Total de Atendimentos
+3. Ticket Médio
+4. Clientes Ativos
+5. Taxa de Retorno
+6. Novos Clientes
+7. Produtos Vendidos
+8. Serviços Realizados
+
+**Gráficos:**
+
+**1. Faturamento Mensal** (LineChart)
+- Últimos 10 meses
+- Tendência de crescimento
+
+**2. Horários Populares** (BarChart)
+- Distribuição de agendamentos por horário
+- Identifica picos de movimento
+
+**3. Serviços por Categoria** (BarChart)
+- Quantidade e valor por categoria
+- Identifica serviços mais lucrativos
+
+**4. Distribuição de Pagamento** (PieChart)
+- Porcentagem por forma de pagamento
+- Ajuda no planejamento financeiro
+
+**Tabelas:**
+
+**1. Top 5 Clientes**
+- Nome, visitas, total gasto
+- Ordenado por valor
+
+**2. Performance de Profissionais**
+- Nome, atendimentos, faturamento, comissões
+- Identifica melhores performers
+
+**Botão de Exportação:**
+- PDF (futuro)
+- Excel (futuro)
+
+---
+
+### ✂️ `Servicos.jsx`
+Catálogo de serviços do salão.
+
+**Validação Inicial:**
+- Verifica se categorias foram configuradas
+- Alerta se não houver serviços disponíveis
+- Botão para ir às Configurações
+
+**Cards de Estatísticas:**
+1. Total de Serviços
+2. Valor Médio
+3. Serviços Premium (>R$100)
+4. Total de Categorias
+
+**Filtros:**
+- Busca por nome/descrição
+- Filtro por categoria
+- Mostrar apenas ativos
+
+**Grid de Serviços:**
+Cards com:
+- Nome do serviço
+- Categoria e subcategoria
+- Duração formatada
+- Valor
+- Comissão (%)
+- Profissionais habilitados (chips)
+- Descrição
+- Status ativo/inativo
+- Ações: Editar, Excluir
+
+**Modal de Serviço:**
+- Seleção de serviço (da lista configurada)
+- Duração (5min a 3h)
+- Valor (R$)
+- Comissão (%)
+- Descrição (preenchida automaticamente)
+- Profissionais habilitados (checkboxes)
+- Status ativo/inativo
+
+**Features especiais:**
+- Filtra profissionais pela especialidade
+- Validação de valores
+- Descrições automáticas de 150+ serviços
+- Duração personalizável
+
+---
+
+## 🌐 Páginas Landing
+
+### 📖 `About.jsx`
+História e valores do SalãoPro.
+
+**Seções:**
+1. Hero com título
+2. Como tudo começou (história real)
+3. Nossos valores (3 cards):
+   - Paixão por Beleza ❤️
+   - Inovação Prática 💡
+   - Foco no Cliente 👥
+4. Nossa Missão
+5. CTA final
+
+---
+
+### 📞 `Contact.jsx`
+Formulário de contato.
+
+**Campos:**
+- Nome completo
+- Email
+- Telefone
+- Assunto (dropdown)
+- Mensagem
+
+**Funcionalidade:**
+- Abre cliente de email padrão (mailto:)
+- Feedback visual de envio
+- Resetar formulário após 3s
+
+---
+
+### 🎬 `Demo.jsx`
+Demonstração interativa dos recursos.
+
+**Estrutura:**
+- Tabs de navegação (Agenda, Clientes, Financeiro, Relatórios)
+- Visualização ilustrativa de cada recurso
+- Lista de benefícios
+- Placeholder para vídeo demonstrativo
+- CTA para começar
+
+---
+
+### 📚 `Documentation.jsx`
+Documentação completa do sistema.
+
+**Menu lateral com seções:**
+1. Introdução
+2. Agenda
+3. Clientes
+4. Financeiro
+5. Relatórios
+6. Configurações
+
+**Cada seção contém:**
+- Título e descrição
+- Tópicos explicativos detalhados
+- Instruções passo a passo
+- Navegação anterior/próximo
+
+---
+
+### ❓ `Help.jsx`
+Central de ajuda com FAQ.
+
+**Recursos:**
+- Busca de perguntas
+- Cards de acesso rápido:
+  - Documentação
+  - Contato
+  - Comunidade
+
+**FAQ por categorias:**
+1. Primeiros Passos
+2. Agendamentos
+3. Clientes
+4. Financeiro
+5. Planos e Pagamento
+
+**Accordion expansível** para cada pergunta.
+
+---
+
+## 🔧 Serviços (Services)
+
+### 📧 `emailService.js`
+Serviço simulado de envio de emails (desenvolvimento).
+
+**Nota:** Em produção, deve ser substituído por serviço real (SendGrid, Mailgun, AWS SES).
+
+**Templates disponíveis:**
+- confirmacao
+- lembrete
+- cancelamento
+- novoAgendamento (para profissionais)
+
+**Métodos:**
+```javascript
+await emailService.sendConfirmacaoAgendamento(data);
+await emailService.sendLembreteAgendamento(data);
+await emailService.sendCancelamentoAgendamento(data);
+await emailService.sendNovoAgendamentoProfissional(data);
+```
+
+**Características:**
+- Substituição de variáveis dinâmicas
+- Fila de emails no localStorage
+- Logs no console para debug
+- Delay simulado de 500ms
+
+---
+
+### 📮 `mailgunService.js`
+Integração real com Mailgun para envio de emails.
+
+**Configuração necessária:**
+```env
+VITE_MAILGUN_API_KEY=...
+VITE_MAILGUN_DOMAIN=...
+VITE_MAILGUN_BASE_URL=...
+VITE_MAILGUN_FROM_EMAIL=...
+VITE_MAILGUN_FROM_NAME=...
+```
+
+**Templates HTML Completos:**
+Cada tipo de email tem:
+- Versão texto plano
+- Versão HTML responsiva
+- Design moderno com gradientes
+- Variáveis substituíveis
+
+**Tipos de Email:**
+
+1. **Confirmação** ✅
+   - Verde com check
+   - Detalhes do agendamento
+
+2. **Alteração** 🔄
+   - Laranja com alerta
+   - Novos dados destacados
+
+3. **Avaliação** ⭐
+   - Verde/Azul com estrelas
+   - Botão grande para avaliar
+   - Link direto e copiável
+
+4. **Aniversário** 🎂
+   - Rosa com presente
+   - Mensagem especial
+   - Botão para agendar
+
+5. **Cancelamento** ❌
+   - Vermelho
+   - Opções de reagendamento
+
+6. **Lembrete** ⏰
+   - Amarelo
+   - Destaque para "amanhã"
+
+**Métodos principais:**
+```javascript
+await mailgunService.sendConfirmacaoAgendamento(data);
+await mailgunService.sendAlteracaoAgendamento(data);
+await mailgunService.sendAvaliacaoAgendamento(data);
+await mailgunService.sendAniversario(data);
+await mailgunService.sendCancelamentoAgendamento(data);
+await mailgunService.testEmail(toEmail);
+```
+
+**Features especiais:**
+- Suporte a templates customizados
+- Fallback para modo simulado
+- Fila de histórico
+- Tratamento de erros
+- Variáveis automáticas
+
+---
+
+### 🔔 `notificationService.js`
+Serviço completo de notificações automáticas.
+
+**Características:**
+- ✅ **Registra histórico** de todos os emails
+- 🔄 Verificação periódica de avaliações pendentes
+- 🎂 Sistema de aniversários automático
+- ⚙️ Configurações por salão
+
+**Métodos principais:**
+
+**`start()`**
+Inicia o serviço com verificações periódicas.
+
+**`stop()`**
+Para o serviço.
+
+**`getSalaoSettings(salaoId)`**
+Retorna configurações de comunicação do salão:
+```javascript
+{
+  confirmacao: { ativo: true, template: {...} },
+  cancelamento: { ativo: true, template: {...} },
+  alteracao: { ativo: true, template: {...} },
+  avaliacao: { ativo: true, template: {...} },
+  aniversario: { 
+    ativo: false, 
+    automatico: true, 
+    diasAntecedencia: 0, 
+    template: {...} 
+  }
+}
+```
+
+**`notifyNovoAgendamento(agendamentoId)`**
+Envia email de confirmação ao criar agendamento.
+- Verifica se notificações de confirmação estão ativas
+- Usa template personalizado se configurado
+- Registra no histórico
+
+**`notifyAlteracaoAgendamento(agendamentoId, dadosAntigos, motivoAlteracao)`**
+Envia email quando agendamento é alterado.
+- Compara dados antigos vs novos
+- Inclui motivo da alteração
+- Registra no histórico
+
+**`solicitarAvaliacao(agendamentoId)`**
+Solicita avaliação após atendimento concluído.
+- Gera token único
+- Cria link de avaliação
+- Marca como "avaliacaoSolicitada"
+- Registra no histórico
+- Retorna true/false (sucesso/falha)
+
+**`notifyCancelamento(agendamentoId)`**
+Notifica cancelamento de agendamento.
+- Envia email ao cliente
+- Inclui link para reagendar
+- Registra no histórico
+
+**`checkAvaliacoesPendentes()`**
+Verifica agendamentos concluídos hoje sem avaliação.
+- Roda periodicamente (a cada hora)
+- Envia solicitações em lote
+- Atualiza status dos agendamentos
+
+**`checkAniversarios()`**
+Verifica aniversariantes do dia.
+- Considera dias de antecedência configurados
+- Envia parabéns automáticos
+- Respeita configuração de cada salão
+
+**`registrarHistorico(emailData)`**
+✨ Registra email no histórico do salão.
+- Salva no localStorage por salão
+- Limite de 1000 emails
+- Informações: cliente, tipo, status, data, erro
+
+**Exemplo de uso completo:**
+```javascript
+// Iniciar serviço
+notificationService.start();
+
+// Novo agendamento
+await notificationService.notifyNovoAgendamento(123);
+
+// Marcar como concluído (envia avaliação)
+await notificationService.solicitarAvaliacao(123);
+
+// Alterar agendamento
+await notificationService.notifyAlteracaoAgendamento(
+  123, 
+  { data: '15/11/2025', horario: '10:00' },
+  'Conflito de horário'
+);
+
+// Cancelar
+await notificationService.notifyCancelamento(123);
+
+// Parar serviço
+notificationService.stop();
+```
+
+---
+
+## 🛠️ Utilitários (Utils)
+
+### 📅 `agendamentoUtils.js`
+Funções utilitárias para gerenciamento de agendamentos.
+
+**Funções de Formatação:**
+
+**`formatarData(data, formato)`**
+```javascript
+formatarData(new Date(), 'dd/MM/yyyy'); // "17/11/2025"
+```
+
+**`formatarHora(data)`**
+```javascript
+formatarHora(new Date()); // "14:30"
+```
+
+**`formatarDuracao(minutos)`**
+```javascript
+formatarDuracao(90);  // "1h 30min"
+formatarDuracao(60);  // "1h"
+formatarDuracao(45);  // "45min"
+```
+
+**Geração de Horários:**
+
+**`gerarHorariosDisponiveis(inicio, fim, intervalo)`**
+```javascript
+const horarios = gerarHorariosDisponiveis('08:00', '18:00', 30);
+// ["08:00", "08:30", "09:00", ..., "17:30", "18:00"]
+```
+
+**Validação de Conflitos:**
+
+**`verificarConflitoHorario(novoHorario, novaDuracao, agendamentos, servicos, profissionalId, data, agendamentoIdIgnorar)`**
+
+✅ **ATUALIZADO:** Agora detecta conflitos com:
+- Agendamentos normais
+- Bloqueios de horário
+
+```javascript
+const resultado = verificarConflitoHorario(
+  '14:00',           // horário desejado
+  60,                // duração em minutos
+  agendamentos,      // todos os agendamentos
+  servicos,          // lista de serviços
+  1,                 // ID do profissional
+  '17/11/2025',      // data
+  null               // ID para ignorar (ao editar)
+);
+
+if (resultado.conflito) {
+  console.log('Tipo:', resultado.tipo); // 'agendamento' ou 'bloqueio'
+  console.log('Motivo:', resultado.motivo);
+}
+```
+
+**Cálculo de Horários Ocupados:**
+
+**`calcularHorariosOcupados(agendamentos, servicos, profissionalId, data)`**
+
+✅ **ATUALIZADO:** Considera:
+- Duração completa do serviço
+- Bloqueios de horário
+
+```javascript
+const ocupados = calcularHorariosOcupados(
+  agendamentos,
+  servicos,
+  1,              // profissionalId
+  '17/11/2025'    // data
+);
+// ["09:00", "09:30", "10:00", "14:00", ...]
+```
+
+**Obter Horários Disponíveis com Duração:**
+
+**`obterHorariosDisponiveisComDuracao(todosHorarios, agendamentos, servicos, profissionalId, data, duracaoServicoMinutos, agendamentoIdIgnorar)`**
+
+```javascript
+const horarios = obterHorariosDisponiveisComDuracao(
+  gerarHorariosDisponiveis('08:00', '20:00', 30),
+  agendamentos,
+  servicos,
+  1,
+  '17/11/2025',
+  90  // duração do serviço
+);
+
+// Retorna:
+// [
+//   { horario: "08:00", disponivel: true, motivoBloqueio: null },
+//   { horario: "08:30", disponivel: false, motivoBloqueio: "Ocupado" },
+//   { horario: "09:00", disponivel: false, motivoBloqueio: "Horário de almoço" },
+//   ...
+// ]
+```
+
+**Funções Auxiliares:**
+
+**`getStatusColor(status)`**
+Retorna classes CSS para cada status:
+```javascript
+getStatusColor('confirmado');  // "bg-green-100 text-green-800 border-green-300"
+getStatusColor('pendente');    // "bg-yellow-100 text-yellow-800 border-yellow-300"
+getStatusColor('cancelado');   // "bg-red-100 text-red-800 border-red-300"
+getStatusColor('concluido');   // "bg-blue-100 text-blue-800 border-blue-300"
+getStatusColor('bloqueado');   // "bg-gray-100 text-gray-800 border-gray-400"
+```
+
+**`getDiasNoMes(data)`**
+Retorna informações do mês para calendário:
+```javascript
+const { diasNoMes, diaDaSemanaInicio, ano, mes } = getDiasNoMes(new Date());
+```
+
+**`isHoje(data)`**
+Verifica se é hoje.
+
+**`getAgendamentosPorData(agendamentos, data)`**
+Filtra agendamentos por data específica.
+
+---
+
+### 🎭 `masks.js`
+Máscaras e formatações diversas.
+
+**Máscaras de Input:**
+
+**`maskPhone(value)`**
+```javascript
+maskPhone('11987654321'); // "(11) 98765-4321"
+```
+
+**`maskDate(value)`**
+```javascript
+maskDate('17112025'); // "17/11/2025"
+```
+
+**`maskCurrency(value)`**
+```javascript
+maskCurrency('15000'); // "R$ 150,00"
+```
+
+**Conversões de Data:**
+
+**`dateToISO(dateStr)`**
+```javascript
+dateToISO('17/11/2025'); // "2025-11-17"
+```
+
+**`dateFromISO(isoStr)`**
+```javascript
+dateFromISO('2025-11-17'); // "17/11/2025"
+```
+
+**`formatDateBR(date)`**
+```javascript
+formatDateBR(new Date()); // "17/11/2025"
+formatDateBR('2025-11-17'); // "17/11/2025"
+```
+
+**Datas Úteis:**
+
+**`getTodayBR()`**
+```javascript
+getTodayBR(); // "17/11/2025"
+```
+
+**`getTodayISO()`**
+```javascript
+getTodayISO(); // "2025-11-17"
+```
+
+**`addDays(dataBR, days)`**
+```javascript
+addDays('17/11/2025', 7); // "24/11/2025"
+```
+
+**`addMonths(dataBR, months)`**
+```javascript
+addMonths('17/11/2025', 1); // "17/12/2025"
+```
+
+**Validações:**
+
+**`isValidDate(dateStr)`**
+```javascript
+isValidDate('17/11/2025'); // true
+isValidDate('32/13/2025'); // false
+```
+
+**`compareDates(date1, date2)`**
+```javascript
+compareDates('15/11/2025', '17/11/2025'); // -1 (date1 < date2)
+compareDates('17/11/2025', '17/11/2025'); // 0  (iguais)
+compareDates('20/11/2025', '17/11/2025'); // 1  (date1 > date2)
+```
+
+**`isDateInRange(date, startDate, endDate)`**
+```javascript
+isDateInRange('16/11/2025', '15/11/2025', '20/11/2025'); // true
+```
+
+**Geradores:**
+
+**`generateTimeOptions()`**
+```javascript
+const opcoes = generateTimeOptions();
+// ["08:00", "08:30", "09:00", ..., "20:00", "20:30"]
+```
+
+**`generateDurationOptions()`**
+```javascript
+const opcoes = generateDurationOptions();
+// [
+//   { value: 5, label: "5min" },
+//   { value: 10, label: "10min" },
+//   ...
+//   { value: 60, label: "1h" },
+//   { value: 90, label: "1h 30min" },
+//   ...
+// ]
+```
+
+**Remoção de Máscaras:**
+
+**`unmaskCurrency(value)`**
+```javascript
+unmaskCurrency('R$ 150,00'); // 150
+```
+
+**`unmaskPhone(value)`**
+```javascript
+unmaskPhone('(11) 98765-4321'); // "11987654321"
+```
+
+---
+
+### 🔐 `planRestrictions/`
+Sistema completo de gerenciamento de restrições por plano.
+
+#### `planLimits.js`
+Define limites quantitativos e recursos de cada plano.
+
+```javascript
+export const PLAN_LIMITS = {
+  inicial: {
+    saloes: 1,
+    profissionais: 1,
+    clientes: 10,
+    categorias: 2,
+    servicosPorCategoria: 2,
+    fornecedores: 1,
+    produtos: 3,
+    financeiro: false,
+    relatorios: false,
+    agendamentoOnline: false,
+    notificacoes: true,  // ✅ Sempre liberado
+    comunicacoes: true   // ✅ Sempre liberado
+  },
+  
+  essencial: {
+    saloes: 1,
+    profissionais: 2,
+    clientes: 30,
+    categorias: 3,
+    servicosPorCategoria: 3,
+    relatorios: 'basico',
+    agendamentoOnline: true,
+    notificacoes: true,  // ✅ Sempre liberado
+    // ...
+  },
+  
+  // ... outros planos
+};
+```
+
+#### `notificationLevels.js`
+✅ **ATUALIZADO:** Todas as notificações disponíveis para todos os planos.
+
+```javascript
+// Todas as 5 notificações sempre disponíveis:
+export const NOTIFICATION_FEATURES = {
+  todas: ['confirmacao', 'cancelamento', 'alteracao', 'avaliacao', 'aniversario']
+};
+
+// Sempre retorna true
+export const hasNotificationAccess = (plano, tipoNotificacao) => true;
+
+// Sempre retorna todas
+export const getAvailableNotifications = (plano) => NOTIFICATION_FEATURES.todas;
+```
+
+#### `accessChecks.js`
+Funções de verificação de acesso.
+
+**`canAddMore(plano, tipo, currentCount)`**
+```javascript
+canAddMore('inicial', 'clientes', 8); // true (limite: 10)
+canAddMore('inicial', 'clientes', 10); // false (no limite)
+```
+
+**`hasAccess(plano, recurso)`**
+```javascript
+hasAccess('inicial', 'financeiro'); // false
+hasAccess('plus', 'financeiro'); // true
+hasAccess('inicial', 'notificacoes'); // true ✅
+```
+
+**`getLimitMessage(plano, tipo)`**
+```javascript
+getLimitMessage('inicial', 'clientes'); // "Máximo: 10"
+getLimitMessage('master', 'clientes'); // "Ilimitado"
+```
+
+**`getMinimumPlan(recurso)`**
+```javascript
+getMinimumPlan('financeiro'); // "plus"
+getMinimumPlan('notificacoes'); // "inicial" ✅
+```
+
+#### `planComparison.js`
+Comparação entre planos.
+
+**`comparePlans(plano1, plano2)`**
+```javascript
+comparePlans('inicial', 'plus'); // -2 (inicial < plus)
+comparePlans('plus', 'inicial'); // 2 (plus > inicial)
+```
+
+**`isUpgrade(planoAtual, planoNovo)`**
+```javascript
+isUpgrade('inicial', 'essencial'); // true
+```
+
+**`isDowngrade(planoAtual, planoNovo)`**
+```javascript
+isDowngrade('plus', 'inicial'); // true
+```
+
+#### `planInfo.js`
+Informações detalhadas dos planos.
+
+**`getUpgradeMessage(currentPlan, feature)`**
+```javascript
+const info = getUpgradeMessage('inicial', 'financeiro');
+// {
+//   title: 'Controle Financeiro Completo',
+//   description: 'Acesse relatórios financeiros...',
+//   minPlan: 'plus'
+// }
+```
+
+**`getPlanInfo(plano)`**
+```javascript
+const info = getPlanInfo('profissional');
+// {
+//   nome: 'Profissional',
+//   limits: { ... },
+//   notificacoes: ['confirmacao', 'cancelamento', ...],
+//   notificationLevel: { ... }
+// }
+```
+
+#### `validation.js`
+Validações de mudança de plano.
+
+**`canDowngrade(planoAtual, planoNovo, currentData)`**
+```javascript
+const resultado = canDowngrade('plus', 'inicial', {
+  clientes: 15,
+  profissionais: 3
+});
+
+if (!resultado.canDowngrade) {
+  console.log('Avisos:', resultado.warnings);
+  // [
+  //   { tipo: 'clientes', atual: 15, novo: 10, excedente: 5 },
+  //   { tipo: 'profissionais', atual: 3, novo: 1, excedente: 2 }
+  // ]
+}
+```
+
+---
+
+## 📦 Instalação e Configuração
+
+### Pré-requisitos
+
+- Node.js 16+ 
+- npm ou yarn
+
+### Instalação
+
+```bash
+# Clone o repositório
+git clone https://github.com/seu-usuario/salao-gestao.git
+
+# Entre na pasta
+cd salao-gestao
+
+# Instale as dependências
+npm install
+
+# Inicie o servidor de desenvolvimento
+npm run dev
+```
+
+### Configuração do Mailgun (Opcional)
+
+Para ativar o envio real de emails, configure o Mailgun:
+
+1. Crie uma conta em [mailgun.com](https://www.mailgun.com/)
+2. Verifique seu domínio ou use o sandbox
+3. Obtenha sua API Key
+4. Crie arquivo `.env` na raiz:
+
+```env
+VITE_MAILGUN_API_KEY=sua_api_key_aqui
+VITE_MAILGUN_DOMAIN=sandbox123.mailgun.org
+VITE_MAILGUN_BASE_URL=https://api.mailgun.net
+VITE_MAILGUN_FROM_EMAIL=noreply@seudominio.com
+VITE_MAILGUN_FROM_NAME=Seu Salão
+```
+
+5. Reinicie o servidor
+
+**Teste a configuração:**
+```javascript
+import mailgunService from './services/mailgunService';
+
+await mailgunService.testEmail('seu@email.com');
+```
+
+---
+
+## 🚀 Deploy
+
+### Build de Produção
+
+```bash
+npm run build
+```
+
+Os arquivos otimizados estarão em `/dist`.
+
+### Deploy Recomendado
+
+**Vercel:**
+```bash
+npm install -g vercel
+vercel
+```
+
+**Netlify:**
+```bash
+npm install -g netlify-cli
+netlify deploy --prod
+```
+
+**GitHub Pages:**
+Adicione ao `package.json`:
+```json
+{
+  "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  }
+}
+```
+
+---
+
+## 🗄️ Estrutura de Dados (localStorage)
+
+### Usuário
+```javascript
+{
+  id: 1,
+  nome: "João Silva",
+  email: "joao@email.com",
+  telefone: "(11) 98765-4321",
+  dataCriacao: "2025-11-17"
+}
+```
+
+### Salão
+```javascript
+{
+  id: 1,
+  nome: "Salão Beauty",
+  endereco: "Rua X, 123",
+  telefone: "(11) 3333-4444",
+  email: "contato@salao.com",
+  logo: "data:image/png;base64,...",
+  plano: "profissional",
+  userId: 1,
+  categoriasServicos: {
+    capilares: {
+      subcategorias: {
+        cortes: {
+          servicos: ["Corte Masculino", "Corte Feminino"]
+        }
+      }
+    }
+  },
+  comunicacoes: {
+    confirmacao: { ativo: true, template: {...} },
+    cancelamento: { ativo: true, template: {...} },
+    alteracao: { ativo: true, template: {...} },
+    avaliacao: { ativo: true, template: {...} },
+    aniversario: { ativo: true, automatico: true, diasAntecedencia: 0, template: {...} }
+  }
+}
+```
+
+### Cliente
+```javascript
+{
+  id: 1,
+  nome: "Maria Santos",
+  telefone: "(11) 99999-8888",
+  email: "maria@email.com",
+  dataNascimento: "15/03/1990",
+  ultimaVisita: "17/11/2025",
+  totalGasto: 250.00,
+  visitas: 5,
+  status: "ativo",
+  salaoId: 1
+}
+```
+
+### Profissional
+```javascript
+{
+  id: 1,
+  nome: "Ana Costa",
+  telefone: "(11) 97777-6666",
+  email: "ana@email.com",
+  especialidades: ["Corte Feminino", "Coloração", "Hidratação"],
+  salaoId: 1
+}
+```
+
+### Serviço
+```javascript
+{
+  id: 1,
+  nome: "Corte Feminino",
+  categoria: "Serviços Capilares",
+  subcategoria: "Cortes",
+  duracao: 60,
+  valor: 80.00,
+  comissao: 30,
+  descricao: "Corte de cabelo feminino adaptado...",
+  profissionaisHabilitados: [1, 2, 3],
+  ativo: true,
+  salaoId: 1
+}
+```
+
+### Agendamento
+```javascript
+{
+  id: 1,
+  clienteId: 1,
+  servicoId: 1,
+  profissionalId: 1,
+  data: "17/11/2025",
+  horario: "14:00",
+  status: "confirmado", // pendente, confirmado, concluido, cancelado, bloqueado
+  tipo: "agendamento", // ou "bloqueio"
+  motivo: "", // usado em bloqueios
+  horarioFim: "", // usado em bloqueios
+  origemAgendamento: "sistema", // ou "online"
+  avaliacaoSolicitada: false,
+  avaliacaoRealizada: false,
+  salaoId: 1
+}
+```
+
+### Transação
+```javascript
+{
+  id: 1,
+  tipo: "receita", // ou "despesa"
+  descricao: "Corte Feminino",
+  categoria: "Serviços",
+  valor: 80.00,
+  formaPagamento: "Pix",
+  data: "17/11/2025",
+  cliente: "Maria Santos",
+  fornecedor: "",
+  status: "recebido", // pago, pendente, recebido
+  salaoId: 1,
+  observacoes: ""
+}
+```
+
+### Produto
+```javascript
+{
+  id: 1,
+  nome: "Shampoo Hidratante",
+  categoria: "Cabelos",
+  marca: "Marca X",
+  estoque: 15,
+  estoqueMinimo: 5,
+  valorCusto: 25.00,
+  valorVenda: 45.00,
+  fornecedorId: 1,
+  codigo: "7891234567890",
+  salaoId: 1
+}
+```
+
+### Fornecedor
+```javascript
+{
+  id: 1,
+  nome: "Distribuidora ABC",
+  telefone: "(11) 4444-5555",
+  email: "contato@distribuidora.com",
+  cnpj: "12.345.678/0001-90",
+  endereco: "Av. Y, 456",
+  salaoId: 1
+}
+```
+
+### Avaliação
+```javascript
+{
+  id: 1,
+  agendamentoId: 1,
+  clienteId: 1,
+  profissionalId: 1,
+  servicoId: 1,
+  salaoId: 1,
+  nota: 5,
+  comentario: "Excelente atendimento!",
+  recomendaria: true,
+  data: "17/11/2025",
+  hora: "16:30:00"
+}
+```
+
+### Histórico de Email
+```javascript
+{
+  id: "1731852000000",
+  clienteId: 1,
+  clienteNome: "Maria Santos",
+  clienteEmail: "maria@email.com",
+  tipo: "confirmacao",
+  assunto: "✅ Agendamento Confirmado",
+  agendamentoId: 1,
+  status: "enviado",
+  erro: null,
+  dataEnvio: "2025-11-17T14:30:00.000Z",
+  salaoId: 1
+}
+```
+
+---
+
+## 🎨 Guia de Estilo
+
+### Cores Principais
+
+```css
+/* Gradientes */
+.gradient-primary {
+  background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+}
+
+/* Status */
+.status-confirmado: #10b981 (verde)
+.status-pendente: #f59e0b (amarelo)
+.status-cancelado: #ef4444 (vermelho)
+.status-concluido: #3b82f6 (azul)
+.status-bloqueado: #6b7280 (cinza)
+
+/* Tipo de Transação */
+.receita: #10b981 (verde)
+.despesa: #ef4444 (vermelho)
+```
+
+### Componentes Comuns
+
+**Botão Primário:**
+```jsx
+<button className="px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg">
+  Ação Principal
+</button>
+```
+
+**Card de Estatística:**
+```jsx
+<div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+  <p className="text-sm text-gray-600">Label</p>
+  <p className="text-3xl font-bold text-purple-600 mt-1">Valor</p>
+</div>
+```
+
+**Badge de Status:**
+```jsx
+<span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+  Confirmado
+</span>
+```
+
+---
+
+## 🤝 Contribuindo
+
+Contribuições são bem-vindas! Para contribuir:
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+### Padrões de Código
+
+- Use JavaScript ES6+
+- Componentes React funcionais com Hooks
+- Nomes de variáveis em camelCase
+- Nomes de componentes em PascalCase
+- Comentários em português
+- Docstrings para funções complexas
+
+---
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## 📞 Contato
+
+**Desenvolvedor:** Jucely Hair Salon Team  
+**Email:** rbgamedev1@gmail.com  
+**Website:** [Em Breve]
+
+---
+
+## 🙏 Agradecimentos
+
+- React Team pela biblioteca incrível
+- Lucide Icons pelo conjunto de ícones
+- Recharts pelos gráficos
+- Mailgun pelo serviço de emails
+- Comunidade open source
+
+---
+
+## 🔄 Changelog
+
+### v1.0.0 (2025-11-17)
+- ✨ Sistema completo de gestão de salões
+- 📧 Sistema de notificações por email (Mailgun)
+- 📝 Histórico completo de emails enviados
+- 🔄 Sincronização em tempo real de agendamentos
+- ⭐ Sistema de avaliação pós-atendimento
+- 🎂 Mensagens automáticas de aniversário
+- 🛒 PDV (Ponto de Venda) integrado
+- 💰 Controle financeiro completo
+- 📊 Relatórios e análises detalhadas
+- 🌐 Agenda online pública
+- 🔐 Sistema de planos com restrições
+- 📱 Design responsivo
+- 🎨 Interface moderna e intuitiva
+
+---
+
+## 📚 Recursos Adicionais
+
+### Tutoriais em Vídeo
+[Em Breve]
+
+### Documentação da API
+[Em Breve]
+
+### FAQ Técnico
+[Em Breve]
+
+### Roadmap
+- [ ] Aplicativo mobile (React Native)
+- [ ] Integração com WhatsApp
+- [ ] Sistema de fidelidade
+- [ ] Campanhas de marketing
+- [ ] Integração fiscal
+- [ ] Backup em nuvem
+- [ ] Multi-idioma
+- [ ] Dark mode
+
+---
+
+<div align="center">
+
+**Feito com ❤️ pelo Jucely Hair Salon**
+
+⭐ Se este projeto te ajudou, deixe uma estrela!
+
+</div>
 
 ---
