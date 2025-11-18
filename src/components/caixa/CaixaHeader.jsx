@@ -47,9 +47,10 @@ const CaixaHeader = ({ salaoNome, abaAtiva, setAbaAtiva }) => {
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <div className="flex items-start space-x-3">
           <div className="bg-blue-100 p-2 rounded-lg flex-shrink-0">
-            <Icon className="text-blue-600" size={20}>
-              {abas.find(a => a.id === abaAtiva)?.icon}
-            </Icon>
+            {(() => {
+              const IconComponent = abas.find(a => a.id === abaAtiva)?.icon || ShoppingCart;
+              return <IconComponent className="text-blue-600" size={20} />;
+            })()}
           </div>
           <div>
             <p className="text-sm font-medium text-blue-900">
