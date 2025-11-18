@@ -1,4 +1,4 @@
-// src/contexts/SalaoContext.jsx - CORRIGIDO: getServicosDisponiveis agora funciona corretamente
+// src/contexts/SalaoContext.jsx - ATUALIZADO COM COMANDAS E VENDAS
 
 import { createContext, useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { AuthContext } from './AuthContext';
@@ -39,21 +39,20 @@ export const SalaoProvider = ({ children }) => {
   const [produtos, setProdutos] = useState(() => loadFromStorage('produtos', []));
   const [agendamentos, setAgendamentos] = useState(() => loadFromStorage('agendamentos', []));
   const [transacoes, setTransacoes] = useState(() => loadFromStorage('transacoes', []));
+  const [comandas, setComandas] = useState(() => loadFromStorage('comandas', []));
+  const [vendas, setVendas] = useState(() => loadFromStorage('vendas', []));
 
-  // ✅ CORREÇÃO: Usar ref para rastrear se já definimos o salão inicial
   const salaoInicialDefinido = useRef(false);
 
-  // ✅ CORREÇÃO: Definir salão atual APENAS na primeira vez ou quando usuário muda
+  // Definir salão atual APENAS na primeira vez ou quando usuário muda
   useEffect(() => {
     if (currentUser && saloes.length > 0 && !salaoInicialDefinido.current) {
-      // Buscar salão do usuário
       const salaoUsuario = saloes.find(s => s.userId === currentUser.id);
       
       if (salaoUsuario) {
         setSalaoAtual(salaoUsuario);
         salaoInicialDefinido.current = true;
       } else {
-        // Se não encontrou, usar o primeiro (fallback)
         setSalaoAtual(saloes[0]);
         salaoInicialDefinido.current = true;
       }
@@ -61,9 +60,9 @@ export const SalaoProvider = ({ children }) => {
       setSalaoAtual(null);
       salaoInicialDefinido.current = false;
     }
-  }, [currentUser]); // ✅ Só reage a mudanças no usuário, NÃO em saloes
+  }, [currentUser]);
 
-  // ✅ NOVO: Atualizar salaoAtual quando ele é modificado em saloes
+  // Atualizar salaoAtual quando ele é modificado em saloes
   useEffect(() => {
     if (salaoAtual && saloes.length > 0) {
       const salaoAtualizado = saloes.find(s => s.id === salaoAtual.id);
@@ -130,9 +129,22 @@ export const SalaoProvider = ({ children }) => {
     return () => clearTimeout(timer);
   }, [transacoes]);
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveToStorage('comandas', comandas);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [comandas]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveToStorage('vendas', vendas);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [vendas]);
+
   // Função para adicionar novo salão
   const adicionarSalao = (dadosSalao) => {
-    // Buscar salões do usuário atual para herdar o plano
     const saloesDoUsuario = saloes.filter(s => s.userId === currentUser?.id);
     const planoHerdado = saloesDoUsuario.length > 0 ? saloesDoUsuario[0].plano : 'inicial';
 
@@ -154,7 +166,6 @@ export const SalaoProvider = ({ children }) => {
     );
     setSaloes(saloesAtualizados);
     
-    // ✅ CORREÇÃO: Atualizar salaoAtual se for o mesmo que está sendo editado
     if (salaoAtual && salaoAtual.id === salaoId) {
       setSalaoAtual({ ...salaoAtual, ...dadosAtualizados });
     }
@@ -169,7 +180,6 @@ export const SalaoProvider = ({ children }) => {
       return false;
     }
 
-    // Remover todos os dados relacionados ao salão
     setClientes(clientes.filter(c => c.salaoId !== salaoId));
     setProfissionais(profissionais.filter(p => p.salaoId !== salaoId));
     setServicos(servicos.filter(s => s.salaoId !== salaoId));
@@ -177,11 +187,12 @@ export const SalaoProvider = ({ children }) => {
     setProdutos(produtos.filter(p => p.salaoId !== salaoId));
     setAgendamentos(agendamentos.filter(a => a.salaoId !== salaoId));
     setTransacoes(transacoes.filter(t => t.salaoId !== salaoId));
+    setComandas(comandas.filter(c => c.salaoId !== salaoId));
+    setVendas(vendas.filter(v => v.salaoId !== salaoId));
     
     const novosSaloes = saloes.filter(s => s.id !== salaoId);
     setSaloes(novosSaloes);
 
-    // Se o salão deletado era o atual, mudar para o primeiro disponível do usuário
     if (salaoAtual && salaoAtual.id === salaoId) {
       const proximoSalao = novosSaloes.find(s => s.userId === currentUser.id);
       setSalaoAtual(proximoSalao || novosSaloes[0]);
@@ -226,19 +237,26 @@ export const SalaoProvider = ({ children }) => {
     [transacoes, salaoAtual]
   );
 
-  // ✅ CORREÇÃO CRÍTICA: Obter serviços disponíveis (flatten da estrutura de categorias)
+  const getComandasPorSalao = useMemo(() => 
+    () => salaoAtual ? comandas.filter(c => c.salaoId === salaoAtual.id) : [],
+    [comandas, salaoAtual]
+  );
+
+  const getVendasPorSalao = useMemo(() => 
+    () => salaoAtual ? vendas.filter(v => v.salaoId === salaoAtual.id) : [],
+    [vendas, salaoAtual]
+  );
+
+  // Obter serviços disponíveis (flatten da estrutura de categorias)
   const getServicosDisponiveis = useMemo(() => 
     () => {
       if (!salaoAtual || !salaoAtual.categoriasServicos) return [];
       
       const servicosDisponiveis = [];
       
-      // Iterar sobre as categorias configuradas no salão
       Object.entries(salaoAtual.categoriasServicos).forEach(([categoriaId, categoriaData]) => {
-        // Verificar se tem subcategorias
         if (categoriaData.subcategorias) {
           Object.entries(categoriaData.subcategorias).forEach(([subcategoriaId, subcategoriaData]) => {
-            // Verificar se tem serviços
             if (subcategoriaData.servicos && Array.isArray(subcategoriaData.servicos)) {
               subcategoriaData.servicos.forEach(servico => {
                 servicosDisponiveis.push({
@@ -279,6 +297,10 @@ export const SalaoProvider = ({ children }) => {
     setAgendamentos,
     transacoes,
     setTransacoes,
+    comandas,
+    setComandas,
+    vendas,
+    setVendas,
     getClientesPorSalao,
     getProfissionaisPorSalao,
     getServicosPorSalao,
@@ -286,6 +308,8 @@ export const SalaoProvider = ({ children }) => {
     getProdutosPorSalao,
     getAgendamentosPorSalao,
     getTransacoesPorSalao,
+    getComandasPorSalao,
+    getVendasPorSalao,
     getServicosDisponiveis
   }), [
     saloes,
@@ -297,6 +321,8 @@ export const SalaoProvider = ({ children }) => {
     produtos,
     agendamentos,
     transacoes,
+    comandas,
+    vendas,
     currentUser,
     getClientesPorSalao,
     getProfissionaisPorSalao,
@@ -305,10 +331,11 @@ export const SalaoProvider = ({ children }) => {
     getProdutosPorSalao,
     getAgendamentosPorSalao,
     getTransacoesPorSalao,
+    getComandasPorSalao,
+    getVendasPorSalao,
     getServicosDisponiveis
   ]);
 
-  // Não renderizar até ter definido o salão atual (se houver usuário logado)
   if (currentUser && !salaoAtual && saloes.length > 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">

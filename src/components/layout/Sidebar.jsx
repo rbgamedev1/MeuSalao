@@ -1,4 +1,4 @@
-// src/components/layout/Sidebar.jsx - CORRIGIDO: Removido footer duplicado
+// src/components/layout/Sidebar.jsx - ATUALIZADO (removido Notificações, adicionado Caixa)
 import { Link, useLocation } from 'react-router-dom';
 import { useContext } from 'react';
 import { 
@@ -10,11 +10,11 @@ import {
   DollarSign, 
   BarChart3,
   Settings,
-  Bell,
   ChevronLeft,
   ChevronRight,
   X,
-  Lock
+  Lock,
+  ShoppingCart
 } from 'lucide-react';
 import { SalaoContext } from '../../contexts/SalaoContext';
 import { hasAccess } from '../../utils/planRestrictions';
@@ -55,6 +55,12 @@ const Sidebar = ({ expanded, setExpanded }) => {
       requiresPlan: false 
     },
     { 
+      icon: ShoppingCart, 
+      label: 'Caixa', 
+      path: '/caixa',
+      requiresPlan: false 
+    },
+    { 
       icon: DollarSign, 
       label: 'Financeiro', 
       path: '/financeiro',
@@ -66,13 +72,6 @@ const Sidebar = ({ expanded, setExpanded }) => {
       label: 'Relatórios', 
       path: '/relatorios',
       requiresPlan: 'relatorios',
-      minPlan: 'essencial'
-    },
-    { 
-      icon: Bell, 
-      label: 'Notificações', 
-      path: '/notificacoes',
-      requiresPlan: 'notificacoes',
       minPlan: 'essencial'
     },
     { 
@@ -145,7 +144,6 @@ const Sidebar = ({ expanded, setExpanded }) => {
                     e.preventDefault();
                     return;
                   }
-                  // Fechar sidebar em mobile após clicar
                   if (window.innerWidth < 1024) {
                     setExpanded(false);
                   }
@@ -192,8 +190,6 @@ const Sidebar = ({ expanded, setExpanded }) => {
             );
           })}
         </nav>
-
-        {/* Footer removido - informações agora estão no header */}
       </div>
     </>
   );

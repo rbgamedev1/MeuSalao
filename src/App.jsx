@@ -1,4 +1,4 @@
-// src/App.jsx - CORRIGIDO: Proteção contra erro do notificationService
+// src/App.jsx - ATUALIZADO COM ROTA CAIXA
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, useContext } from 'react';
@@ -16,6 +16,7 @@ import Agendamentos from './pages/Agendamentos';
 import Clientes from './pages/Clientes';
 import Servicos from './pages/Servicos';
 import Produtos from './pages/Produtos';
+import Caixa from './pages/Caixa';
 import Financeiro from './pages/Financeiro';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
@@ -50,7 +51,6 @@ const SystemLayout = ({ children }) => {
   const [sidebarExpanded, setSidebarExpanded] = useState(false);
 
   useEffect(() => {
-    // ✅ CORREÇÃO: Verificar se o serviço existe e tem o método getSettings
     try {
       if (notificationService && typeof notificationService.getSettings === 'function') {
         const settings = notificationService.getSettings();
@@ -148,6 +148,14 @@ function App() {
               <ProtectedRoute>
                 <SystemLayout>
                   <Produtos />
+                </SystemLayout>
+              </ProtectedRoute>
+            } />
+
+            <Route path="/caixa" element={
+              <ProtectedRoute>
+                <SystemLayout>
+                  <Caixa />
                 </SystemLayout>
               </ProtectedRoute>
             } />
