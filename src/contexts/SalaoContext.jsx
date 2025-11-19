@@ -1,4 +1,4 @@
-// src/contexts/SalaoContext.jsx - ATUALIZADO COM COMANDAS E VENDAS
+// src/contexts/SalaoContext.jsx - ATUALIZADO COM PRONTUÁRIOS
 
 import { createContext, useState, useEffect, useMemo, useContext, useRef } from 'react';
 import { AuthContext } from './AuthContext';
@@ -41,6 +41,7 @@ export const SalaoProvider = ({ children }) => {
   const [transacoes, setTransacoes] = useState(() => loadFromStorage('transacoes', []));
   const [comandas, setComandas] = useState(() => loadFromStorage('comandas', []));
   const [vendas, setVendas] = useState(() => loadFromStorage('vendas', []));
+  const [prontuarios, setProntuarios] = useState(() => loadFromStorage('prontuarios', [])); // ✅ NOVO
 
   const salaoInicialDefinido = useRef(false);
 
@@ -143,6 +144,14 @@ export const SalaoProvider = ({ children }) => {
     return () => clearTimeout(timer);
   }, [vendas]);
 
+  // ✅ NOVO: Salvar prontuários
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      saveToStorage('prontuarios', prontuarios);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [prontuarios]);
+
   // Função para adicionar novo salão
   const adicionarSalao = (dadosSalao) => {
     const saloesDoUsuario = saloes.filter(s => s.userId === currentUser?.id);
@@ -189,6 +198,7 @@ export const SalaoProvider = ({ children }) => {
     setTransacoes(transacoes.filter(t => t.salaoId !== salaoId));
     setComandas(comandas.filter(c => c.salaoId !== salaoId));
     setVendas(vendas.filter(v => v.salaoId !== salaoId));
+    setProntuarios(prontuarios.filter(p => p.salaoId !== salaoId)); // ✅ NOVO
     
     const novosSaloes = saloes.filter(s => s.id !== salaoId);
     setSaloes(novosSaloes);
@@ -247,6 +257,12 @@ export const SalaoProvider = ({ children }) => {
     [vendas, salaoAtual]
   );
 
+  // ✅ NOVO: Filtrar prontuários
+  const getProntuariosPorSalao = useMemo(() => 
+    () => salaoAtual ? prontuarios.filter(p => p.salaoId === salaoAtual.id) : [],
+    [prontuarios, salaoAtual]
+  );
+
   // Obter serviços disponíveis (flatten da estrutura de categorias)
   const getServicosDisponiveis = useMemo(() => 
     () => {
@@ -301,6 +317,8 @@ export const SalaoProvider = ({ children }) => {
     setComandas,
     vendas,
     setVendas,
+    prontuarios, // ✅ NOVO
+    setProntuarios, // ✅ NOVO
     getClientesPorSalao,
     getProfissionaisPorSalao,
     getServicosPorSalao,
@@ -310,6 +328,7 @@ export const SalaoProvider = ({ children }) => {
     getTransacoesPorSalao,
     getComandasPorSalao,
     getVendasPorSalao,
+    getProntuariosPorSalao, // ✅ NOVO
     getServicosDisponiveis
   }), [
     saloes,
@@ -323,6 +342,7 @@ export const SalaoProvider = ({ children }) => {
     transacoes,
     comandas,
     vendas,
+    prontuarios, // ✅ NOVO
     currentUser,
     getClientesPorSalao,
     getProfissionaisPorSalao,
@@ -333,6 +353,7 @@ export const SalaoProvider = ({ children }) => {
     getTransacoesPorSalao,
     getComandasPorSalao,
     getVendasPorSalao,
+    getProntuariosPorSalao, // ✅ NOVO
     getServicosDisponiveis
   ]);
 

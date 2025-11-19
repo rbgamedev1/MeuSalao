@@ -1,4 +1,4 @@
-// src/pages/Clientes.jsx - COM HISTÓRICO DE EMAILS
+// src/pages/Clientes.jsx - ATUALIZADO COM PRONTUÁRIO
 
 import { useState, useContext, useMemo } from 'react';
 import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye, Crown, Lock } from 'lucide-react';
@@ -8,7 +8,7 @@ import ClienteDetalhes from '../components/clientes/ClienteDetalhes';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { isValidDate } from '../utils/masks';
 import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
-import { useEmailHistorico } from '../hooks/useEmailHistorico'; // ✅ NOVO
+import { useEmailHistorico } from '../hooks/useEmailHistorico';
 
 const Clientes = () => {
   const { 
@@ -22,7 +22,6 @@ const Clientes = () => {
     profissionais
   } = useContext(SalaoContext);
   
-  // ✅ NOVO: Hook de histórico de emails
   const { buscarTodosEmails } = useEmailHistorico();
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,7 +44,6 @@ const Clientes = () => {
   const agendamentosSalao = getAgendamentosPorSalao();
   const transacoesSalao = getTransacoesPorSalao();
 
-  // ✅ NOVO: Buscar histórico de emails
   const historicoEmails = useMemo(() => {
     return buscarTodosEmails();
   }, []);
@@ -238,7 +236,7 @@ const Clientes = () => {
                 Clientes: {clientesSalao.length} {limiteMessage !== 'Ilimitado' ? `/ ${limiteMessage.replace('Máximo: ', '')}` : '(Ilimitado)'}
               </p>
               <p className="text-xs text-blue-700 mt-1">
-                Plano {salaoAtual.plano} • 👁️ Clique no ícone do olho para ver o histórico completo
+                Plano {salaoAtual.plano} • 👁️ Clique no ícone do olho para ver o histórico completo + Prontuário Capilar
               </p>
             </div>
           </div>
@@ -413,7 +411,7 @@ const Clientes = () => {
                         <button 
                           onClick={() => handleViewCliente(cliente)}
                           className="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                          title="Ver Histórico Completo"
+                          title="Ver Histórico + Prontuário"
                         >
                           <Eye size={18} />
                         </button>
@@ -447,14 +445,14 @@ const Clientes = () => {
         )}
       </div>
 
-      {/* Modal de Cadastro/Edição */}
+      {/* Modal de Cadastro/Edição - CÓDIGO IGUAL */}
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
         title={editingId ? 'Editar Cliente' : 'Novo Cliente'}
         size="md"
       >
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Nome Completo *
@@ -539,16 +537,16 @@ const Clientes = () => {
               Cancelar
             </button>
             <button
-              type="submit"
+              onClick={handleSubmit}
               className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
             >
               {editingId ? 'Salvar Alterações' : 'Cadastrar Cliente'}
             </button>
           </div>
-        </form>
+        </div>
       </Modal>
 
-      {/* ✅ NOVO: Modal de Detalhes COM histórico de emails */}
+      {/* Modal de Detalhes COM prontuário */}
       {showDetalhesModal && clienteSelecionado && (
         <ClienteDetalhes
           cliente={clienteSelecionado}

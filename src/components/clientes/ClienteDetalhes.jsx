@@ -1,6 +1,8 @@
-// src/components/clientes/ClienteDetalhes.jsx - ATUALIZADO COM VENDAS DO CAIXA
-import { useState, useMemo } from 'react';
-import { X, User, Phone, Mail, Calendar, DollarSign, Clock, Package, TrendingUp, CheckCircle, XCircle, AlertCircle, Send, MessageSquare, ShoppingCart, Scissors } from 'lucide-react';
+// src/components/clientes/ClienteDetalhes.jsx - COMPLETO COM TODAS AS ABAS + PRONTUÁRIO
+import { useState, useMemo, useContext } from 'react';
+import { X, User, Phone, Mail, Calendar, DollarSign, Clock, Package, TrendingUp, CheckCircle, XCircle, AlertCircle, Send, MessageSquare, ShoppingCart, Scissors, FileText } from 'lucide-react';
+import { SalaoContext } from '../../contexts/SalaoContext';
+import ProntuarioTab from './ProntuarioTab';
 
 const ClienteDetalhes = ({ 
   cliente, 
@@ -11,7 +13,30 @@ const ClienteDetalhes = ({
   profissionais = [],
   historicoEmails = []
 }) => {
+  const { salaoAtual, prontuarios, setProntuarios, getProdutosPorSalao } = useContext(SalaoContext);
+  const produtos = getProdutosPorSalao();
+  
   const [abaAtiva, setAbaAtiva] = useState('info');
+
+  // ✅ NOVO: Funções de manipulação de prontuários
+  const handleAddProntuario = (dadosProntuario) => {
+    const novoProntuario = {
+      ...dadosProntuario,
+      id: Math.max(...prontuarios.map(p => p.id), 0) + 1,
+      salaoId: salaoAtual.id
+    };
+    setProntuarios([...prontuarios, novoProntuario]);
+  };
+
+  const handleEditProntuario = (id, dadosAtualizados) => {
+    setProntuarios(prontuarios.map(p => 
+      p.id === id ? { ...p, ...dadosAtualizados } : p
+    ));
+  };
+
+  const handleDeleteProntuario = (id) => {
+    setProntuarios(prontuarios.filter(p => p.id !== id));
+  };
 
   // Filtrar agendamentos do cliente
   const agendamentosCliente = useMemo(() => {
@@ -31,7 +56,7 @@ const ClienteDetalhes = ({
       });
   }, [agendamentos, cliente.id, servicos, profissionais]);
 
-  // ✅ ATUALIZADO: Filtrar TODAS as vendas do Caixa (produtos E serviços)
+  // Filtrar vendas do caixa
   const comprasCliente = useMemo(() => {
     return transacoes
       .filter(t => 
@@ -128,7 +153,6 @@ const ClienteDetalhes = ({
     return <span className={`px-2 py-1 ${colorClass} text-xs rounded-full font-medium`}>{status}</span>;
   };
 
-  // ✅ NOVO: Função para identificar tipo de venda
   const getVendaIcon = (categoria, descricao) => {
     if (categoria === 'Serviços' || descricao?.includes('Serviços')) {
       return { icon: Scissors, color: 'text-purple-500', label: 'Serviços' };
@@ -186,13 +210,14 @@ const ClienteDetalhes = ({
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Tabs - ✅ COMPLETA COM PRONTUÁRIO */}
           <div className="border-b border-gray-200 px-6">
             <div className="flex space-x-8 overflow-x-auto">
               {[
                 { id: 'info', icon: User, label: 'Informações' },
                 { id: 'agendamentos', icon: Calendar, label: `Agendamentos (${agendamentosCliente.length})` },
                 { id: 'compras', icon: ShoppingCart, label: `Vendas Caixa (${comprasCliente.length})` },
+                { id: 'prontuario', icon: FileText, label: `Prontuário (${prontuarios.filter(p => p.clienteId === cliente.id).length})` },
                 { id: 'emails', icon: Send, label: `Emails (${emailsCliente.length})` }
               ].map(tab => {
                 const Icon = tab.icon;
@@ -361,7 +386,7 @@ const ClienteDetalhes = ({
               </div>
             )}
 
-            {/* ✅ ABA ATUALIZADA: Vendas Caixa (Produtos + Serviços) */}
+            {/* Aba Vendas Caixa */}
             {abaAtiva === 'compras' && (
               <div className="space-y-4">
                 {comprasCliente.length === 0 ? (
@@ -434,6 +459,18 @@ const ClienteDetalhes = ({
                   </>
                 )}
               </div>
+            )}
+
+            {/* ✅ NOVA ABA: Prontuário */}
+            {abaAtiva === 'prontuario' && (
+              <ProntuarioTab
+                clienteId={cliente.id}
+                prontuarios={prontuarios}
+                produtos={produtos}
+                onAddProntuario={handleAddProntuario}
+                onEditProntuario={handleEditProntuario}
+                onDeleteProntuario={handleDeleteProntuario}
+              />
             )}
 
             {/* Aba Emails */}
