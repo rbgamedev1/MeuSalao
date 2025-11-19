@@ -1,8 +1,8 @@
-// src/components/configuracoes/ProfissionalModal.jsx - ATUALIZADO: Especialidades dinâmicas
+// src/components/configuracoes/ProfissionalModal.jsx - ESPECIALIDADES OPCIONAIS
 
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Info } from 'lucide-react';
 
 const ProfissionalModal = ({ 
   isOpen,
@@ -14,6 +14,41 @@ const ProfissionalModal = ({
   especialidadesDisponiveis,
   onToggleEspecialidade
 }) => {
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    // Validações básicas
+    if (!formData.nome.trim()) {
+      alert('⚠️ Informe o nome do profissional!');
+      return;
+    }
+    
+    if (!formData.telefone.trim()) {
+      alert('⚠️ Informe o telefone do profissional!');
+      return;
+    }
+    
+    if (!formData.email.trim()) {
+      alert('⚠️ Informe o email do profissional!');
+      return;
+    }
+    
+    // ✅ MUDANÇA: Especialidades são OPCIONAIS
+    if (formData.especialidades.length === 0) {
+      const confirmar = confirm(
+        '⚠️ Atenção!\n\n' +
+        'Você está cadastrando um profissional sem especialidades.\n' +
+        'Este profissional não poderá ser vinculado a nenhum serviço até que você selecione pelo menos uma especialidade.\n\n' +
+        'Deseja continuar mesmo assim?'
+      );
+      
+      if (!confirmar) return;
+    }
+    
+    onSubmit(e);
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -21,7 +56,7 @@ const ProfissionalModal = ({
       title={editingId ? 'Editar Profissional' : 'Novo Profissional'}
       size="md"
     >
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Nome Completo *
@@ -70,19 +105,20 @@ const ProfissionalModal = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Serviços que Atende *
+            Serviços que Atende (Opcional)
           </label>
           
           {especialidadesDisponiveis.length === 0 ? (
-            <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="flex items-start space-x-3">
-                <AlertCircle className="text-yellow-600 flex-shrink-0 mt-0.5" size={20} />
+                <Info className="text-gray-600 flex-shrink-0 mt-0.5" size={20} />
                 <div>
-                  <p className="text-sm font-medium text-yellow-800">
+                  <p className="text-sm font-medium text-gray-700">
                     Nenhum serviço configurado
                   </p>
-                  <p className="text-sm text-yellow-700 mt-1">
-                    Configure os serviços do salão na aba "Categorias e Serviços" antes de cadastrar profissionais.
+                  <p className="text-sm text-gray-600 mt-1">
+                    Configure os serviços do salão na aba "Serviços" antes de definir especialidades. 
+                    Você pode cadastrar o profissional agora e adicionar especialidades depois.
                   </p>
                 </div>
               </div>
@@ -106,13 +142,13 @@ const ProfissionalModal = ({
                 ))}
               </div>
               
-              {formData.especialidades.length === 0 && (
-                <p className="text-xs text-red-500 mt-1">
-                  Selecione pelo menos um serviço
-                </p>
-              )}
-              
-              {formData.especialidades.length > 0 && (
+              {formData.especialidades.length === 0 ? (
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-xs text-yellow-800">
+                    ⚠️ <strong>Nenhuma especialidade selecionada.</strong> Este profissional não poderá ser vinculado a serviços até que você selecione pelo menos uma especialidade.
+                  </p>
+                </div>
+              ) : (
                 <div className="mt-2 flex flex-wrap gap-1">
                   <span className="text-xs text-gray-600">Selecionados:</span>
                   {formData.especialidades.map(esp => (
@@ -139,8 +175,7 @@ const ProfissionalModal = ({
           </button>
           <button
             type="submit"
-            disabled={formData.especialidades.length === 0 || especialidadesDisponiveis.length === 0}
-            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
           >
             {editingId ? 'Salvar Alterações' : 'Cadastrar Profissional'}
           </button>
