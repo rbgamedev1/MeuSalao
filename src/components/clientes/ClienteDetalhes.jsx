@@ -1,6 +1,6 @@
-// src/components/clientes/ClienteDetalhes.jsx - COMPLETO COM HISTÓRICO DE EMAILS
+// src/components/clientes/ClienteDetalhes.jsx - ATUALIZADO COM VENDAS DO CAIXA
 import { useState, useMemo } from 'react';
-import { X, User, Phone, Mail, Calendar, DollarSign, Clock, Package, TrendingUp, CheckCircle, XCircle, AlertCircle, Send, MessageSquare } from 'lucide-react';
+import { X, User, Phone, Mail, Calendar, DollarSign, Clock, Package, TrendingUp, CheckCircle, XCircle, AlertCircle, Send, MessageSquare, ShoppingCart, Scissors } from 'lucide-react';
 
 const ClienteDetalhes = ({ 
   cliente, 
@@ -9,7 +9,7 @@ const ClienteDetalhes = ({
   transacoes = [],
   servicos = [],
   profissionais = [],
-  historicoEmails = [] // ✅ NOVO: receber histórico de emails
+  historicoEmails = []
 }) => {
   const [abaAtiva, setAbaAtiva] = useState('info');
 
@@ -31,13 +31,15 @@ const ClienteDetalhes = ({
       });
   }, [agendamentos, cliente.id, servicos, profissionais]);
 
-  // Filtrar compras do cliente
+  // ✅ ATUALIZADO: Filtrar TODAS as vendas do Caixa (produtos E serviços)
   const comprasCliente = useMemo(() => {
     return transacoes
       .filter(t => 
         t.tipo === 'receita' && 
-        t.cliente === cliente.nome && 
-        t.categoria === 'Venda de Produtos'
+        (t.cliente === cliente.nome || t.clienteId === cliente.id) &&
+        (t.categoria === 'Venda de Produtos' || 
+         t.categoria === 'Serviços' ||
+         t.descricao?.includes('Venda Caixa'))
       )
       .sort((a, b) => {
         const [diaA, mesA, anoA] = a.data.split('/');
@@ -46,9 +48,9 @@ const ClienteDetalhes = ({
         const dataB = new Date(anoB, mesB - 1, diaB);
         return dataB - dataA;
       });
-  }, [transacoes, cliente.nome]);
+  }, [transacoes, cliente.nome, cliente.id]);
 
-  // ✅ NOVO: Filtrar emails do cliente
+  // Filtrar emails do cliente
   const emailsCliente = useMemo(() => {
     if (!historicoEmails || historicoEmails.length === 0) return [];
     
@@ -104,7 +106,6 @@ const ClienteDetalhes = ({
     return colors[status] || 'bg-gray-100 text-gray-800 border-gray-300';
   };
 
-  // ✅ NOVO: Função para obter ícone do tipo de email
   const getEmailIcon = (tipo) => {
     const icons = {
       confirmacao: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100', label: 'Confirmação' },
@@ -116,7 +117,6 @@ const ClienteDetalhes = ({
     return icons[tipo] || { icon: Send, color: 'text-gray-600', bg: 'bg-gray-100', label: tipo };
   };
 
-  // ✅ NOVO: Função para formatar status do email
   const getEmailStatusBadge = (status) => {
     const badges = {
       enviado: 'bg-green-100 text-green-700',
@@ -126,6 +126,17 @@ const ClienteDetalhes = ({
     };
     const colorClass = badges[status] || 'bg-gray-100 text-gray-700';
     return <span className={`px-2 py-1 ${colorClass} text-xs rounded-full font-medium`}>{status}</span>;
+  };
+
+  // ✅ NOVO: Função para identificar tipo de venda
+  const getVendaIcon = (categoria, descricao) => {
+    if (categoria === 'Serviços' || descricao?.includes('Serviços')) {
+      return { icon: Scissors, color: 'text-purple-500', label: 'Serviços' };
+    }
+    if (categoria === 'Venda de Produtos' || descricao?.includes('Venda Caixa')) {
+      return { icon: Package, color: 'text-pink-500', label: 'Produtos' };
+    }
+    return { icon: ShoppingCart, color: 'text-blue-500', label: 'Venda' };
   };
 
   return (
@@ -181,7 +192,7 @@ const ClienteDetalhes = ({
               {[
                 { id: 'info', icon: User, label: 'Informações' },
                 { id: 'agendamentos', icon: Calendar, label: `Agendamentos (${agendamentosCliente.length})` },
-                { id: 'compras', icon: Package, label: `Compras (${comprasCliente.length})` },
+                { id: 'compras', icon: ShoppingCart, label: `Vendas Caixa (${comprasCliente.length})` },
                 { id: 'emails', icon: Send, label: `Emails (${emailsCliente.length})` }
               ].map(tab => {
                 const Icon = tab.icon;
@@ -263,7 +274,7 @@ const ClienteDetalhes = ({
                         <span className="text-sm font-bold text-green-600">R$ {stats.totalGastoAgendamentos.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center pb-2 border-b border-gray-200">
-                        <span className="text-sm text-gray-600">Total em Compras</span>
+                        <span className="text-sm text-gray-600">Total em Vendas Caixa</span>
                         <span className="text-sm font-bold text-blue-600">R$ {stats.totalGastoCompras.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center pb-2 border-b border-gray-200">
@@ -350,68 +361,82 @@ const ClienteDetalhes = ({
               </div>
             )}
 
-            {/* Aba Compras */}
+            {/* ✅ ABA ATUALIZADA: Vendas Caixa (Produtos + Serviços) */}
             {abaAtiva === 'compras' && (
               <div className="space-y-4">
                 {comprasCliente.length === 0 ? (
                   <div className="text-center py-12 text-gray-500">
-                    <Package size={48} className="mx-auto mb-4 opacity-50" />
-                    <p>Nenhuma compra de produto encontrada para este cliente.</p>
+                    <ShoppingCart size={48} className="mx-auto mb-4 opacity-50" />
+                    <p>Nenhuma venda do Caixa encontrada para este cliente.</p>
                     <p className="text-xs text-gray-400 mt-2">
-                      💡 Apenas vendas de produtos do PDV aparecem aqui.
+                      💡 Vendas realizadas no módulo Caixa aparecem aqui.
                     </p>
                   </div>
                 ) : (
                   <>
                     <div className="flex items-center justify-between mb-4 pb-2 border-b border-gray-200">
-                      <p className="text-sm font-medium text-gray-700">Total: {comprasCliente.length} compra(s) de produto(s)</p>
+                      <p className="text-sm font-medium text-gray-700">Total: {comprasCliente.length} venda(s) do Caixa</p>
                       <p className="text-xs text-gray-500">Rolagem disponível ↓</p>
                     </div>
                     <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-2">
-                      {comprasCliente.map((compra) => (
-                        <div key={compra.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h5 className="font-semibold text-gray-800 mb-2">{compra.descricao}</h5>
-                              <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-                                <div className="flex items-center space-x-2">
-                                  <Calendar size={14} className="text-gray-400" />
-                                  <span>{compra.data}</span>
+                      {comprasCliente.map((compra) => {
+                        const vendaInfo = getVendaIcon(compra.categoria, compra.descricao);
+                        const IconComponent = vendaInfo.icon;
+                        
+                        return (
+                          <div key={compra.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:shadow-md transition-shadow">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <IconComponent size={16} className={vendaInfo.color} />
+                                  <h5 className="font-semibold text-gray-800">{compra.descricao}</h5>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <Package size={14} className="text-gray-400" />
-                                  <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">{compra.categoria}</span>
+                                <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+                                  <div className="flex items-center space-x-2">
+                                    <Calendar size={14} className="text-gray-400" />
+                                    <span>{compra.data}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <ShoppingCart size={14} className="text-gray-400" />
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                      compra.categoria === 'Serviços' 
+                                        ? 'bg-purple-100 text-purple-700'
+                                        : 'bg-pink-100 text-pink-700'
+                                    }`}>
+                                      {vendaInfo.label}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <DollarSign size={14} className="text-gray-400" />
+                                    <span>{compra.formaPagamento}</span>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <CheckCircle size={14} className="text-green-600" />
+                                    <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
+                                      {compra.status === 'recebido' ? 'Pago' : compra.status}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <DollarSign size={14} className="text-gray-400" />
-                                  <span>{compra.formaPagamento}</span>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <CheckCircle size={14} className="text-green-600" />
-                                  <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded">
-                                    {compra.status === 'recebido' ? 'Pago' : compra.status}
-                                  </span>
-                                </div>
+                                {compra.observacoes && (
+                                  <p className="text-xs text-gray-500 mt-2 italic border-t border-gray-300 pt-2">
+                                    📦 Itens: {compra.observacoes}
+                                  </p>
+                                )}
                               </div>
-                              {compra.observacoes && (
-                                <p className="text-xs text-gray-500 mt-2 italic border-t border-gray-300 pt-2">
-                                  📦 Itens: {compra.observacoes}
-                                </p>
-                              )}
-                            </div>
-                            <div className="ml-4">
-                              <p className="text-xl font-bold text-green-600">R$ {compra.valor.toFixed(2)}</p>
+                              <div className="ml-4">
+                                <p className="text-xl font-bold text-green-600">R$ {compra.valor.toFixed(2)}</p>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </>
                 )}
               </div>
             )}
 
-            {/* ✅ NOVA ABA: Histórico de Emails */}
+            {/* Aba Emails */}
             {abaAtiva === 'emails' && (
               <div className="space-y-4">
                 {emailsCliente.length === 0 ? (

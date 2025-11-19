@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/version-1.0.0-purple)
+![Version](https://img.shields.io/badge/version-1.1.0-purple)
 ![React](https://img.shields.io/badge/React-18+-61DAFB?logo=react)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Status](https://img.shields.io/badge/status-active-success)
@@ -37,6 +37,7 @@ O **SalãoPro** é uma solução web completa desenvolvida em React para otimiza
 - 👥 **Clientes** - Cadastro, histórico detalhado e estatísticas
 - 💼 **Serviços** - Catálogo com 150+ serviços pré-cadastrados
 - 🛒 **Produtos** - PDV integrado com controle de estoque
+- 🏪 **Caixa** - Sistema de vendas rápidas e comandas
 - 💰 **Financeiro** - Receitas, despesas e relatórios completos
 - 📊 **Relatórios** - Análises avançadas e KPIs
 - 🌐 **Agenda Online** - Sistema público com sincronização em tempo real
@@ -50,6 +51,7 @@ O **SalãoPro** é uma solução web completa desenvolvida em React para otimiza
 - ✅ **Sem Backend** - 100% frontend com persistência local
 - ✅ **Sistema de Planos** - 6 níveis com restrições configuráveis
 - ✅ **Multi-salão** - Suporte para múltiplos estabelecimentos
+- ✅ **Sistema de Comandas** - Gestão de múltiplos atendimentos simultâneos
 - ✅ **Design Responsivo** - Mobile-first approach
 - ✅ **Email Transacional** - Integração completa com Mailgun
 
@@ -88,6 +90,63 @@ src/components/agendamentos/
   ├── AgendamentoHeader.jsx
   ├── AgendamentoFiltros.jsx
   └── BloqueioHorarioForm.jsx
+```
+
+</details>
+
+### 🏪 Sistema de Caixa (NOVO v1.1)
+
+<details>
+<summary><b>Vendas Rápidas e Comandas (clique para expandir)</b></summary>
+
+#### 3 Módulos Integrados:
+
+##### 1. Atendimento Rápido
+- ⚡ Vendas diretas sem comanda
+- 🛒 Carrinho lateral em tempo real
+- 💰 Desconto configurável (%)
+- 📝 Campo de observações
+- 👤 Vinculação com cliente (opcional)
+- ✂️ Vendas de serviços + produtos
+- 🎯 Seleção de profissional por serviço
+- 💳 5 formas de pagamento
+
+##### 2. Sistema de Comandas
+- 📋 Abertura de comandas por cliente
+- ➕ Adicionar itens progressivamente
+- 👥 Múltiplas comandas abertas simultâneas
+- 🔄 Edição de quantidade de itens
+- 💸 Sistema de descontos
+- 📊 Visualização detalhada por comanda
+- 🔒 Fechamento com forma de pagamento
+- ❌ Cancelamento de comandas
+
+##### 3. Histórico de Vendas
+- 📅 Filtro por data
+- 📈 Estatísticas do dia (vendas, total, ticket médio)
+- 🔍 Detalhamento completo de cada venda
+- 📊 Visualização de itens vendidos
+- 💳 Forma de pagamento utilizada
+
+#### Integração Automática:
+- ✅ Atualiza estoque de produtos automaticamente
+- ✅ Registra transação no Financeiro
+- ✅ Vincula venda ao cliente
+- ✅ Calcula lucro em tempo real
+- ✅ Histórico completo no perfil do cliente
+
+#### Arquivos Relacionados:
+```
+src/pages/Caixa.jsx (página principal)
+src/components/caixa/
+  ├── CaixaHeader.jsx (navegação entre abas)
+  ├── CaixaAtendimentoRapido.jsx (vendas diretas)
+  ├── CaixaComandas.jsx (gestão de comandas)
+  ├── CaixaHistorico.jsx (histórico de vendas)
+  ├── ComandaModal.jsx (detalhes da comanda)
+  ├── ItemSelector.jsx (seleção de produtos/serviços)
+  └── PagamentoFinalModal.jsx (formas de pagamento)
+src/hooks/useCaixa.js (lógica completa)
 ```
 
 </details>
@@ -169,7 +228,7 @@ src/components/Configuracoes/ConfiguracoesComunicacoes.jsx
 <summary><b>Controle Completo de Receitas e Despesas (clique para expandir)</b></summary>
 
 #### Recursos:
-- ✅ Lançamentos manuais e automáticos (PDV)
+- ✅ Lançamentos manuais e automáticos (Caixa/PDV)
 - ✅ Categorias predefinidas
 - ✅ Múltiplas formas de pagamento
 - ✅ Status (pago, pendente, recebido)
@@ -234,20 +293,21 @@ src/hooks/usePDV.js
 #### 4 Abas de Informação:
 1. **Informações** - Dados pessoais e estatísticas
 2. **Agendamentos** - Histórico completo de atendimentos
-3. **Compras** - Produtos adquiridos no PDV
+3. **Vendas Caixa** - Produtos/serviços vendidos no Caixa (ATUALIZADO v1.1)
 4. **Emails** - Histórico de comunicações enviadas
 
 #### Recursos:
 - ✅ Estatísticas individuais (total gasto, ticket médio, visitas)
 - ✅ Status ativo/inativo
 - ✅ Filtros e busca avançada
+- ✅ Histórico integrado de vendas (Caixa + PDV)
 - ✅ Limite por plano
 
 #### Arquivos Relacionados:
 ```
 src/pages/Clientes.jsx
 src/components/clientes/
-  ├── ClienteDetalhes.jsx (modal completo)
+  ├── ClienteDetalhes.jsx (modal completo - ATUALIZADO)
   └── AvaliacaoModal.jsx
 ```
 
@@ -328,6 +388,7 @@ graph TD
 │  - saloes, clientes, profissionais          │
 │  - servicos, produtos, agendamentos         │
 │  - transacoes, fornecedores                 │
+│  - comandas, vendas (NOVO v1.1)             │
 │  - Funções CRUD para cada entidade          │
 └──────────────────┬──────────────────────────┘
                    │
@@ -359,10 +420,11 @@ salao-gestao/
 │   └── vite.svg
 │
 ├── src/
-│   ├── components/      # ⚛️ Componentes React (60+ arquivos)
+│   ├── components/      # ⚛️ Componentes React (70+ arquivos)
 │   │   ├── agendamentos/       # 8 componentes
 │   │   ├── agendaOnline/       # 8 componentes
 │   │   ├── auth/               # 2 componentes
+│   │   ├── caixa/              # 7 componentes (NOVO v1.1)
 │   │   ├── clientes/           # 2 componentes
 │   │   ├── Configuracoes/      # 8 componentes
 │   │   ├── financeiro/         # 5 componentes
@@ -378,7 +440,7 @@ salao-gestao/
 │   ├── config/          # ⚙️ Configurações
 │   │   └── mailgunConfig.js
 │   │
-│   ├── context/         # 🔄 Contextos React
+│   ├── contexts/        # 🔄 Contextos React (ATUALIZADO v1.1)
 │   │   ├── AuthContext.jsx
 │   │   └── SalaoContext.jsx
 │   │
@@ -389,6 +451,7 @@ salao-gestao/
 │   │
 │   ├── hooks/           # 🎣 Custom Hooks
 │   │   ├── AgendamentoHooks.jsx
+│   │   ├── useCaixa.js (NOVO v1.1)
 │   │   ├── useEmailHistorico.js
 │   │   ├── useFinanceiroData.js
 │   │   ├── useFinanceiroFilters.js
@@ -396,11 +459,12 @@ salao-gestao/
 │   │   ├── useRealtimeAgendamentos.js
 │   │   └── useTransacaoForm.js
 │   │
-│   ├── pages/           # 📄 Páginas (16 arquivos)
+│   ├── pages/           # 📄 Páginas (17 arquivos)
 │   │   ├── landing/            # 6 páginas
 │   │   ├── Agendamentos.jsx
 │   │   ├── AgendaOnline.jsx
 │   │   ├── Avaliacao.jsx
+│   │   ├── Caixa.jsx (NOVO v1.1)
 │   │   ├── Clientes.jsx
 │   │   ├── Configuracoes.jsx
 │   │   ├── Dashboard.jsx
@@ -420,7 +484,7 @@ salao-gestao/
 │   │   ├── agendamentoUtils.js
 │   │   └── masks.js
 │   │
-│   ├── App.jsx          # 🎯 Componente raiz
+│   ├── App.jsx          # 🎯 Componente raiz (ATUALIZADO v1.1)
 │   ├── main.jsx         # 🚀 Entry point
 │   └── index.css        # 🎨 Estilos globais
 │
@@ -435,6 +499,42 @@ salao-gestao/
 ---
 
 ## 🗺️ Mapa de Arquivos por Funcionalidade
+
+### 🏪 SISTEMA DE CAIXA (NOVO v1.1)
+
+<details>
+<summary><b>13 arquivos relacionados (clique para expandir)</b></summary>
+
+#### Página Principal
+- `src/pages/Caixa.jsx` - Container principal com 3 abas
+
+#### Componentes
+- `src/components/caixa/CaixaHeader.jsx` - Navegação entre abas
+- `src/components/caixa/CaixaAtendimentoRapido.jsx` - Vendas diretas
+- `src/components/caixa/CaixaComandas.jsx` - Gestão de comandas
+- `src/components/caixa/CaixaHistorico.jsx` - Histórico de vendas
+- `src/components/caixa/ComandaModal.jsx` - Detalhamento de comanda
+- `src/components/caixa/ItemSelector.jsx` - Seleção de produtos/serviços
+- `src/components/caixa/PagamentoFinalModal.jsx` - Formas de pagamento
+
+#### Hook Personalizado
+- `src/hooks/useCaixa.js` - Lógica completa do Caixa (520 linhas)
+  - Gestão de itens temporários
+  - Cálculo de totais e descontos
+  - CRUD de comandas
+  - Finalização de vendas
+  - Integração com estoque e financeiro
+
+#### Contexto
+- `src/contexts/SalaoContext.jsx` - Gerenciamento de comandas e vendas (ATUALIZADO)
+
+#### Rotas
+- `src/App.jsx` - Rota `/caixa` (ATUALIZADO)
+
+#### Layout
+- `src/components/layout/Sidebar.jsx` - Menu com ícone Caixa (ATUALIZADO)
+
+</details>
 
 ### 📅 AGENDAMENTOS
 
@@ -461,7 +561,7 @@ salao-gestao/
 - `src/hooks/AgendamentoHooks.jsx` - Hooks Firebase (se integrado)
 
 #### Contexto
-- `src/context/SalaoContext.jsx` - Gerenciamento de agendamentos
+- `src/contexts/SalaoContext.jsx` - Gerenciamento de agendamentos
 
 #### Rotas
 - `src/App.jsx` - Rota `/agendamentos`
@@ -518,7 +618,7 @@ salao-gestao/
 - `src/components/clientes/ClienteDetalhes.jsx` - Aba "Emails" do histórico
 
 #### Contexto
-- `src/context/SalaoContext.jsx` - Armazena configurações de comunicação
+- `src/contexts/SalaoContext.jsx` - Armazena configurações de comunicação
 
 #### Variáveis de Ambiente
 - `.env` - Credenciais Mailgun
@@ -554,11 +654,14 @@ salao-gestao/
 - `src/pages/Clientes.jsx` - Lista e estatísticas
 
 #### Componentes
-- `src/components/clientes/ClienteDetalhes.jsx` - Modal com 4 abas
+- `src/components/clientes/ClienteDetalhes.jsx` - Modal com 4 abas (ATUALIZADO v1.1)
+  - Aba "Vendas Caixa" mostra produtos E serviços vendidos
+  - Integração completa com sistema de Caixa
+  - Ícones visuais para diferenciar tipos de venda
 - `src/components/clientes/AvaliacaoModal.jsx` - Visualização de avaliação
 
 #### Contexto
-- `src/context/SalaoContext.jsx` - CRUD de clientes
+- `src/contexts/SalaoContext.jsx` - CRUD de clientes
 
 </details>
 
@@ -585,7 +688,7 @@ salao-gestao/
 - `src/data/servicosDescricoesData.js` - Descrições detalhadas
 
 #### Contexto
-- `src/context/SalaoContext.jsx` - Gerenciamento de configurações
+- `src/contexts/SalaoContext.jsx` - Gerenciamento de configurações
 
 </details>
 
@@ -657,7 +760,7 @@ salao-gestao/
 - `src/components/relatorios/RelatoriosTables.jsx` - Tabelas
 
 #### Contexto
-- `src/context/SalaoContext.jsx` - Dados para análise
+- `src/contexts/SalaoContext.jsx` - Dados para análise
 
 </details>
 
@@ -719,7 +822,7 @@ salao-gestao/
 <summary><b>4 arquivos relacionados (clique para expandir)</b></summary>
 
 #### Contexto
-- `src/context/AuthContext.jsx` - Gerenciamento de autenticação
+- `src/contexts/AuthContext.jsx` - Gerenciamento de autenticação
 
 #### Componentes
 - `src/components/auth/LoginModal.jsx` - Modal de login
@@ -742,7 +845,7 @@ salao-gestao/
 
 #### Layout
 - `src/components/layout/Header.jsx` - Cabeçalho do sistema
-- `src/components/layout/Sidebar.jsx` - Menu lateral
+- `src/components/layout/Sidebar.jsx` - Menu lateral (ATUALIZADO v1.1)
 
 </details>
 
@@ -929,6 +1032,8 @@ npm run deploy
 'agendamentos'     // Todos os agendamentos
 'transacoes'       // Todas as transações
 'avaliacoes'       // Todas as avaliações
+'comandas'         // Todas as comandas (NOVO v1.1)
+'vendas'           // Todas as vendas (NOVO v1.1)
 
 // Sistema de Emails
 'emailHistorico_{salaoId}'  // Histórico por salão
@@ -1119,6 +1224,65 @@ npm run deploy
 }
 ```
 
+##### Comanda (NOVO v1.1)
+```javascript
+{
+  id: number,
+  clienteId: number | null,
+  clienteNome: string,
+  status: 'aberta' | 'fechada',
+  dataAbertura: string, // "DD/MM/AAAA HH:MM:SS"
+  dataFechamento: string | null,
+  itens: [{
+    id: number,
+    tipo: 'servico' | 'produto',
+    referenceId: number, // ID do serviço/produto
+    nome: string,
+    quantidade: number,
+    valorUnitario: number,
+    valorTotal: number,
+    profissionalId: number | null
+  }],
+  descontos: [{
+    tipo: 'percentual' | 'fixo',
+    valor: number,
+    motivo: string
+  }],
+  observacoes: string,
+  subtotal: number,
+  descontoTotal: number,
+  total: number,
+  salaoId: number
+}
+```
+
+##### Venda (NOVO v1.1)
+```javascript
+{
+  id: number,
+  comandaId: number | null, // null se venda direta
+  clienteId: number | null,
+  clienteNome: string,
+  itens: [{
+    id: number,
+    tipo: 'servico' | 'produto',
+    referenceId: number,
+    nome: string,
+    quantidade: number,
+    valorUnitario: number,
+    valorTotal: number,
+    profissionalId: number | null
+  }],
+  subtotal: number,
+  desconto: number,
+  total: number,
+  formaPagamento: string,
+  data: string, // DD/MM/AAAA
+  hora: string, // HH:MM:SS
+  salaoId: number
+}
+```
+
 ##### EmailHistorico
 ```javascript
 {
@@ -1192,6 +1356,8 @@ const {
   produtos,
   agendamentos,
   transacoes,
+  comandas,        // NOVO v1.1
+  vendas,          // NOVO v1.1
   
   // Setters
   setSaloes,
@@ -1203,6 +1369,8 @@ const {
   setProdutos,
   setAgendamentos,
   setTransacoes,
+  setComandas,     // NOVO v1.1
+  setVendas,       // NOVO v1.1
   
   // Funções de Salão
   adicionarSalao,           // (dados) => Salao
@@ -1217,6 +1385,8 @@ const {
   getProdutosPorSalao,      // () => Produto[]
   getAgendamentosPorSalao,  // () => Agendamento[]
   getTransacoesPorSalao,    // () => Transacao[]
+  getComandasPorSalao,      // () => Comanda[] (NOVO v1.1)
+  getVendasPorSalao,        // () => Venda[] (NOVO v1.1)
   getServicosDisponiveis    // () => ServicoFlat[]
 } = useContext(SalaoContext);
 ```
@@ -1233,11 +1403,62 @@ atualizarSalao(salaoAtual.id, { nome: 'Novo Nome' });
 // Obter dados filtrados
 const clientesSalao = getClientesPorSalao();
 const servicosDisponiveis = getServicosDisponiveis();
+const comandasAbertas = getComandasPorSalao().filter(c => c.status === 'aberta');
 ```
 
 </details>
 
 ### Custom Hooks
+
+#### useCaixa (NOVO v1.1)
+
+<details>
+<summary><b>Hook completo do sistema de Caixa (clique para expandir)</b></summary>
+
+```javascript
+const {
+  itensTemp,                    // Array<Item> - Itens temporários
+  clienteSelecionado,           // Cliente | null
+  setClienteSelecionado,        // (cliente) => void
+  desconto,                     // number (0-100)
+  setDesconto,                  // (n) => void
+  observacoes,                  // string
+  setObservacoes,               // (str) => void
+  subtotal,                     // number
+  valorDesconto,                // number
+  total,                        // number
+  adicionarItem,                // (tipo, item, qtd, profId) => void
+  removerItem,                  // (itemId) => void
+  alterarQuantidade,            // (itemId, qtd) => void
+  limparTemp,                   // () => void
+  criarComanda,                 // () => Comanda
+  adicionarNaComanda,           // (comandaId, itens) => void
+  fecharComanda,                // (comandaId, formaPagamento) => boolean
+  finalizarVendaDireta,         // (formaPagamento) => boolean
+  cancelarComanda               // (comandaId) => boolean
+} = useCaixa(salaoAtual, comandas, setComandas, vendas, setVendas, transacoes, setTransacoes, produtos, setProdutos);
+```
+
+**Exemplos:**
+```javascript
+// Adicionar item ao carrinho temporário
+adicionarItem('servico', servicoSelecionado, 1, profissionalId);
+adicionarItem('produto', produtoSelecionado, 2, null);
+
+// Criar comanda
+const comanda = criarComanda();
+
+// Adicionar item em comanda existente
+adicionarNaComanda(comandaId, [novoItem]);
+
+// Finalizar venda direta
+const sucesso = finalizarVendaDireta('Pix');
+
+// Fechar comanda
+const sucesso = fecharComanda(comandaId, 'Cartão de Crédito');
+```
+
+</details>
 
 #### useRealtimeAgendamentos
 
@@ -1562,6 +1783,7 @@ Para facilitar atualizações futuras, siga este guia:
 
 Consulte a seção **[Mapa de Arquivos por Funcionalidade](#-mapa-de-arquivos-por-funcionalidade)** e identifique qual área você quer modificar:
 
+- 🏪 **Caixa** (NOVO v1.1)
 - 📅 Agendamentos
 - 🌐 Agenda Online
 - 📧 Notificações
@@ -1579,12 +1801,12 @@ Consulte a seção **[Mapa de Arquivos por Funcionalidade](#-mapa-de-arquivos-po
 
 Cada seção lista **todos os arquivos relacionados**. Exemplo:
 
-**"Quero modificar o sistema de agendamentos"**
+**"Quero modificar o sistema de caixa"**
 
-Arquivos necessários (da seção AGENDAMENTOS):
-- `src/pages/Agendamentos.jsx`
-- `src/components/agendamentos/AgendamentoCalendario.jsx`
-- `src/components/agendamentos/AgendamentoDia.jsx`
+Arquivos necessários (da seção CAIXA):
+- `src/pages/Caixa.jsx`
+- `src/components/caixa/CaixaHeader.jsx`
+- `src/components/caixa/CaixaAtendimentoRapido.jsx`
 - ... (liste todos conforme necessário)
 
 #### 3️⃣ Descreva a Modificação
@@ -1616,7 +1838,7 @@ REGRAS:
 ## 🎯 Solicitação de Atualização
 
 ### Funcionalidade
-[Nome da funcionalidade - ex: Sistema de Agendamentos]
+[Nome da funcionalidade - ex: Sistema de Caixa]
 
 ### Descrição da Modificação
 [Descreva detalhadamente o que você quer]
@@ -1645,113 +1867,81 @@ REGRAS:
 ### Exemplos Práticos de Solicitação
 
 <details>
-<summary><b>Exemplo 1: Adicionar campo no agendamento (clique)</b></summary>
+<summary><b>Exemplo 1: Adicionar desconto por item na comanda (clique)</b></summary>
 
 ```markdown
 ## 🎯 Solicitação de Atualização
 
 ### Funcionalidade
-Sistema de Agendamentos - Campo de Observações
+Sistema de Caixa - Desconto por Item em Comandas
 
 ### Descrição da Modificação
-Adicionar um campo "observações" no formulário de agendamento onde o atendente pode registrar informações adicionais sobre o agendamento (ex: "Cliente pediu cabelo curto", "Primeira vez no salão").
+Permitir aplicar desconto individual em cada item da comanda, além do desconto geral. O desconto pode ser em % ou valor fixo.
 
 ### Arquivos Afetados
-- `src/pages/Agendamentos.jsx` (estado dos agendamentos)
-- `src/components/agendamentos/AgendamentoFormulario.jsx` (adicionar campo)
-- `src/components/agendamentos/AgendamentoLista.jsx` (exibir na tabela)
-- `src/components/agendamentos/AgendamentoDia.jsx` (exibir no card)
-- `src/context/SalaoContext.jsx` (se necessário atualizar schema)
+- `src/hooks/useCaixa.js` (adicionar lógica de desconto por item)
+- `src/components/caixa/ComandaModal.jsx` (adicionar campo de desconto)
+- `src/components/caixa/ItemSelector.jsx` (campo ao adicionar)
 
 ### Regras de Negócio
-- [x] Campo opcional (não obrigatório)
-- [x] Textarea com 3 linhas
-- [x] Limite de 500 caracteres
-- [x] Salvar no localStorage junto com o agendamento
-- [x] Exibir na tabela (tooltip ao passar mouse)
-- [x] Exibir no card da visualização dia
-- [ ] NÃO enviar nas notificações por email
+- [x] Desconto pode ser % ou R$ fixo
+- [x] Desconto por item não pode ser maior que valor do item
+- [x] Recalcular total automaticamente
+- [x] Exibir valor original e com desconto
+- [x] Desconto geral aplica sobre subtotal já com descontos individuais
 
 ### Validações Necessárias
-- [x] Limite de 500 caracteres
-- [x] Caracteres especiais permitidos
+- [x] Desconto % entre 0-100
+- [x] Desconto fixo não pode exceder valor do item
+- [x] Campos numéricos apenas
 
 ### Impacto em Outros Componentes
-- Modal de detalhes do cliente (ClienteDetalhes.jsx) - exibir observações no histórico
+- Schema da Comanda precisa incluir desconto por item
+- CaixaHistorico deve exibir descontos aplicados
 
 ### Observações Adicionais
-O campo deve ficar após o seletor de profissional no formulário.
+O campo de desconto deve aparecer ao lado da quantidade no modal da comanda.
 ```
 
 </details>
 
 <details>
-<summary><b>Exemplo 2: Nova funcionalidade completa (clique)</b></summary>
+<summary><b>Exemplo 2: Impressão de comandas (clique)</b></summary>
 
 ```markdown
 ## 🎯 Solicitação de Atualização
 
 ### Funcionalidade
-Sistema de Comissões para Profissionais
+Sistema de Caixa - Impressão de Comandas
 
 ### Descrição da Modificação
-Criar um sistema completo de cálculo e gerenciamento de comissões dos profissionais. O sistema deve:
-- Calcular automaticamente comissões baseadas nos atendimentos realizados
-- Permitir visualizar comissões por período
-- Gerar relatório de comissões por profissional
-- Registrar pagamentos de comissões
+Criar funcionalidade para imprimir ou gerar PDF de comandas abertas ou fechadas, com layout otimizado para impressora térmica (58mm ou 80mm).
 
 ### Arquivos Novos (criar)
-- `src/pages/Comissoes.jsx` (nova página)
-- `src/components/comissoes/ComissoesHeader.jsx`
-- `src/components/comissoes/ComissoesStats.jsx`
-- `src/components/comissoes/ComissoesTable.jsx`
-- `src/components/comissoes/PagamentoComissaoModal.jsx`
-- `src/hooks/useComissoes.js`
+- `src/components/caixa/ComandaPrint.jsx` (template de impressão)
+- `src/utils/printUtils.js` (funções de impressão/PDF)
 
 ### Arquivos a Modificar
-- `src/App.jsx` (adicionar rota)
-- `src/components/layout/Sidebar.jsx` (adicionar menu)
-- `src/context/SalaoContext.jsx` (adicionar estado de comissões)
-- `src/components/relatorios/RelatoriosTables.jsx` (adicionar seção)
+- `src/components/caixa/ComandaModal.jsx` (adicionar botão imprimir)
+- `src/components/caixa/CaixaComandas.jsx` (botão nos cards)
 
 ### Regras de Negócio
-- [x] Calcular comissão baseado no campo `comissao` do serviço
-- [x] Considerar apenas agendamentos com status "concluido"
-- [x] Permitir filtrar por período (dia, semana, mês)
-- [x] Registrar pagamentos (data, valor, forma de pagamento)
-- [x] Histórico de pagamentos por profissional
-- [x] Bloqueado no Plano Inicial (exigir Plus+)
+- [x] Template para impressora térmica 58mm e 80mm
+- [x] Incluir: Logo, dados do salão, itens, totais, forma de pagamento
+- [x] Opção de reimprimir comandas fechadas
+- [x] Numeração sequencial
+- [x] Data e hora da impressão
 
 ### Validações Necessárias
-- [x] Comissão entre 0-100%
-- [x] Data de pagamento não pode ser futura
-- [x] Valor do pagamento não pode exceder comissão pendente
+- [x] Verificar se comanda tem itens antes de imprimir
+- [x] Confirmar antes de reimprimir
 
 ### Impacto em Outros Componentes
-- Dashboard: adicionar card "Comissões Pendentes"
-- Relatórios: adicionar seção "Performance por Profissional"
-- Sistema de planos: verificar acesso
+- Adicionar botão de impressão no histórico de vendas
 
-### Estrutura de Dados
-```javascript
-// Nova entidade
-{
-  id: number,
-  profissionalId: number,
-  periodo: { inicio: string, fim: string },
-  valorTotal: number,
-  valorPago: number,
-  status: 'pendente' | 'pago_parcial' | 'pago',
-  pagamentos: [{
-    id: number,
-    data: string,
-    valor: number,
-    formaPagamento: string
-  }],
-  salaoId: number
-}
-```
+### Observações Adicionais
+Usar window.print() com media query @media print para layout de impressão.
+Oferecer preview antes de imprimir.
 ```
 
 </details>
@@ -1770,6 +1960,8 @@ Após cada atualização, teste:
 - [ ] Integração com outros componentes funciona
 - [ ] Estados de loading/erro são exibidos
 - [ ] Mensagens de sucesso/erro são claras
+- [ ] Atualização de estoque funciona (se aplicável)
+- [ ] Transações financeiras são registradas (se aplicável)
 
 ---
 
@@ -1990,13 +2182,47 @@ Breakpoints:
 // Em SalaoContext.jsx
 useEffect(() => {
   const timer = setTimeout(() => {
-    localStorage.setItem('clientes', JSON.stringify(clientes));
+    localStorage.setItem('comandas', JSON.stringify(comandas));
   }, 300);
   return () => clearTimeout(timer);
-}, [clientes]);
+}, [comandas]);
 ```
 
-#### 2. Notificações não estão sendo enviadas
+#### 2. Estoque não atualiza ao fechar comanda
+
+**Problema:** Produtos não tem estoque descontado após venda.
+
+**Diagnóstico:**
+```javascript
+// Verificar se useCaixa está atualizando produtos
+console.log('Produtos antes:', produtos);
+fecharComanda(comandaId, 'Pix');
+console.log('Produtos depois:', produtos);
+```
+
+**Solução:** Verificar se `setProdutos` está sendo chamado em `useCaixa.js`.
+
+#### 3. Vendas não aparecem no histórico do cliente
+
+**Problema:** ClienteDetalhes não mostra vendas do Caixa.
+
+**Solução:** Verificar filtro na aba "Vendas Caixa":
+```javascript
+// Em ClienteDetalhes.jsx
+const comprasCliente = useMemo(() => {
+  return transacoes
+    .filter(t => 
+      t.tipo === 'receita' && 
+      (t.cliente === cliente.nome || t.clienteId === cliente.id) &&
+      (t.categoria === 'Venda de Produtos' || 
+       t.categoria === 'Serviços' ||
+       t.descricao?.includes('Venda Caixa'))
+    )
+    // ...
+}, [transacoes, cliente]);
+```
+
+#### 4. Notificações não estão sendo enviadas
 
 **Problema:** Emails não chegam ou retornam erro.
 
@@ -2019,55 +2245,16 @@ await mailgunService.testEmail('seu@email.com');
 - Verificar quota de envios (sandbox: 5/dia)
 - Verificar se email destinatário está autorizado (sandbox)
 
-#### 3. Sincronização em tempo real não funciona
+#### 5. Comandas não aparecem na lista
 
-**Problema:** Agenda online não atualiza horários automaticamente.
-
-**Solução:**
-```javascript
-// Verificar se hook está sendo usado
-const { agendamentos, isUpdating } = useRealtimeAgendamentos(salaoId, 2000);
-
-// Verificar se há erros no console
-// O hook deve logar atualizações periodicamente
-```
-
-#### 4. Plano não está bloqueando recursos
-
-**Problema:** Usuário consegue acessar funcionalidade bloqueada.
+**Problema:** Comandas criadas não são exibidas.
 
 **Solução:**
 ```javascript
-// Verificar plano do salão
-console.log(salaoAtual.plano);
-
-// Verificar função de acesso
-import { hasAccess } from './utils/planRestrictions';
-console.log(hasAccess(salaoAtual.plano, 'financeiro'));
-
-// Adicionar verificação no componente
-if (!hasAccess(salaoAtual.plano, 'financeiro')) {
-  return <PlanRestriction feature="financeiro" currentPlan={salaoAtual.plano} />;
-}
-```
-
-#### 5. Conflito de horários não detectado
-
-**Problema:** Sistema permite agendar em horário ocupado.
-
-**Solução:**
-```javascript
-// Verificar função de conflito
-import { verificarConflitoHorario } from './utils/agendamentoUtils';
-
-const resultado = verificarConflitoHorario(
-  horario, duracao, agendamentos, servicos, 
-  profissionalId, data
-);
-
-console.log('Conflito?', resultado.conflito);
-console.log('Tipo:', resultado.tipo);
-console.log('Motivo:', resultado.motivo);
+// Verificar se salaoId está correto
+const comandasSalao = getComandasPorSalao();
+console.log('Comandas do salão:', comandasSalao);
+console.log('Salão atual:', salaoAtual.id);
 ```
 
 ### Logs Úteis
@@ -2225,13 +2412,13 @@ const validatePhone = (phone) => {
 
 ## 🚀 Roadmap Futuro
 
-### Versão 1.1 (Próxima)
+### Versão 1.2 (Próxima)
+- [ ] Impressão de comandas (PDF/Térmica)
+- [ ] Desconto por item em comandas
+- [ ] Relatório de vendas do Caixa
+- [ ] Integração Caixa ↔ Comissões
 - [ ] Dark Mode
 - [ ] Multi-idioma (i18n)
-- [ ] Exportação de relatórios (PDF, Excel)
-- [ ] Sistema de backup/restore
-- [ ] Integração com WhatsApp
-- [ ] Notificações push
 
 ### Versão 2.0 (Médio Prazo)
 - [ ] Backend real (Node.js + PostgreSQL)
@@ -2241,6 +2428,7 @@ const validatePhone = (phone) => {
 - [ ] Aplicativo mobile (React Native)
 - [ ] Sistema de fidelidade
 - [ ] Campanhas de marketing
+- [ ] Exportação de relatórios (PDF, Excel)
 
 ### Versão 3.0 (Longo Prazo)
 - [ ] Integração fiscal (NF-e)
@@ -2249,6 +2437,9 @@ const validatePhone = (phone) => {
 - [ ] IA para previsão de demanda
 - [ ] Dashboard analytics avançado
 - [ ] Integrações com redes sociais
+- [ ] Sistema de backup/restore
+- [ ] Integração com WhatsApp
+- [ ] Notificações push
 
 ---
 
@@ -2296,11 +2487,11 @@ Chore: Tarefas de manutenção
 
 Exemplos:
 ```
-Add: Sistema de comissões para profissionais
-Fix: Correção no cálculo de horários disponíveis
-Update: Melhoria na validação de conflitos
-Refactor: Reorganização dos hooks de financeiro
-Docs: Atualização do README com novos componentes
+Add: Sistema de comandas no Caixa
+Fix: Correção no cálculo de totais da comanda
+Update: Melhoria na interface do histórico de vendas
+Refactor: Reorganização do hook useCaixa
+Docs: Atualização do README com sistema de Caixa
 ```
 
 ### Code Review
@@ -2371,7 +2562,7 @@ furnished to do so, subject to the following conditions:
 ## 💻 Ambiente
 - Navegador: [Chrome 120]
 - SO: [Windows 11]
-- Versão: [1.0.0]
+- Versão: [1.1.0]
 
 ## 📋 Console Logs
 ```
@@ -2410,18 +2601,49 @@ Obrigado a todos que contribuíram com feedback, sugestões e reportaram bugs! �
 ## 📊 Estatísticas do Projeto
 
 ```
-📁 Total de Arquivos: 100+
-📝 Linhas de Código: ~15,000
-⚛️ Componentes React: 60+
-🎣 Custom Hooks: 7
+📁 Total de Arquivos: 110+
+📝 Linhas de Código: ~17,000
+⚛️ Componentes React: 70+
+🎣 Custom Hooks: 8
 📧 Templates de Email: 5
-🎨 Páginas: 16
-⏱️ Tempo de Desenvolvimento: 6 meses
+🎨 Páginas: 17
+⏱️ Tempo de Desenvolvimento: 7 meses
 ```
 
 ---
 
 ## 🔄 Histórico de Versões
+
+### v1.1.0 (18/11/2025) - Sistema de Caixa 🏪
+
+#### ✨ Novidades
+- **Sistema de Caixa completo**
+  - Atendimento rápido (vendas diretas)
+  - Sistema de comandas
+  - Histórico de vendas
+- **Novos componentes** (7 arquivos)
+  - CaixaHeader, CaixaAtendimentoRapido, CaixaComandas
+  - CaixaHistorico, ComandaModal, ItemSelector
+  - PagamentoFinalModal
+- **Hook useCaixa** - Lógica completa (520 linhas)
+- **Integração automática**
+  - Atualização de estoque
+  - Registro no financeiro
+  - Histórico no perfil do cliente
+- **ClienteDetalhes atualizado**
+  - Aba "Vendas Caixa" mostra produtos E serviços
+  - Ícones visuais por tipo de venda
+
+#### 🐛 Correções
+- Fix: Filtro de vendas no histórico do cliente
+- Fix: Persistência de comandas no localStorage
+
+#### 🔄 Melhorias
+- Sidebar atualizada com ícone do Caixa
+- SalaoContext gerencia comandas e vendas
+- App.jsx com rota `/caixa`
+
+---
 
 ### v1.0.0 (17/11/2025) - Release Inicial 🎉
 
@@ -2458,8 +2680,15 @@ Obrigado a todos que contribuíram com feedback, sugestões e reportaram bugs! �
 
 ---
 
-**Última atualização:** 17/11/2025  
-**Versão:** 1.0.0  
+**Última atualização:** 18/11/2025  
+**Versão:** 1.1.0  
 **Status:** ✅ Ativo
+
+### 🆕 Novidades v1.1.0
+- 🏪 Sistema de Caixa com comandas
+- 📊 Histórico completo de vendas
+- 💰 Integração total com financeiro
+- 🛒 Carrinho em tempo real
+- 📋 Gestão de múltiplas comandas
 
 </div>
