@@ -6,11 +6,7 @@ import { useNavigate } from 'react-router-dom';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { CATEGORIAS_SERVICOS } from '../data/categoriasServicosData';
 import { generateDurationOptions } from '../utils/masks';
-import ServicosHeader from '../components/servicos/ServicosHeader';
-import ServicosStats from '../components/servicos/ServicosStats';
-import ServicosFilters from '../components/servicos/ServicosFilters';
-import ServicosGrid from '../components/servicos/ServicosGrid';
-import ServicoModal from '../components/servicos/ServicoModal';
+
 
 const Servicos = () => {
   const navigate = useNavigate();

@@ -1,4 +1,4 @@
-// src/pages/Configuracoes.jsx - SEM VALIDAÇÃO DE DEADLOCK
+// src/pages/Configuracoes.jsx - VINCULAÇÃO ATRAVÉS DO PROFISSIONAL
 
 import { useState, useContext, useEffect, useMemo } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
@@ -21,6 +21,7 @@ const Configuracoes = () => {
     profissionais, 
     setProfissionais,
     servicos,
+    setServicos,
     getServicosPorSalao,
     getProfissionaisPorSalao
   } = useContext(SalaoContext);
@@ -93,23 +94,20 @@ const Configuracoes = () => {
     ? getLimitMessage(salaoAtual.plano, 'profissionais')
     : 'Carregando...';
 
-  // ✅ MUDANÇA: Extrair especialidades dos serviços CONFIGURADOS
-  // Agora é uma lista para SUGESTÃO, não uma restrição
-  const especialidadesDisponiveis = useMemo(() => {
-    return [...new Set(servicosSalao.map(s => s.nome))].sort();
+  // Serviços configurados disponíveis para vinculação
+  const servicosDisponiveis = useMemo(() => {
+    return servicosSalao.map(s => ({
+      nome: s.nome,
+      categoria: s.categoria,
+      subcategoria: s.subcategoria,
+      id: s.id
+    })).sort((a, b) => {
+      // Ordenar por categoria, depois subcategoria, depois nome
+      if (a.categoria !== b.categoria) return a.categoria.localeCompare(b.categoria);
+      if (a.subcategoria !== b.subcategoria) return a.subcategoria.localeCompare(b.subcategoria);
+      return a.nome.localeCompare(b.nome);
+    });
   }, [servicosSalao]);
-
-  // Limpar especialidades inválidas ao abrir modal de edição
-  useEffect(() => {
-    if (showProfissionalModal && editingProfissionalId) {
-      setProfissionalData(prev => ({
-        ...prev,
-        especialidades: prev.especialidades.filter(esp => 
-          especialidadesDisponiveis.includes(esp)
-        )
-      }));
-    }
-  }, [showProfissionalModal, especialidadesDisponiveis, editingProfissionalId]);
 
   // ============================================================================
   // HANDLERS: INFORMAÇÕES GERAIS
@@ -179,18 +177,16 @@ const Configuracoes = () => {
     setProfissionalData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleEspecialidadeToggle = (especialidade) => {
+  const handleServicoToggle = (servicoNome) => {
     setProfissionalData(prev => ({
       ...prev,
-      especialidades: prev.especialidades.includes(especialidade)
-        ? prev.especialidades.filter(e => e !== especialidade)
-        : [...prev.especialidades, especialidade]
+      especialidades: prev.especialidades.includes(servicoNome)
+        ? prev.especialidades.filter(e => e !== servicoNome)
+        : [...prev.especialidades, servicoNome]
     }));
   };
 
   const handleOpenProfissionalModal = (profissional = null) => {
-    // ✅ REMOVIDO: Validação que impedia cadastro sem serviços
-    
     // Verificar limite do plano
     if (!profissional && !canAddProfissional) {
       alert(
@@ -204,13 +200,15 @@ const Configuracoes = () => {
     // Editar profissional existente
     if (profissional) {
       setEditingProfissionalId(profissional.id);
+      // Filtrar apenas serviços que ainda existem
+      const servicosValidos = (profissional.especialidades || []).filter(esp => 
+        servicosDisponiveis.some(s => s.nome === esp)
+      );
       setProfissionalData({
         nome: profissional.nome || '',
         telefone: profissional.telefone || '',
         email: profissional.email || '',
-        especialidades: (profissional.especialidades || []).filter(esp => 
-          especialidadesDisponiveis.includes(esp)
-        )
+        especialidades: servicosValidos
       });
     } 
     // Novo profissional
@@ -257,8 +255,6 @@ const Configuracoes = () => {
       return;
     }
 
-    // ✅ REMOVIDO: Validação que exigia especialidades
-
     // Validar email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(profissionalData.email)) {
@@ -267,8 +263,11 @@ const Configuracoes = () => {
     }
 
     try {
+      let profissionalId;
+      
       if (editingProfissionalId) {
         // Atualizar profissional existente
+        profissionalId = editingProfissionalId;
         setProfissionais(profissionais.map(p => 
           p.id === editingProfissionalId 
             ? { 
@@ -278,17 +277,53 @@ const Configuracoes = () => {
               }
             : p
         ));
-        alert('✅ Profissional atualizado com sucesso!');
       } else {
         // Criar novo profissional
+        profissionalId = Math.max(...profissionais.map(p => p.id), 0) + 1;
         const newProfissional = {
           ...profissionalData,
-          id: Math.max(...profissionais.map(p => p.id), 0) + 1,
+          id: profissionalId,
           salaoId: salaoAtual.id
         };
         setProfissionais([...profissionais, newProfissional]);
-        alert('✅ Profissional cadastrado com sucesso!');
       }
+      
+      // ✅ ATUALIZAR OS SERVIÇOS COM O PROFISSIONAL
+      // Obter lista de serviços antigos e novos do profissional
+      const servicosAntigos = editingProfissionalId 
+        ? profissionais.find(p => p.id === editingProfissionalId)?.especialidades || []
+        : [];
+      const servicosNovos = profissionalData.especialidades;
+      
+      // Atualizar serviços
+      setServicos(servicos.map(servico => {
+        if (servico.salaoId !== salaoAtual.id) return servico;
+        
+        const servicoPertenceAoProfissional = servicosNovos.includes(servico.nome);
+        const servicoPertenciaAoProfissional = servicosAntigos.includes(servico.nome);
+        
+        let profissionaisAtualizados = [...(servico.profissionaisHabilitados || [])];
+        
+        // Se o serviço agora pertence ao profissional, adicionar
+        if (servicoPertenceAoProfissional && !profissionaisAtualizados.includes(profissionalId)) {
+          profissionaisAtualizados.push(profissionalId);
+        }
+        
+        // Se o serviço não pertence mais ao profissional, remover
+        if (!servicoPertenceAoProfissional && profissionaisAtualizados.includes(profissionalId)) {
+          profissionaisAtualizados = profissionaisAtualizados.filter(id => id !== profissionalId);
+        }
+        
+        return {
+          ...servico,
+          profissionaisHabilitados: profissionaisAtualizados
+        };
+      }));
+      
+      alert(editingProfissionalId 
+        ? '✅ Profissional atualizado com sucesso!' 
+        : '✅ Profissional cadastrado com sucesso!'
+      );
       
       handleCloseProfissionalModal();
     } catch (error) {
@@ -302,9 +337,17 @@ const Configuracoes = () => {
     
     if (!profissional) return;
 
-    if (confirm(`⚠️ Tem certeza que deseja excluir o profissional "${profissional.nome}"?`)) {
+    if (confirm(`⚠️ Tem certeza que deseja excluir o profissional "${profissional.nome}"?\n\nEle será removido de todos os serviços vinculados.`)) {
       try {
+        // Remover profissional
         setProfissionais(profissionais.filter(p => p.id !== id));
+        
+        // Remover profissional de todos os serviços
+        setServicos(servicos.map(servico => ({
+          ...servico,
+          profissionaisHabilitados: (servico.profissionaisHabilitados || []).filter(profId => profId !== id)
+        })));
+        
         alert('✅ Profissional excluído com sucesso!');
       } catch (error) {
         console.error('Erro ao deletar profissional:', error);
@@ -368,8 +411,8 @@ const Configuracoes = () => {
           formData={profissionalData}
           onChange={handleProfissionalChange}
           onSubmit={handleSubmitProfissional}
-          especialidadesDisponiveis={especialidadesDisponiveis}
-          onToggleEspecialidade={handleEspecialidadeToggle}
+          servicosDisponiveis={servicosDisponiveis}
+          onToggleServico={handleServicoToggle}
         />
       )}
     </div>

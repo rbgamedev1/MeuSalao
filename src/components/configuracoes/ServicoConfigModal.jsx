@@ -1,7 +1,7 @@
-// src/components/configuracoes/ServicoConfigModal.jsx - PROFISSIONAIS OPCIONAIS
+// src/components/configuracoes/ServicoConfigModal.jsx - PROFISSIONAIS READ-ONLY
 
 import { useState, useEffect, useMemo } from 'react';
-import { X, AlertCircle, Info } from 'lucide-react';
+import { X, AlertCircle, Info, Lock } from 'lucide-react';
 import { CATEGORIAS_SERVICOS } from '../../data/categoriasServicosData';
 
 const ServicoConfigModal = ({ 
@@ -19,7 +19,6 @@ const ServicoConfigModal = ({
     duracao: 30,
     valor: '',
     comissao: 0,
-    descricao: '',
     profissionaisHabilitados: [],
     ativo: true
   });
@@ -33,7 +32,6 @@ const ServicoConfigModal = ({
         duracao: servico.duracao,
         valor: servico.valor.toFixed(2),
         comissao: servico.comissao || 0,
-        descricao: servico.descricao || '',
         profissionaisHabilitados: servico.profissionaisHabilitados || [],
         ativo: servico.ativo
       });
@@ -45,7 +43,6 @@ const ServicoConfigModal = ({
         duracao: 30,
         valor: '',
         comissao: 0,
-        descricao: '',
         profissionaisHabilitados: [],
         ativo: true
       });
@@ -69,8 +66,16 @@ const ServicoConfigModal = ({
     return grupos;
   }, [servicosDisponiveis]);
 
-  // ✅ MUDANÇA: Mostrar TODOS os profissionais (não filtrar por especialidade)
-  const profissionaisDisponiveis = profissionaisSalao;
+  // Obter profissionais habilitados para este serviço
+  const profissionaisHabilitados = useMemo(() => {
+    if (!formData.profissionaisHabilitados || formData.profissionaisHabilitados.length === 0) {
+      return [];
+    }
+    
+    return profissionaisSalao.filter(prof => 
+      formData.profissionaisHabilitados.includes(prof.id)
+    );
+  }, [formData.profissionaisHabilitados, profissionaisSalao]);
 
   const handleServicoSelect = (e) => {
     const value = e.target.value;
@@ -80,8 +85,7 @@ const ServicoConfigModal = ({
         ...prev,
         nome: '',
         categoria: '',
-        subcategoria: '',
-        profissionaisHabilitados: []
+        subcategoria: ''
       }));
       return;
     }
@@ -92,9 +96,7 @@ const ServicoConfigModal = ({
       ...prev,
       categoria,
       subcategoria,
-      nome,
-      // Manter profissionais já selecionados ao trocar de serviço
-      profissionaisHabilitados: prev.profissionaisHabilitados
+      nome
     }));
   };
 
@@ -103,15 +105,6 @@ const ServicoConfigModal = ({
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  const handleProfissionalToggle = (profId) => {
-    setFormData(prev => ({
-      ...prev,
-      profissionaisHabilitados: prev.profissionaisHabilitados.includes(profId)
-        ? prev.profissionaisHabilitados.filter(id => id !== profId)
-        : [...prev.profissionaisHabilitados, profId]
     }));
   };
 
@@ -126,19 +119,6 @@ const ServicoConfigModal = ({
     if (!formData.valor || parseFloat(formData.valor) <= 0) {
       alert('⚠️ Informe um valor válido!');
       return;
-    }
-
-    // ✅ MUDANÇA: Profissionais são OPCIONAIS
-    // Apenas aviso se não tiver nenhum
-    if (formData.profissionaisHabilitados.length === 0) {
-      const confirmar = confirm(
-        '⚠️ Atenção!\n\n' +
-        'Você está cadastrando um serviço sem profissionais habilitados.\n' +
-        'Este serviço não poderá ser agendado até que você vincule pelo menos um profissional.\n\n' +
-        'Deseja continuar mesmo assim?'
-      );
-      
-      if (!confirmar) return;
     }
 
     const dadosServico = {
@@ -284,89 +264,50 @@ const ServicoConfigModal = ({
             </p>
           </div>
 
-          {/* Descrição */}
+          {/* Profissionais Habilitados - READ ONLY */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Descrição
-            </label>
-            <textarea
-              name="descricao"
-              value={formData.descricao}
-              onChange={handleChange}
-              rows="3"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="Descreva o serviço... (opcional)"
-            />
-          </div>
-
-          {/* Profissionais Habilitados - AGORA OPCIONAL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Profissionais Habilitados (Opcional)
+            <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center space-x-2">
+              <span>Profissionais Habilitados</span>
+              <Lock size={14} className="text-gray-400" />
             </label>
             
-            {!formData.nome ? (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start space-x-2">
-                  <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={18} />
-                  <p className="text-sm text-blue-800">
-                    Selecione um serviço primeiro para habilitar profissionais
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-start space-x-3">
+                <Info className="text-blue-600 flex-shrink-0 mt-0.5" size={18} />
+                <div className="flex-1">
+                  <p className="text-sm text-blue-800 font-medium mb-2">
+                    Os profissionais são vinculados através do cadastro deles
                   </p>
-                </div>
-              </div>
-            ) : profissionaisDisponiveis.length > 0 ? (
-              <>
-                <div className="space-y-2 p-4 border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
-                  {profissionaisDisponiveis.map(prof => (
-                    <label 
-                      key={prof.id} 
-                      className="flex items-center space-x-3 cursor-pointer hover:bg-purple-50 p-2 rounded transition-colors"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={formData.profissionaisHabilitados.includes(prof.id)}
-                        onChange={() => handleProfissionalToggle(prof.id)}
-                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <span className="text-sm font-medium text-gray-700">{prof.nome}</span>
-                        {prof.especialidades && prof.especialidades.length > 0 && (
-                          <p className="text-xs text-gray-500">
-                            Atende: {prof.especialidades.join(', ')}
-                          </p>
-                        )}
+                  <p className="text-xs text-blue-700">
+                    Para habilitar profissionais neste serviço, vá até a aba "Profissionais" e edite cada profissional, marcando os serviços que ele atende.
+                  </p>
+                  
+                  {profissionaisHabilitados.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-blue-300">
+                      <p className="text-xs text-blue-700 font-medium mb-2">
+                        Profissionais atualmente habilitados:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {profissionaisHabilitados.map(prof => (
+                          <span 
+                            key={prof.id}
+                            className="inline-flex items-center space-x-1 text-xs bg-white text-blue-700 px-2 py-1 rounded-full border border-blue-300"
+                          >
+                            <span>{prof.nome}</span>
+                          </span>
+                        ))}
                       </div>
-                    </label>
-                  ))}
-                </div>
-                
-                {formData.profissionaisHabilitados.length === 0 ? (
-                  <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-xs text-yellow-800">
-                      ⚠️ <strong>Nenhum profissional selecionado.</strong> Este serviço não poderá ser agendado até que você vincule pelo menos um profissional.
+                    </div>
+                  )}
+                  
+                  {profissionaisHabilitados.length === 0 && (
+                    <p className="text-xs text-blue-600 mt-2">
+                      ⚠️ Nenhum profissional habilitado ainda
                     </p>
-                  </div>
-                ) : (
-                  <p className="text-xs text-green-600 mt-2">
-                    ✅ {formData.profissionaisHabilitados.length} profissional(is) selecionado(s)
-                  </p>
-                )}
-              </>
-            ) : (
-              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                <div className="flex items-start space-x-2">
-                  <Info className="text-gray-600 flex-shrink-0 mt-0.5" size={18} />
-                  <div>
-                    <p className="text-sm text-gray-700 font-medium">
-                      Nenhum profissional cadastrado
-                    </p>
-                    <p className="text-xs text-gray-600 mt-1">
-                      Você pode cadastrar o serviço agora e vincular profissionais depois na aba "Profissionais".
-                    </p>
-                  </div>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
           </div>
 
           {/* Serviço Ativo */}

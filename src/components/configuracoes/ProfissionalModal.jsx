@@ -1,4 +1,4 @@
-// src/components/configuracoes/ProfissionalModal.jsx - ESPECIALIDADES OPCIONAIS
+// src/components/configuracoes/ProfissionalModal.jsx - VINCULAÇÃO DE SERVIÇOS
 
 import Modal from '../Modal';
 import MaskedInput from '../MaskedInput';
@@ -11,8 +11,8 @@ const ProfissionalModal = ({
   formData,
   onChange,
   onSubmit,
-  especialidadesDisponiveis,
-  onToggleEspecialidade
+  servicosDisponiveis, // Agora recebe serviços ao invés de especialidades
+  onToggleServico // Renomeado de onToggleEspecialidade
 }) => {
   
   const handleSubmit = (e) => {
@@ -34,12 +34,12 @@ const ProfissionalModal = ({
       return;
     }
     
-    // ✅ MUDANÇA: Especialidades são OPCIONAIS
+    // Serviços são opcionais, mas aviso se não tiver nenhum
     if (formData.especialidades.length === 0) {
       const confirmar = confirm(
         '⚠️ Atenção!\n\n' +
-        'Você está cadastrando um profissional sem especialidades.\n' +
-        'Este profissional não poderá ser vinculado a nenhum serviço até que você selecione pelo menos uma especialidade.\n\n' +
+        'Você está cadastrando um profissional sem serviços vinculados.\n' +
+        'Este profissional não poderá realizar atendimentos até que você vincule pelo menos um serviço.\n\n' +
         'Deseja continuar mesmo assim?'
       );
       
@@ -105,10 +105,10 @@ const ProfissionalModal = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Serviços que Atende (Opcional)
+            Serviços que Este Profissional Atende (Opcional)
           </label>
           
-          {especialidadesDisponiveis.length === 0 ? (
+          {servicosDisponiveis.length === 0 ? (
             <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="flex items-start space-x-3">
                 <Info className="text-gray-600 flex-shrink-0 mt-0.5" size={20} />
@@ -117,46 +117,58 @@ const ProfissionalModal = ({
                     Nenhum serviço configurado
                   </p>
                   <p className="text-sm text-gray-600 mt-1">
-                    Configure os serviços do salão na aba "Serviços" antes de definir especialidades. 
-                    Você pode cadastrar o profissional agora e adicionar especialidades depois.
+                    Configure os serviços do salão na aba "Serviços" antes de vincular profissionais. 
+                    Você pode cadastrar o profissional agora e adicionar serviços depois.
                   </p>
                 </div>
               </div>
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-2 p-4 border border-gray-300 rounded-lg max-h-48 overflow-y-auto">
-                {especialidadesDisponiveis.map(esp => (
-                  <label 
-                    key={esp} 
-                    className="flex items-center space-x-2 cursor-pointer hover:bg-purple-50 p-2 rounded transition-colors"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={formData.especialidades.includes(esp)}
-                      onChange={() => onToggleEspecialidade(esp)}
-                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                    />
-                    <span className="text-sm text-gray-700">{esp}</span>
-                  </label>
-                ))}
+              <div className="grid grid-cols-1 gap-2 p-4 border border-gray-300 rounded-lg max-h-64 overflow-y-auto">
+                {servicosDisponiveis.map(servico => {
+                  const servicoId = `${servico.categoria}-${servico.subcategoria}-${servico.nome}`;
+                  const isChecked = formData.especialidades.includes(servico.nome);
+                  
+                  return (
+                    <label 
+                      key={servicoId}
+                      className="flex items-start space-x-3 cursor-pointer hover:bg-purple-50 p-3 rounded transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => onToggleServico(servico.nome)}
+                        className="w-4 h-4 mt-0.5 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      />
+                      <div className="flex-1">
+                        <span className="text-sm font-medium text-gray-700 block">
+                          {servico.nome}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {servico.categoria} → {servico.subcategoria}
+                        </span>
+                      </div>
+                    </label>
+                  );
+                })}
               </div>
               
               {formData.especialidades.length === 0 ? (
                 <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <p className="text-xs text-yellow-800">
-                    ⚠️ <strong>Nenhuma especialidade selecionada.</strong> Este profissional não poderá ser vinculado a serviços até que você selecione pelo menos uma especialidade.
+                    ⚠️ <strong>Nenhum serviço selecionado.</strong> Este profissional não poderá realizar atendimentos até que você vincule pelo menos um serviço.
                   </p>
                 </div>
               ) : (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  <span className="text-xs text-gray-600">Selecionados:</span>
-                  {formData.especialidades.map(esp => (
+                  <span className="text-xs text-gray-600">Serviços vinculados:</span>
+                  {formData.especialidades.map(servico => (
                     <span 
-                      key={esp} 
+                      key={servico}
                       className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full"
                     >
-                      {esp}
+                      {servico}
                     </span>
                   ))}
                 </div>
