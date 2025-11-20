@@ -1,4 +1,4 @@
-// src/App.jsx - ATUALIZADO COM ROTA CAIXA
+// src/App.jsx - CORRIGIDO COM ROTA /clientes/:id
 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect, useContext } from 'react';
@@ -23,10 +23,10 @@ import Configuracoes from './pages/Configuracoes';
 import Perfil from './pages/Perfil';
 import AgendaOnline from './pages/AgendaOnline';
 import Avaliacao from './pages/Avaliacao';
+import ClienteDetalhesPage from './pages/ClienteDetalhesPage';
 import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import { SalaoProvider } from './contexts/SalaoContext';
 import notificationService from './services/notificationService';
-import ClienteDetalhesPage from './pages/ClienteDetalhesPage';
 
 // Componente de Rota Protegida
 const ProtectedRoute = ({ children }) => {
@@ -111,7 +111,6 @@ function App() {
             <Route path="/documentation" element={<Documentation />} />
             <Route path="/agenda/:salaoId" element={<AgendaOnline />} />
             <Route path="/avaliacao/:salaoId/:token" element={<Avaliacao />} />
-            <Route path="/clientes/:id" element={<ClienteDetalhesPage />} />
 
             {/* Rotas protegidas com layout */}
             <Route path="/dashboard" element={
@@ -134,6 +133,15 @@ function App() {
               <ProtectedRoute>
                 <SystemLayout>
                   <Clientes />
+                </SystemLayout>
+              </ProtectedRoute>
+            } />
+
+            {/* NOVA ROTA: Página Dedicada de Detalhes do Cliente */}
+            <Route path="/clientes/:id" element={
+              <ProtectedRoute>
+                <SystemLayout>
+                  <ClienteDetalhesPage />
                 </SystemLayout>
               </ProtectedRoute>
             } />
