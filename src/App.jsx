@@ -26,6 +26,7 @@ import Avaliacao from './pages/Avaliacao';
 import { AuthProvider, AuthContext } from './contexts/AuthContext';
 import { SalaoProvider } from './contexts/SalaoContext';
 import notificationService from './services/notificationService';
+import ClienteDetalhesPage from './pages/ClienteDetalhesPage';
 
 // Componente de Rota Protegida
 const ProtectedRoute = ({ children }) => {
@@ -110,6 +111,7 @@ function App() {
             <Route path="/documentation" element={<Documentation />} />
             <Route path="/agenda/:salaoId" element={<AgendaOnline />} />
             <Route path="/avaliacao/:salaoId/:token" element={<Avaliacao />} />
+            <Route path="/clientes/:id" element={<ClienteDetalhesPage />} />
 
             {/* Rotas protegidas com layout */}
             <Route path="/dashboard" element={
