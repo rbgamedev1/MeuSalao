@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react';
 import { Plus, Calendar, FileText, Package, ZoomIn, Edit, Trash2, TrendingUp, Clock } from 'lucide-react';
 import ProntuarioForm from './ProntuarioForm';
+import TerapiaCapilarFlow from '../terapiaCapilar/TerapiaCapilarFlow';
 
 const ProntuarioTab = ({ 
   clienteId, 
@@ -14,6 +15,7 @@ const ProntuarioTab = ({
   const [showForm, setShowForm] = useState(false);
   const [editingProntuario, setEditingProntuario] = useState(null);
   const [previewImage, setPreviewImage] = useState(null);
+  const [tipoAtendimento, setTipoAtendimento] = useState(null);
 
   // Filtrar prontuários do cliente e ordenar por data
   const prontuariosCliente = useMemo(() => {
@@ -46,8 +48,19 @@ const ProntuarioTab = ({
   }, [prontuariosCliente]);
 
   const handleOpenForm = (prontuario = null) => {
-    setEditingProntuario(prontuario);
-    setShowForm(true);
+    if (prontuario) {
+      // Edição
+      setEditingProntuario(prontuario);
+      if (prontuario.tipo === 'terapia_capilar') {
+        setTipoAtendimento('terapia_capilar');
+      } else {
+        setShowForm(true);
+      }
+    } else {
+      // Novo atendimento - mostrar seleção
+      setTipoAtendimento(null);
+      setShowForm(false);
+    }
   };
 
   const handleCloseForm = () => {
@@ -113,6 +126,71 @@ const ProntuarioTab = ({
       </div>
 
       {/* Lista de Prontuários */}
+      {prontuario.tipo === 'terapia_capilar' ? (
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl">
+          🌸
+        </div>
+      ) : (
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg">
+          {prontuariosCliente.length - index}
+        </div>
+      )}
+
+      {prontuario.tipo === 'terapia_capilar' ? (
+      <>
+        {/* Exibir etapas completadas */}
+        <div className="mb-3">
+          <p className="text-sm font-semibold text-gray-700 mb-2">Etapas Completadas:</p>
+          <div className="flex flex-wrap gap-2 pl-6">
+            {prontuario.etapasCompletas?.map(etapa => (
+              <span key={etapa} className="px-3 py-1 bg-green-100 text-green-700 text-xs rounded-full">
+                ✓ {etapa === 'avaliacao' ? 'Avaliação Inicial' :
+                    etapa === 'selecao' ? 'Seleção de Tratamento' :
+                    etapa === 'aplicacao' ? 'Aplicação' : 'Finalização'}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Resumo dos principais dados */}
+        {prontuario.dadosTerapiaCapilar?.objetivoTratamento && (
+          <div className="mb-3">
+            <p className="text-sm font-semibold text-gray-700">🎯 Objetivo:</p>
+            <p className="text-sm text-gray-600 pl-6">
+              {prontuario.dadosTerapiaCapilar.objetivoTratamento}
+            </p>
+          </div>
+        )}
+
+        {/* Mostrar imagens se houver */}
+        {(prontuario.dadosTerapiaCapilar?.imagensAvaliacao?.length > 0 ||
+          prontuario.dadosTerapiaCapilar?.imagensFinais?.length > 0) && (
+          <div className="pt-4 border-t border-gray-200">
+            <p className="text-sm font-semibold text-gray-700 mb-2">📸 Imagens:</p>
+            <div className="grid grid-cols-4 gap-2 pl-6">
+              {[
+                ...(prontuario.dadosTerapiaCapilar.imagensAvaliacao || []),
+                ...(prontuario.dadosTerapiaCapilar.imagensFinais || [])
+              ].slice(0, 4).map((img, idx) => (
+                <div 
+                  key={idx}
+                  className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-300 cursor-pointer"
+                  onClick={() => setPreviewImage(img)}
+                >
+                  <img src={img} alt={`Terapia ${idx + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    ) : (
+      // Renderização do prontuário antigo/normal
+      <>
+        {/* ... código existente ... */}
+      </>
+    )}
+
       {prontuariosCliente.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
           <FileText size={48} className="mx-auto mb-4 text-gray-400" />
@@ -302,6 +380,65 @@ const ProntuarioTab = ({
             />
           </div>
         </div>
+      )}
+
+      {/* Modal de Seleção de Tipo */}
+      {!showForm && !tipoAtendimento && editingProntuario === null && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={handleCloseForm}></div>
+            
+            <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full p-8">
+              <h3 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+                Selecione o Tipo de Atendimento
+              </h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Terapia Capilar */}
+                <button
+                  onClick={() => setTipoAtendimento('terapia_capilar')}
+                  className="group bg-gradient-to-br from-purple-50 to-pink-50 border-2 border-purple-200 rounded-xl p-6 hover:border-purple-400 hover:shadow-lg transition-all"
+                >
+                  <div className="text-6xl mb-4">🌸</div>
+                  <h4 className="text-xl font-bold text-purple-900 mb-2">Terapia Capilar</h4>
+                  <p className="text-sm text-gray-600">
+                    Avaliação completa, seleção de tratamento, aplicação e finalização
+                  </p>
+                </button>
+
+                {/* Mega Hair */}
+                <button
+                  onClick={() => setTipoAtendimento('mega_hair')}
+                  className="group bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-6 hover:border-blue-400 hover:shadow-lg transition-all"
+                >
+                  <div className="text-6xl mb-4">💇‍♀️</div>
+                  <h4 className="text-xl font-bold text-blue-900 mb-2">Mega Hair</h4>
+                  <p className="text-sm text-gray-600">
+                    Confecção, aplicação e manutenção de alongamentos
+                  </p>
+                </button>
+              </div>
+
+              <button
+                onClick={handleCloseForm}
+                className="mt-6 w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Terapia Capilar */}
+      {tipoAtendimento === 'terapia_capilar' && (
+        <TerapiaCapilarFlow
+          clienteId={clienteId}
+          prontuarioEdit={editingProntuario}
+          onClose={handleCloseForm}
+          onSave={handleSave}
+          produtos={produtos}
+        />
       )}
 
       {/* Modal de Formulário */}
