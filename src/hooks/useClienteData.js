@@ -3,18 +3,13 @@ import { useMemo, useContext } from 'react';
 import { SalaoContext } from '../contexts/SalaoContext';
 
 export const useClienteData = (cliente) => {
-  const { agendamentos, transacoes, servicos, profissionais, historicoEmails } = useContext(SalaoContext);
+  const { agendamentos, transacoesCaixa, emailsEnviados } = useContext(SalaoContext);
 
+  // Agendamentos do cliente
   const agendamentosCliente = useMemo(() => {
     if (!cliente) return [];
-    
     return agendamentos
       .filter(ag => ag.clienteId === cliente.id)
-      .map(ag => ({
-        ...ag,
-        servico: servicos.find(s => s.id === ag.servicoId),
-        profissional: profissionais.find(p => p.id === ag.profissionalId)
-      }))
       .sort((a, b) => {
         const [diaA, mesA, anoA] = a.data.split('/');
         const [diaB, mesB, anoB] = b.data.split('/');
@@ -22,19 +17,13 @@ export const useClienteData = (cliente) => {
         const dataB = new Date(anoB, mesB - 1, diaB);
         return dataB - dataA;
       });
-  }, [agendamentos, cliente, servicos, profissionais]);
+  }, [cliente, agendamentos]);
 
+  // Compras do caixa do cliente
   const comprasCliente = useMemo(() => {
     if (!cliente) return [];
-    
-    return transacoes
-      .filter(t => 
-        t.tipo === 'receita' && 
-        (t.cliente === cliente.nome || t.clienteId === cliente.id) &&
-        (t.categoria === 'Venda de Produtos' || 
-         t.categoria === 'Serviços' ||
-         t.descricao?.includes('Venda Caixa'))
-      )
+    return transacoesCaixa
+      .filter(t => t.clienteId === cliente.id && t.tipo === 'entrada')
       .sort((a, b) => {
         const [diaA, mesA, anoA] = a.data.split('/');
         const [diaB, mesB, anoB] = b.data.split('/');
@@ -42,20 +31,17 @@ export const useClienteData = (cliente) => {
         const dataB = new Date(anoB, mesB - 1, diaB);
         return dataB - dataA;
       });
-  }, [transacoes, cliente]);
+  }, [cliente, transacoesCaixa]);
 
+  // Emails enviados ao cliente
   const emailsCliente = useMemo(() => {
-    if (!cliente || !historicoEmails || historicoEmails.length === 0) return [];
-    
-    return historicoEmails
-      .filter(email => 
-        email.clienteNome === cliente.nome || 
-        email.clienteEmail === cliente.email ||
-        email.clienteId === cliente.id
-      )
+    if (!cliente) return [];
+    return emailsEnviados
+      .filter(email => email.clienteEmail === cliente.email)
       .sort((a, b) => new Date(b.dataEnvio) - new Date(a.dataEnvio));
-  }, [historicoEmails, cliente]);
+  }, [cliente, emailsEnviados]);
 
+  // Estatísticas
   const stats = useMemo(() => {
     if (!cliente) {
       return {
@@ -70,14 +56,18 @@ export const useClienteData = (cliente) => {
     }
 
     const totalAgendamentos = agendamentosCliente.length;
-    const agendamentosConcluidos = agendamentosCliente.filter(ag => ag.status === 'concluido').length;
-    const agendamentosCancelados = agendamentosCliente.filter(ag => ag.status === 'cancelado').length;
+    const agendamentosConcluidos = agendamentosCliente.filter(a => a.status === 'concluido').length;
+    const agendamentosCancelados = agendamentosCliente.filter(a => a.status === 'cancelado').length;
+    
     const totalGastoAgendamentos = agendamentosCliente
-      .filter(ag => ag.status === 'concluido')
-      .reduce((acc, ag) => acc + (ag.servico?.valor || 0), 0);
+      .filter(a => a.status === 'concluido')
+      .reduce((acc, a) => acc + (a.servico?.valor || 0), 0);
+    
     const totalGastoCompras = comprasCliente.reduce((acc, c) => acc + c.valor, 0);
     const totalGeral = totalGastoAgendamentos + totalGastoCompras;
-    const ticketMedio = agendamentosConcluidos > 0 ? totalGeral / agendamentosConcluidos : 0;
+    const ticketMedio = agendamentosConcluidos > 0 
+      ? totalGastoAgendamentos / agendamentosConcluidos 
+      : 0;
 
     return {
       totalAgendamentos,
@@ -88,7 +78,7 @@ export const useClienteData = (cliente) => {
       totalGeral,
       ticketMedio
     };
-  }, [agendamentosCliente, comprasCliente, cliente]);
+  }, [cliente, agendamentosCliente, comprasCliente]);
 
   return {
     agendamentosCliente,
