@@ -1,716 +1,668 @@
-// src/pages/Servicos.jsx - VERSÃO CORRIGIDA COMPLETA
+// src/pages/Servicos.jsx - HUB COM SELEÇÃO LIVRE DE ETAPAS
 
-import { useState, useContext } from 'react';
-import { Settings, Search, Plus, Edit, Trash2, Users, DollarSign, Clock, TrendingUp } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useContext, useMemo } from 'react';
+import { X, User, Calendar, Clock, CheckCircle, Eye, Save } from 'lucide-react';
 import { SalaoContext } from '../contexts/SalaoContext';
-import { CATEGORIAS_SERVICOS } from '../data/categoriasServicosData';
-import { generateDurationOptions } from '../utils/masks';
+import { getTodayBR } from '../utils/masks';
+import FormularioAvaliacaoInicial from '../components/terapiaCapilar/FormularioAvaliacaoInicial';
+import FormularioSelecaoTratamento from '../components/terapiaCapilar/FormularioSelecaoTratamento';
+import FormularioAplicacaoTratamento from '../components/terapiaCapilar/FormularioAplicacaoTratamento';
+import FormularioFinalizacao from '../components/terapiaCapilar/FormularioFinalizacao';
 
-// Componente Header
-const ServicosHeader = ({ salaoNome, onOpenServicoModal }) => (
-  <div className="flex items-center justify-between">
-    <div>
-      <h2 className="text-3xl font-bold text-gray-800">Serviços</h2>
-      <p className="text-gray-600 mt-1">Gerencie os serviços do {salaoNome}</p>
-    </div>
-    <button
-      onClick={onOpenServicoModal}
-      className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all shadow-lg"
-    >
-      <Plus size={20} />
-      <span>Novo Serviço</span>
-    </button>
-  </div>
-);
-
-// Componente Stats
-const ServicosStats = ({ totalServicos, valorMedio, servicosPremium, totalCategorias }) => (
-  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-    <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-purple-600 font-medium">Total de Serviços</p>
-          <p className="text-3xl font-bold text-purple-700 mt-2">{totalServicos}</p>
-        </div>
-        <TrendingUp className="text-purple-400" size={32} />
-      </div>
-    </div>
-
-    <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-6 border border-green-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-green-600 font-medium">Valor Médio</p>
-          <p className="text-3xl font-bold text-green-700 mt-2">R$ {valorMedio.toFixed(2)}</p>
-        </div>
-        <DollarSign className="text-green-400" size={32} />
-      </div>
-    </div>
-
-    <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-blue-600 font-medium">Serviços Premium</p>
-          <p className="text-3xl font-bold text-blue-700 mt-2">{servicosPremium}</p>
-        </div>
-        <Clock className="text-blue-400" size={32} />
-      </div>
-    </div>
-
-    <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-6 border border-pink-200">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-pink-600 font-medium">Categorias</p>
-          <p className="text-3xl font-bold text-pink-700 mt-2">{totalCategorias}</p>
-        </div>
-        <Users className="text-pink-400" size={32} />
-      </div>
-    </div>
-  </div>
-);
-
-// Componente Filtros
-const ServicosFilters = ({ searchTerm, setSearchTerm, categoriaFiltro, setCategoriaFiltro, categorias }) => (
-  <div className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-        <input
-          type="text"
-          placeholder="Buscar serviço..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-        />
-      </div>
-
-      <select
-        value={categoriaFiltro}
-        onChange={(e) => setCategoriaFiltro(e.target.value)}
-        className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-      >
-        <option value="Todos">Todas as Categorias</option>
-        {categorias.map(cat => (
-          <option key={cat} value={cat}>{cat}</option>
-        ))}
-      </select>
-    </div>
-  </div>
-);
-
-// Componente Grid de Serviços
-const ServicosGrid = ({ filteredServicos, profissionais, handleOpenModal, handleDelete }) => {
-  if (filteredServicos.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow-md p-12 text-center border border-gray-200">
-        <TrendingUp size={48} className="mx-auto mb-4 text-gray-400" />
-        <p className="text-gray-600 font-medium">Nenhum serviço encontrado</p>
-        <p className="text-sm text-gray-500 mt-2">Comece adicionando um novo serviço</p>
-      </div>
-    );
-  }
-
+// ===== COMPONENTE: Seletor de Tipo de Atendimento =====
+const TipoAtendimentoSelector = ({ onSelect }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {filteredServicos.map((servico) => {
-        const profissionaisHabilitados = profissionais.filter(p => 
-          servico.profissionaisHabilitados?.includes(p.id)
-        );
-
-        return (
-          <div
-            key={servico.id}
-            className="bg-white rounded-lg shadow-md border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden"
-          >
-            <div className="bg-gradient-to-r from-purple-600 to-pink-600 p-4">
-              <h3 className="text-xl font-bold text-white">{servico.nome}</h3>
-              <span className="inline-block mt-2 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-xs text-white font-medium">
-                {servico.categoria}
-              </span>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+      {/* Terapia Capilar */}
+      <button
+        onClick={() => onSelect('terapia_capilar')}
+        className="group bg-gradient-to-br from-purple-50 to-pink-50 border-4 border-purple-200 rounded-2xl p-8 hover:border-purple-400 hover:shadow-2xl transition-all transform hover:scale-105"
+      >
+        <div className="text-center">
+          <div className="text-8xl mb-6 group-hover:scale-110 transition-transform">🌸</div>
+          <h3 className="text-3xl font-bold text-purple-900 mb-3">Terapia Capilar</h3>
+          <p className="text-gray-600 mb-4">
+            Atendimento completo em etapas flexíveis
+          </p>
+          <div className="space-y-2 text-sm text-left bg-white/50 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">🔍</span>
+              <span className="text-gray-700">Avaliação e Anamnese</span>
             </div>
-
-            <div className="p-6 space-y-4">
-              {servico.subcategoria && (
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Subcategoria:</span> {servico.subcategoria}
-                </div>
-              )}
-
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center space-x-2">
-                  <Clock size={16} className="text-gray-400" />
-                  <span className="text-gray-700">{servico.duracao} min</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <DollarSign size={16} className="text-gray-400" />
-                  <span className="text-xl font-bold text-green-600">R$ {servico.valor.toFixed(2)}</span>
-                </div>
-              </div>
-
-              {servico.comissao > 0 && (
-                <div className="text-sm text-gray-600">
-                  <span className="font-medium">Comissão:</span> {servico.comissao}%
-                </div>
-              )}
-
-              {servico.descricao && (
-                <p className="text-sm text-gray-600 line-clamp-2">{servico.descricao}</p>
-              )}
-
-              {profissionaisHabilitados.length > 0 && (
-                <div>
-                  <p className="text-xs text-gray-500 mb-2">Profissionais habilitados:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {profissionaisHabilitados.map(prof => (
-                      <span
-                        key={prof.id}
-                        className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs"
-                      >
-                        {prof.nome}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  servico.ativo 
-                    ? 'bg-green-100 text-green-700' 
-                    : 'bg-gray-100 text-gray-700'
-                }`}>
-                  {servico.ativo ? 'Ativo' : 'Inativo'}
-                </span>
-
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleOpenModal(servico)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Editar"
-                  >
-                    <Edit size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(servico.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Excluir"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">💊</span>
+              <span className="text-gray-700">Seleção de Tratamento</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">✨</span>
+              <span className="text-gray-700">Aplicação do Tratamento</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">🎯</span>
+              <span className="text-gray-700">Finalização e Orientações</span>
             </div>
           </div>
-        );
-      })}
+        </div>
+      </button>
+
+      {/* Mega Hair */}
+      <button
+        onClick={() => onSelect('mega_hair')}
+        className="group bg-gradient-to-br from-blue-50 to-indigo-50 border-4 border-blue-200 rounded-2xl p-8 hover:border-blue-400 hover:shadow-2xl transition-all transform hover:scale-105"
+      >
+        <div className="text-center">
+          <div className="text-8xl mb-6 group-hover:scale-110 transition-transform">💇‍♀️</div>
+          <h3 className="text-3xl font-bold text-blue-900 mb-3">Mega Hair</h3>
+          <p className="text-gray-600 mb-4">
+            Confecção e aplicação de alongamentos
+          </p>
+          <div className="space-y-2 text-sm text-left bg-white/50 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">📏</span>
+              <span className="text-gray-700">Medição e Planejamento</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">✂️</span>
+              <span className="text-gray-700">Confecção das Mechas</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">🔧</span>
+              <span className="text-gray-700">Aplicação e Ajustes</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="text-2xl">💡</span>
+              <span className="text-gray-700">Orientações de Cuidados</span>
+            </div>
+          </div>
+        </div>
+      </button>
     </div>
   );
 };
 
-// Componente Modal
-const ServicoModal = ({ 
-  showModal, 
-  handleCloseModal, 
-  editingId, 
-  formData, 
-  handleChange, 
-  handleProfissionalToggle,
-  handleSubmit,
-  servicosDisponiveis,
-  profissionaisSalao,
-  durationOptions,
-  servicosSalao
-}) => {
-  if (!showModal) return null;
+// ===== COMPONENTE: Seletor de Cliente =====
+const ClienteSelector = ({ clientes, onSelect, onCancel }) => {
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const servicoSelecionado = servicosDisponiveis.find(s => 
-    s.nome === formData.nome && 
-    s.categoria === formData.categoria
+  const filteredClientes = clientes.filter(c =>
+    c.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.telefone.includes(searchTerm)
   );
 
-  const subcategorias = servicoSelecionado?.subcategorias || [];
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onCancel}></div>
+        
+        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full">
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">Selecione o Cliente</h3>
+                <p className="text-purple-100 text-sm mt-1">Quem será atendido hoje?</p>
+              </div>
+              <button
+                onClick={onCancel}
+                className="text-white hover:text-gray-200 p-2 hover:bg-white/20 rounded-lg"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="mb-4">
+              <input
+                type="text"
+                placeholder="Buscar cliente por nome ou telefone..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {filteredClientes.length === 0 ? (
+                <p className="text-center text-gray-500 py-8">
+                  Nenhum cliente encontrado
+                </p>
+              ) : (
+                filteredClientes.map(cliente => (
+                  <button
+                    key={cliente.id}
+                    onClick={() => onSelect(cliente)}
+                    className="w-full flex items-center space-x-4 p-4 border border-gray-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-r from-purple-400 to-pink-400 flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                      {cliente.nome.charAt(0)}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold text-gray-800">{cliente.nome}</p>
+                      <p className="text-sm text-gray-600">{cliente.telefone}</p>
+                    </div>
+                    <CheckCircle className="text-purple-600" size={24} />
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===== COMPONENTE: Seletor de Etapa =====
+const EtapaSelector = ({ clienteSelecionado, tipoAtendimento, onSelectEtapa, onCancel, atendimentosAnteriores }) => {
+  const etapas = [
+    { 
+      id: 'avaliacao', 
+      nome: 'Avaliação Inicial', 
+      icon: '🔍',
+      descricao: 'Anamnese completa, histórico e avaliação do estado capilar'
+    },
+    { 
+      id: 'selecao', 
+      nome: 'Seleção de Tratamento', 
+      icon: '💊',
+      descricao: 'Escolha de produtos, técnicas e plano de tratamento'
+    },
+    { 
+      id: 'aplicacao', 
+      nome: 'Aplicação do Tratamento', 
+      icon: '✨',
+      descricao: 'Registro da aplicação, produtos e procedimentos realizados'
+    },
+    { 
+      id: 'finalizacao', 
+      nome: 'Finalização', 
+      icon: '🎯',
+      descricao: 'Resultados, orientações e agendamento do retorno'
+    }
+  ];
+
+  // Verificar quais etapas já foram realizadas
+  const etapasRealizadas = atendimentosAnteriores
+    .filter(a => a.clienteId === clienteSelecionado.id && a.tipo === tipoAtendimento)
+    .flatMap(a => a.etapasCompletas || []);
+
+  const getEtapaCount = (etapaId) => {
+    return etapasRealizadas.filter(e => e === etapaId).length;
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onCancel}></div>
+        
+        <div className="relative bg-white rounded-lg shadow-xl max-w-3xl w-full">
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 rounded-t-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {tipoAtendimento === 'terapia_capilar' ? '🌸 Terapia Capilar' : '💇‍♀️ Mega Hair'}
+                </h3>
+                <p className="text-purple-100 text-sm mt-1">
+                  {clienteSelecionado.nome} - Escolha a etapa do atendimento
+                </p>
+              </div>
+              <button
+                onClick={onCancel}
+                className="text-white hover:text-gray-200 p-2 hover:bg-white/20 rounded-lg"
+              >
+                <X size={24} />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <p className="text-sm text-blue-900">
+                💡 <strong>Dica:</strong> Você pode preencher qualquer etapa independentemente. 
+                Não é necessário seguir uma ordem específica.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {etapas.map(etapa => {
+                const count = getEtapaCount(etapa.id);
+                
+                return (
+                  <button
+                    key={etapa.id}
+                    onClick={() => onSelectEtapa(etapa.id)}
+                    className="group bg-gradient-to-br from-purple-50 to-purple-100 border-2 border-purple-300 rounded-xl p-5 hover:border-purple-500 hover:shadow-lg transition-all text-left"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="text-4xl">{etapa.icon}</div>
+                      {count > 0 && (
+                        <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full font-medium flex items-center space-x-1">
+                          <CheckCircle size={12} />
+                          <span>{count}x</span>
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-lg font-bold text-purple-900 mb-1">{etapa.nome}</h4>
+                    <p className="text-sm text-gray-600">{etapa.descricao}</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={onCancel}
+              className="mt-6 w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ===== COMPONENTE: Formulário da Etapa =====
+const FormularioEtapa = ({ 
+  clienteSelecionado, 
+  tipoAtendimento, 
+  etapaSelecionada, 
+  onClose, 
+  onSave, 
+  produtos 
+}) => {
+  const [formData, setFormData] = useState({});
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleImagensChange = (campo, imagens) => {
+    setFormData(prev => ({
+      ...prev,
+      [campo]: imagens
+    }));
+  };
+
+  const handleSalvar = () => {
+    const prontuario = {
+      clienteId: clienteSelecionado.id,
+      tipo: tipoAtendimento,
+      data: getTodayBR(),
+      hora: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      etapaPreenchida: etapaSelecionada,
+      dadosTerapiaCapilar: formData,
+      etapasCompletas: [etapaSelecionada]
+    };
+
+    onSave(prontuario);
+  };
+
+  const renderFormulario = () => {
+    switch (etapaSelecionada) {
+      case 'avaliacao':
+        return (
+          <FormularioAvaliacaoInicial
+            formData={formData}
+            onChange={handleChange}
+            onImagensChange={handleImagensChange}
+          />
+        );
+      case 'selecao':
+        return (
+          <FormularioSelecaoTratamento
+            formData={formData}
+            onChange={handleChange}
+            onImagensChange={handleImagensChange}
+            produtos={produtos}
+          />
+        );
+      case 'aplicacao':
+        return (
+          <FormularioAplicacaoTratamento
+            formData={formData}
+            onChange={handleChange}
+            onImagensChange={handleImagensChange}
+          />
+        );
+      case 'finalizacao':
+        return (
+          <FormularioFinalizacao
+            formData={formData}
+            onChange={handleChange}
+            onImagensChange={handleImagensChange}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getNomeEtapa = () => {
+    const nomes = {
+      avaliacao: '🔍 Avaliação Inicial',
+      selecao: '💊 Seleção de Tratamento',
+      aplicacao: '✨ Aplicação do Tratamento',
+      finalizacao: '🎯 Finalização'
+    };
+    return nomes[etapaSelecionada] || '';
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20">
         <div 
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-          onClick={handleCloseModal}
+          className="fixed inset-0 bg-gray-500 bg-opacity-75"
+          onClick={onClose}
         ></div>
 
-        <div className="relative bg-white rounded-lg shadow-xl max-w-2xl w-full">
-          <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 rounded-t-lg">
-            <h3 className="text-xl font-semibold text-white">
-              {editingId ? 'Editar Serviço' : 'Novo Serviço'}
-            </h3>
+        <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-4 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold text-white">
+                  {getNomeEtapa()}
+                </h3>
+                <p className="text-purple-100 text-sm mt-1">
+                  {clienteSelecionado.nome} • {tipoAtendimento === 'terapia_capilar' ? 'Terapia Capilar' : 'Mega Hair'}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-white hover:text-gray-200 p-2 hover:bg-white/20 rounded-lg"
+              >
+                <X size={24} />
+              </button>
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            {/* Serviço */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Serviço *
-              </label>
-              {editingId ? (
-                <input
-                  type="text"
-                  value={formData.nome}
-                  disabled
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100 cursor-not-allowed"
-                />
-              ) : (
-                <select
-                  name="nome"
-                  value={formData.nome}
-                  onChange={(e) => {
-                    const selectedServico = servicosDisponiveis.find(s => 
-                      `${s.categoria}|${s.nome}` === e.target.value
-                    );
-                    if (selectedServico) {
-                      handleChange({ 
-                        target: { 
-                          name: 'nome', 
-                          value: selectedServico.nome 
-                        } 
-                      });
-                      handleChange({ 
-                        target: { 
-                          name: 'categoria', 
-                          value: selectedServico.categoria 
-                        } 
-                      });
-                      handleChange({ 
-                        target: { 
-                          name: 'subcategoria', 
-                          value: '' 
-                        } 
-                      });
-                    }
-                  }}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Selecione um serviço</option>
-                  {servicosDisponiveis.map((servico, index) => (
-                    <option 
-                      key={index} 
-                      value={`${servico.categoria}|${servico.nome}`}
-                      disabled={servicosSalao.some(s => s.nome === servico.nome && s.categoria === servico.categoria)}
-                    >
-                      {servico.categoria} - {servico.nome}
-                      {servicosSalao.some(s => s.nome === servico.nome && s.categoria === servico.categoria) ? ' (Já cadastrado)' : ''}
-                    </option>
-                  ))}
-                </select>
-              )}
-            </div>
+          {/* Conteúdo */}
+          <div className="flex-1 overflow-y-auto px-6 py-6">
+            {renderFormulario()}
+          </div>
 
-            {/* Subcategoria */}
-            {subcategorias.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Subcategoria
-                </label>
-                <select
-                  name="subcategoria"
-                  value={formData.subcategoria}
-                  onChange={handleChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Nenhuma</option>
-                  {subcategorias.map((sub, index) => (
-                    <option key={index} value={sub}>{sub}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {/* Duração e Valor */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Duração (minutos) *
-                </label>
-                <select
-                  name="duracao"
-                  value={formData.duracao}
-                  onChange={handleChange}
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                >
-                  {durationOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Valor (R$) *
-                </label>
-                <input
-                  type="number"
-                  name="valor"
-                  value={formData.valor}
-                  onChange={handleChange}
-                  step="0.01"
-                  min="0"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            {/* Comissão */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Comissão (%)
-              </label>
-              <input
-                type="number"
-                name="comissao"
-                value={formData.comissao}
-                onChange={handleChange}
-                min="0"
-                max="100"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="0"
-              />
-            </div>
-
-            {/* Descrição */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Descrição
-              </label>
-              <textarea
-                name="descricao"
-                value={formData.descricao}
-                onChange={handleChange}
-                rows="3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
-                placeholder="Descrição do serviço..."
-              />
-            </div>
-
-            {/* Profissionais Habilitados */}
-            {profissionaisSalao.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Profissionais Habilitados
-                </label>
-                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
-                  {profissionaisSalao.map(prof => (
-                    <label key={prof.id} className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={formData.profissionaisHabilitados.includes(prof.id)}
-                        onChange={() => handleProfissionalToggle(prof.id)}
-                        className="rounded text-purple-600 focus:ring-purple-500"
-                      />
-                      <span className="text-sm text-gray-700">{prof.nome}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Status */}
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="ativo"
-                checked={formData.ativo}
-                onChange={handleChange}
-                className="rounded text-purple-600 focus:ring-purple-500"
-              />
-              <label className="text-sm font-medium text-gray-700">
-                Serviço ativo
-              </label>
-            </div>
-
-            {/* Botões */}
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={handleCloseModal}
-                className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all"
-              >
-                {editingId ? 'Salvar Alterações' : 'Cadastrar Serviço'}
-              </button>
-            </div>
-          </form>
+          {/* Footer */}
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end space-x-3 flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-100"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSalvar}
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:from-purple-700 hover:to-pink-700 flex items-center space-x-2"
+            >
+              <Save size={18} />
+              <span>Salvar Registro</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 };
 
-// Componente Principal
-const Servicos = () => {
-  const navigate = useNavigate();
-  const { 
-    salaoAtual,
-    servicos, 
-    setServicos, 
-    profissionais,
-    getServicosPorSalao,
-    getProfissionaisPorSalao,
-    getServicosDisponiveis
-  } = useContext(SalaoContext);
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showModal, setShowModal] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [categoriaFiltro, setCategoriaFiltro] = useState('Todos');
-
-  const [formData, setFormData] = useState({
-    nome: '',
-    categoria: '',
-    subcategoria: '',
-    duracao: 30,
-    valor: '',
-    comissao: '',
-    descricao: '',
-    profissionaisHabilitados: [],
-    ativo: true
-  });
-
-  const durationOptions = generateDurationOptions();
-
-  const servicosSalao = getServicosPorSalao();
-  const profissionaisSalao = getProfissionaisPorSalao();
-  const servicosDisponiveis = getServicosDisponiveis();
-
-  const hasCategoriasConfiguradas = servicosDisponiveis.length > 0;
-
-  const categoriasParaFiltro = [...new Set(
-    servicosDisponiveis.map(s => {
-      const cat = CATEGORIAS_SERVICOS.find(c => c.id === s.categoriaId);
-      return cat?.nome;
-    })
-  )].filter(Boolean);
-
-  const handleOpenModal = (servico = null) => {
-    if (!hasCategoriasConfiguradas) {
-      const confirmar = window.confirm(
-        '⚠️ Nenhum serviço configurado!\n\n' +
-        'Você precisa configurar as categorias e serviços do salão antes de cadastrar serviços.\n\n' +
-        'Deseja ir para a página de Configurações agora?'
-      );
-      
-      if (confirmar) {
-        navigate('/configuracoes');
-      }
-      return;
-    }
-
-    if (servico) {
-      setEditingId(servico.id);
-      setFormData({
-        nome: servico.nome,
-        categoria: servico.categoria,
-        subcategoria: servico.subcategoria,
-        duracao: servico.duracao,
-        valor: servico.valor.toFixed(2),
-        comissao: servico.comissao.toString(),
-        descricao: servico.descricao,
-        profissionaisHabilitados: servico.profissionaisHabilitados || [],
-        ativo: servico.ativo
-      });
-    } else {
-      setEditingId(null);
-      setFormData({
-        nome: '',
-        categoria: '',
-        subcategoria: '',
-        duracao: 30,
-        valor: '',
-        comissao: '0',
-        descricao: '',
-        profissionaisHabilitados: [],
-        ativo: true
-      });
-    }
-    setShowModal(true);
+// ===== COMPONENTE: Card de Atendimento =====
+const AtendimentoCard = ({ atendimento, cliente, onViewDetails }) => {
+  const getEtapaInfo = (etapaId) => {
+    const etapas = {
+      avaliacao: { nome: 'Avaliação', icon: '🔍', cor: 'purple' },
+      selecao: { nome: 'Seleção', icon: '💊', cor: 'blue' },
+      aplicacao: { nome: 'Aplicação', icon: '✨', cor: 'pink' },
+      finalizacao: { nome: 'Finalização', icon: '🎯', cor: 'green' }
+    };
+    return etapas[etapaId] || { nome: etapaId, icon: '📋', cor: 'gray' };
   };
 
-  const handleCloseModal = () => {
-    setShowModal(false);
-    setEditingId(null);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (editingId) {
-      setServicos(servicos.map(s => 
-        s.id === editingId 
-          ? { 
-              ...formData, 
-              id: editingId,
-              duracao: parseInt(formData.duracao),
-              valor: parseFloat(formData.valor),
-              comissao: formData.comissao ? parseInt(formData.comissao) : 0,
-              salaoId: salaoAtual.id
-            } 
-          : s
-      ));
-      alert('Serviço atualizado com sucesso!');
-    } else {
-      const newServico = {
-        ...formData,
-        id: Math.max(...servicos.map(s => s.id), 0) + 1,
-        duracao: parseInt(formData.duracao),
-        valor: parseFloat(formData.valor),
-        comissao: formData.comissao ? parseInt(formData.comissao) : 0,
-        salaoId: salaoAtual.id
-      };
-      setServicos([...servicos, newServico]);
-      alert('Serviço cadastrado com sucesso!');
-    }
-    
-    handleCloseModal();
-  };
-
-  const handleDelete = (id) => {
-    if (confirm('Tem certeza que deseja excluir este serviço?')) {
-      setServicos(servicos.filter(s => s.id !== id));
-      alert('Serviço excluído com sucesso!');
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-  };
-
-  const handleProfissionalToggle = (profissionalId) => {
-    setFormData(prev => ({
-      ...prev,
-      profissionaisHabilitados: prev.profissionaisHabilitados.includes(profissionalId)
-        ? prev.profissionaisHabilitados.filter(id => id !== profissionalId)
-        : [...prev.profissionaisHabilitados, profissionalId]
-    }));
-  };
-
-  const filteredServicos = servicosSalao.filter(servico => {
-    const matchSearch = servico.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                       servico.descricao.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchCategoria = categoriaFiltro === 'Todos' || servico.categoria === categoriaFiltro;
-    return matchSearch && matchCategoria;
-  });
-
-  const totalServicos = servicosSalao.length;
-  const valorMedio = servicosSalao.length > 0 
-    ? servicosSalao.reduce((acc, s) => acc + s.valor, 0) / servicosSalao.length 
-    : 0;
-  const servicosMaisCaros = servicosSalao.filter(s => s.valor > 100).length;
+  const etapaInfo = getEtapaInfo(atendimento.etapaPreenchida);
 
   return (
-    <div className="space-y-6">
-      <ServicosHeader 
-        salaoNome={salaoAtual.nome}
-        onOpenServicoModal={() => handleOpenModal()}
-      />
+    <div 
+      className="bg-white rounded-lg border-2 border-purple-200 hover:border-purple-400 hover:shadow-lg transition-all p-5 cursor-pointer"
+      onClick={onViewDetails}
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white w-12 h-12 rounded-full flex items-center justify-center text-2xl">
+            {atendimento.tipo === 'terapia_capilar' ? '🌸' : '💇‍♀️'}
+          </div>
+          <div>
+            <p className="font-bold text-gray-800">{cliente?.nome || 'Cliente não encontrado'}</p>
+            <div className="flex items-center space-x-2 text-sm text-gray-600">
+              <Calendar size={14} />
+              <span>{atendimento.data}</span>
+              <span>•</span>
+              <Clock size={14} />
+              <span>{atendimento.hora}</span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-      {!hasCategoriasConfiguradas && (
-        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-400 rounded-lg p-6 shadow-sm">
-          <div className="flex items-start gap-4">
-            <div className="flex-shrink-0">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Settings className="text-yellow-600 w-6 h-6" />
+      {/* Etapa Registrada */}
+      <div className="bg-purple-50 rounded-lg p-3 border border-purple-200 mb-3">
+        <div className="flex items-center space-x-2">
+          <span className="text-2xl">{etapaInfo.icon}</span>
+          <div>
+            <p className="text-sm font-semibold text-purple-900">{etapaInfo.nome}</p>
+            <p className="text-xs text-purple-700">Etapa registrada</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Preview */}
+      {atendimento.dadosTerapiaCapilar?.objetivoTratamento && (
+        <div className="bg-pink-50 rounded-lg p-3 border border-pink-200">
+          <p className="text-xs text-pink-700 font-medium mb-1">🎯 Objetivo:</p>
+          <p className="text-sm text-gray-700 line-clamp-2">
+            {atendimento.dadosTerapiaCapilar.objetivoTratamento}
+          </p>
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
+        <span>Clique para ver detalhes</span>
+        <Eye size={16} />
+      </div>
+    </div>
+  );
+};
+
+// ===== COMPONENTE PRINCIPAL =====
+const Servicos = () => {
+  const { 
+    salaoAtual,
+    prontuarios,
+    setProntuarios,
+    getClientesPorSalao,
+    getProntuariosPorSalao,
+    getProdutosPorSalao
+  } = useContext(SalaoContext);
+
+  const [tipoSelecionado, setTipoSelecionado] = useState(null);
+  const [clienteSelecionado, setClienteSelecionado] = useState(null);
+  const [etapaSelecionada, setEtapaSelecionada] = useState(null);
+  const [showFormulario, setShowFormulario] = useState(false);
+
+  const clientesSalao = getClientesPorSalao();
+  const prontuariosSalao = getProntuariosPorSalao();
+  const produtos = getProdutosPorSalao();
+
+  const atendimentos = useMemo(() => {
+    return prontuariosSalao
+      .filter(p => p.tipo === 'terapia_capilar' || p.tipo === 'mega_hair')
+      .sort((a, b) => {
+        try {
+          const [diaA, mesA, anoA] = a.data.split('/');
+          const [diaB, mesB, anoB] = b.data.split('/');
+          const dataA = new Date(anoA, mesA - 1, diaA);
+          const dataB = new Date(anoB, mesB - 1, diaB);
+          return dataB - dataA;
+        } catch {
+          return 0;
+        }
+      });
+  }, [prontuariosSalao]);
+
+  const terapiasCapilares = atendimentos.filter(a => a.tipo === 'terapia_capilar');
+  const megaHairs = atendimentos.filter(a => a.tipo === 'mega_hair');
+
+  const handleSelectTipo = (tipo) => {
+    setTipoSelecionado(tipo);
+  };
+
+  const handleSelectCliente = (cliente) => {
+    setClienteSelecionado(cliente);
+  };
+
+  const handleSelectEtapa = (etapa) => {
+    setEtapaSelecionada(etapa);
+    setShowFormulario(true);
+  };
+
+  const handleCloseAll = () => {
+    setShowFormulario(false);
+    setEtapaSelecionada(null);
+    setClienteSelecionado(null);
+    setTipoSelecionado(null);
+  };
+
+  const handleSaveProntuario = (prontuario) => {
+    const novoProntuario = {
+      ...prontuario,
+      id: Math.max(...prontuarios.map(p => p.id), 0) + 1,
+      salaoId: salaoAtual.id
+    };
+    setProntuarios([...prontuarios, novoProntuario]);
+    alert('✅ Registro salvo com sucesso!');
+    handleCloseAll();
+  };
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="text-center">
+        <h1 className="text-4xl font-bold text-gray-800 mb-2">
+          Atendimentos Especializados
+        </h1>
+        <p className="text-gray-600">
+          Terapia Capilar e Mega Hair - {salaoAtual.nome}
+        </p>
+      </div>
+
+      {/* Seletor de Tipo */}
+      <div className="bg-white rounded-lg shadow-lg p-8 border border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
+          Iniciar Novo Atendimento
+        </h2>
+        <TipoAtendimentoSelector onSelect={handleSelectTipo} />
+      </div>
+
+      {/* Estatísticas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-6 border border-purple-200">
+          <p className="text-sm text-purple-600 font-medium">Total de Registros</p>
+          <p className="text-3xl font-bold text-purple-700 mt-2">{atendimentos.length}</p>
+        </div>
+        <div className="bg-gradient-to-br from-pink-50 to-pink-100 rounded-lg p-6 border border-pink-200">
+          <p className="text-sm text-pink-600 font-medium">Terapias Capilares</p>
+          <p className="text-3xl font-bold text-pink-700 mt-2">{terapiasCapilares.length}</p>
+        </div>
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+          <p className="text-sm text-blue-600 font-medium">Mega Hair</p>
+          <p className="text-3xl font-bold text-blue-700 mt-2">{megaHairs.length}</p>
+        </div>
+      </div>
+
+      {/* Histórico */}
+      <div className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">
+          📋 Histórico de Atendimentos
+        </h2>
+
+        {atendimentos.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <p className="text-lg font-medium">Nenhum atendimento registrado ainda</p>
+            <p className="text-sm mt-2">Comece um novo atendimento acima!</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {terapiasCapilares.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center">
+                  <span className="text-2xl mr-2">🌸</span>
+                  Terapias Capilares ({terapiasCapilares.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {terapiasCapilares.map(atendimento => (
+                    <AtendimentoCard
+                      key={atendimento.id}
+                      atendimento={atendimento}
+                      cliente={clientesSalao.find(c => c.id === atendimento.clienteId)}
+                      onViewDetails={() => alert('Ver detalhes (implementar navegação)')}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="flex-1">
-              <h3 className="font-bold text-yellow-900 text-lg mb-2">
-                Configure os serviços do seu salão primeiro
-              </h3>
-              <p className="text-yellow-800 mb-4">
-                Antes de cadastrar serviços com preços e profissionais, você precisa selecionar 
-                quais categorias e serviços seu salão oferece.
-              </p>
-              <button
-                onClick={() => navigate('/configuracoes')}
-                className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors font-medium"
-              >
-                <Settings className="w-4 h-4" />
-                Ir para Configurações
-              </button>
-            </div>
+            )}
+
+            {megaHairs.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center">
+                  <span className="text-2xl mr-2">💇‍♀️</span>
+                  Mega Hair ({megaHairs.length})
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {megaHairs.map(atendimento => (
+                    <AtendimentoCard
+                      key={atendimento.id}
+                      atendimento={atendimento}
+                      cliente={clientesSalao.find(c => c.id === atendimento.clienteId)}
+                      onViewDetails={() => alert('Ver detalhes (implementar navegação)')}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
+        )}
+      </div>
+
+      {/* Modals */}
+      {tipoSelecionado && !clienteSelecionado && (
+        <ClienteSelector
+          clientes={clientesSalao}
+          onSelect={handleSelectCliente}
+          onCancel={handleCloseAll}
+        />
       )}
 
-      {hasCategoriasConfiguradas && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm font-medium text-blue-900">
-                <span className="font-bold">{servicosSalao.length}</span> serviços cadastrados
-              </p>
-            </div>
-            <div>
-              <p className="text-sm font-medium text-blue-900">
-                <span className="font-bold">{servicosDisponiveis.length}</span> serviços disponíveis para cadastro
-              </p>
-            </div>
-          </div>
-        </div>
+      {tipoSelecionado && clienteSelecionado && !etapaSelecionada && (
+        <EtapaSelector
+          clienteSelecionado={clienteSelecionado}
+          tipoAtendimento={tipoSelecionado}
+          onSelectEtapa={handleSelectEtapa}
+          onCancel={handleCloseAll}
+          atendimentosAnteriores={atendimentos}
+        />
       )}
 
-      {hasCategoriasConfiguradas && (
-        <>
-          <ServicosStats 
-            totalServicos={totalServicos}
-            valorMedio={valorMedio}
-            servicosPremium={servicosMaisCaros}
-            totalCategorias={categoriasParaFiltro.length}
-          />
-
-          <ServicosFilters 
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            categoriaFiltro={categoriaFiltro}
-            setCategoriaFiltro={setCategoriaFiltro}
-            categorias={categoriasParaFiltro}
-          />
-
-          <ServicosGrid 
-            filteredServicos={filteredServicos}
-            profissionais={profissionais}
-            handleOpenModal={handleOpenModal}
-            handleDelete={handleDelete}
-          />
-        </>
+      {showFormulario && etapaSelecionada && (
+        <FormularioEtapa
+          clienteSelecionado={clienteSelecionado}
+          tipoAtendimento={tipoSelecionado}
+          etapaSelecionada={etapaSelecionada}
+          onClose={handleCloseAll}
+          onSave={handleSaveProntuario}
+          produtos={produtos}
+        />
       )}
-
-      <ServicoModal 
-        showModal={showModal}
-        handleCloseModal={handleCloseModal}
-        editingId={editingId}
-        formData={formData}
-        handleChange={handleChange}
-        handleProfissionalToggle={handleProfissionalToggle}
-        handleSubmit={handleSubmit}
-        servicosDisponiveis={servicosDisponiveis}
-        profissionaisSalao={profissionaisSalao}
-        durationOptions={durationOptions}
-        servicosSalao={servicosSalao}
-      />
     </div>
   );
 };
