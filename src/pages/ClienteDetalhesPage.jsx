@@ -1,4 +1,4 @@
-// src/pages/ClienteDetalhesPage.jsx - VERSÃO FINAL MODULARIZADA
+// src/pages/ClienteDetalhesPage.jsx - CORRIGIDO (Header unificado)
 import { useState, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -20,11 +20,13 @@ const ClienteDetalhesPage = () => {
   
   const { 
     clientes, 
-    updateCliente,
+    setClientes,
     salaoAtual, 
     prontuarios, 
     setProntuarios, 
-    getProdutosPorSalao 
+    getProdutosPorSalao,
+    servicos,
+    profissionais
   } = useContext(SalaoContext);
   
   const produtos = getProdutosPorSalao();
@@ -37,6 +39,13 @@ const ClienteDetalhesPage = () => {
     emailsCliente,
     stats
   } = useClienteData(cliente);
+
+  // Função para atualizar cliente
+  const handleUpdateCliente = (clienteId, dadosAtualizados) => {
+    setClientes(clientes.map(c => 
+      c.id === clienteId ? { ...c, ...dadosAtualizados } : c
+    ));
+  };
 
   // Handlers de prontuário
   const handleAddProntuario = (dadosProntuario) => {
@@ -76,24 +85,25 @@ const ClienteDetalhesPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Botão Voltar */}
-      <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 pt-6">
+      {/* ✅ CORREÇÃO 1: Header unificado sem espaço */}
+      <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-6 py-6">
         <div className="max-w-7xl mx-auto">
+          {/* Botão Voltar */}
           <button
             onClick={() => navigate('/clientes')}
-            className="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors mb-4"
+            className="flex items-center space-x-2 text-white hover:text-gray-200 transition-colors mb-6"
           >
             <ArrowLeft size={20} />
             <span>Voltar para Clientes</span>
           </button>
+
+          {/* Foto e Nome do Cliente */}
+          <ClienteHeader 
+            cliente={cliente} 
+            onUpdateCliente={handleUpdateCliente}
+          />
         </div>
       </div>
-
-      {/* Header com foto e nome */}
-      <ClienteHeader 
-        cliente={cliente} 
-        onUpdateCliente={updateCliente}
-      />
 
       {/* Estatísticas */}
       <ClienteStats stats={stats} />
@@ -117,7 +127,11 @@ const ClienteDetalhesPage = () => {
         )}
 
         {abaAtiva === 'agendamentos' && (
-          <ClienteAgendamentosTab agendamentos={agendamentosCliente} />
+          <ClienteAgendamentosTab 
+            agendamentos={agendamentosCliente}
+            servicos={servicos}
+            profissionais={profissionais}
+          />
         )}
 
         {abaAtiva === 'caixa' && (

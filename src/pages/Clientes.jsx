@@ -1,33 +1,26 @@
-// src/pages/Clientes.jsx - ATUALIZADO COM PRONTUÁRIO
+// src/pages/Clientes.jsx - CORRIGIDO (Navegação Direta)
 
 import { useState, useContext, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Search, User, Phone, Mail, Calendar, DollarSign, Edit, Trash2, Eye, Crown, Lock } from 'lucide-react';
 import Modal from '../components/Modal';
 import MaskedInput from '../components/MaskedInput';
-import ClienteDetalhes from '../components/clientes/ClienteDetalhes';
 import { SalaoContext } from '../contexts/SalaoContext';
 import { isValidDate } from '../utils/masks';
 import { canAddMore, getLimitMessage } from '../utils/planRestrictions';
-import { useEmailHistorico } from '../hooks/useEmailHistorico';
 
 const Clientes = () => {
+  const navigate = useNavigate();
+  
   const { 
     salaoAtual, 
     clientes, 
     setClientes, 
     getClientesPorSalao,
-    getAgendamentosPorSalao,
-    getTransacoesPorSalao,
-    servicos,
-    profissionais
   } = useContext(SalaoContext);
-  
-  const { buscarTodosEmails } = useEmailHistorico();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
-  const [showDetalhesModal, setShowDetalhesModal] = useState(false);
-  const [clienteSelecionado, setClienteSelecionado] = useState(null);
   const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -41,12 +34,6 @@ const Clientes = () => {
   const [errors, setErrors] = useState({});
 
   const clientesSalao = getClientesPorSalao();
-  const agendamentosSalao = getAgendamentosPorSalao();
-  const transacoesSalao = getTransacoesPorSalao();
-
-  const historicoEmails = useMemo(() => {
-    return buscarTodosEmails();
-  }, []);
 
   const canAddCliente = canAddMore(salaoAtual.plano, 'clientes', clientesSalao.length);
   const limiteMessage = getLimitMessage(salaoAtual.plano, 'clientes');
@@ -93,14 +80,9 @@ const Clientes = () => {
     setErrors({});
   };
 
+  // ✅ CORREÇÃO: Navegação direta para a página de detalhes
   const handleViewCliente = (cliente) => {
-    setClienteSelecionado(cliente);
-    setShowDetalhesModal(true);
-  };
-
-  const handleCloseDetalhes = () => {
-    setShowDetalhesModal(false);
-    setClienteSelecionado(null);
+    navigate(`/clientes/${cliente.id}`);
   };
 
   const validateForm = () => {
@@ -445,7 +427,7 @@ const Clientes = () => {
         )}
       </div>
 
-      {/* Modal de Cadastro/Edição - CÓDIGO IGUAL */}
+      {/* Modal de Cadastro/Edição */}
       <Modal
         isOpen={showModal}
         onClose={handleCloseModal}
@@ -545,19 +527,6 @@ const Clientes = () => {
           </div>
         </div>
       </Modal>
-
-      {/* Modal de Detalhes COM prontuário */}
-      {showDetalhesModal && clienteSelecionado && (
-        <ClienteDetalhes
-          cliente={clienteSelecionado}
-          onClose={handleCloseDetalhes}
-          agendamentos={agendamentosSalao}
-          transacoes={transacoesSalao}
-          servicos={servicos}
-          profissionais={profissionais}
-          historicoEmails={historicoEmails}
-        />
-      )}
     </div>
   );
 };

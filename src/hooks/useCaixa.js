@@ -1,4 +1,4 @@
-// src/hooks/useCaixa.js
+// src/hooks/useCaixa.js - CORRIGIDO (adicionar clienteId nas transações)
 import { useState, useCallback } from 'react';
 import { getTodayBR } from '../utils/masks';
 
@@ -160,7 +160,7 @@ export const useCaixa = (salaoAtual, comandas, setComandas, vendas, setVendas, t
     };
     setVendas([...vendas, novaVenda]);
 
-    // Criar transação financeira
+    // ✅ CORREÇÃO: Criar transação financeira com clienteId
     const novaTransacao = {
       id: Math.max(...transacoes.map(t => t.id), 0) + 1,
       tipo: 'receita',
@@ -169,7 +169,9 @@ export const useCaixa = (salaoAtual, comandas, setComandas, vendas, setVendas, t
       valor: comanda.total,
       formaPagamento,
       data: getTodayBR(),
+      clienteId: comanda.clienteId, // ✅ ADICIONADO
       cliente: comanda.clienteNome,
+      clienteNome: comanda.clienteNome, // ✅ ADICIONADO para redundância
       fornecedor: '',
       status: 'recebido',
       salaoId: salaoAtual.id,
@@ -189,7 +191,7 @@ export const useCaixa = (salaoAtual, comandas, setComandas, vendas, setVendas, t
     return true;
   }, [comandas, setComandas, vendas, setVendas, transacoes, setTransacoes, produtos, setProdutos, salaoAtual]);
 
-  // Finalizar venda direta (sem comanda)
+  // ✅ CORREÇÃO: Finalizar venda direta (sem comanda)
   const finalizarVendaDireta = useCallback((formaPagamento) => {
     if (itensTemp.length === 0) return false;
 
@@ -222,7 +224,7 @@ export const useCaixa = (salaoAtual, comandas, setComandas, vendas, setVendas, t
     };
     setVendas([...vendas, novaVenda]);
 
-    // Criar transação
+    // ✅ CORREÇÃO: Criar transação com clienteId
     const novaTransacao = {
       id: Math.max(...transacoes.map(t => t.id), 0) + 1,
       tipo: 'receita',
@@ -231,7 +233,9 @@ export const useCaixa = (salaoAtual, comandas, setComandas, vendas, setVendas, t
       valor: total,
       formaPagamento,
       data: getTodayBR(),
+      clienteId: clienteSelecionado?.id || null, // ✅ ADICIONADO
       cliente: clienteSelecionado?.nome || '',
+      clienteNome: clienteSelecionado?.nome || '', // ✅ ADICIONADO
       fornecedor: '',
       status: 'recebido',
       salaoId: salaoAtual.id,
