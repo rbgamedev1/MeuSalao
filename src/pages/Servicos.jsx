@@ -1,4 +1,4 @@
-// src/pages/Servicos.jsx - MODULARIZADO
+// src/pages/Servicos.jsx - CORRIGIDO - Filtra por salão
 
 import { useState, useContext, useMemo } from 'react';
 import { Calendar, Clock, Eye } from 'lucide-react';
@@ -25,9 +25,13 @@ const Servicos = () => {
   const clientesSalao = getClientesPorSalao();
   const produtos = getProdutosPorSalao();
 
+  // CORRIGIDO: Filtra atendimentos por salão atual
   const atendimentos = useMemo(() => {
     return prontuarios
-      .filter(p => p.tipo === 'terapia_capilar' || p.tipo === 'mega_hair')
+      .filter(p => 
+        (p.tipo === 'terapia_capilar' || p.tipo === 'mega_hair') &&
+        p.salaoId === salaoAtual.id  // FILTRO POR SALÃO ADICIONADO
+      )
       .sort((a, b) => {
         try {
           const [diaA, mesA, anoA] = a.data.split('/');
@@ -39,7 +43,7 @@ const Servicos = () => {
           return 0;
         }
       });
-  }, [prontuarios]);
+  }, [prontuarios, salaoAtual.id]); // DEPENDÊNCIA salaoAtual.id ADICIONADA
 
   const terapiasCapilares = atendimentos.filter(a => a.tipo === 'terapia_capilar');
   const megaHairs = atendimentos.filter(a => a.tipo === 'mega_hair');

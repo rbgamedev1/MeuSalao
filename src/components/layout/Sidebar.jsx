@@ -44,7 +44,7 @@ const Sidebar = ({ expanded, setExpanded }) => {
     },
     { 
       icon: Scissors, 
-      label: 'Serviços', 
+      label: 'Serviços Especializados', 
       path: '/servicos',
       requiresPlan: false 
     },
