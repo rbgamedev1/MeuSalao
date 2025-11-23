@@ -1,6 +1,7 @@
-// src/contexts/AuthContext.jsx - Contexto de Autenticação
+// src/contexts/AuthContext.jsx - INTEGRADO COM SUPABASE
 
 import { createContext, useState, useEffect } from 'react';
+import { supabase } from '../services/supabase';
 
 export const AuthContext = createContext();
 
@@ -8,98 +9,221 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Escutar mudanças de autenticação
   useEffect(() => {
-    // Carregar usuário do localStorage ao iniciar
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      setCurrentUser(JSON.parse(savedUser));
-    }
-    setLoading(false);
+    // Verificar sessão atual
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setCurrentUser({
+          id: session.user.id,
+          email: session.user.email,
+          ...session.user.user_metadata
+        });
+      }
+      setLoading(false);
+    });
+
+    // Escutar mudanças de auth
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser({
+          id: session.user.id,
+          email: session.user.email,
+          ...session.user.user_metadata
+        });
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
+  // Função de REGISTRO
   const register = async (userData) => {
     try {
-      // Obter usuários existentes
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      
-      // Verificar se email já existe
-      const emailExists = users.some(u => u.email === userData.email);
-      if (emailExists) {
-        throw new Error('Email já cadastrado');
-      }
-
-      // Criar novo usuário
-      const newUser = {
-        id: Math.max(...users.map(u => u.id), 0) + 1,
-        nome: userData.nome,
+      // 1. Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password,
-        telefone: userData.telefone,
-        criadoEm: new Date().toISOString()
-      };
+        options: {
+          data: {
+            nome: userData.nome,
+            telefone: userData.telefone
+          }
+        }
+      });
 
-      // Salvar usuário
-      users.push(newUser);
-      localStorage.setItem('users', JSON.stringify(users));
+      if (authError) throw authError;
 
-      // Criar salão inicial para o usuário
-      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
-      const novoSalao = {
-        id: Math.max(...saloes.map(s => s.id), 0) + 1,
-        nome: userData.nomeSalao,
-        endereco: '',
-        telefone: userData.telefone,
-        email: userData.email,
-        logo: null,
-        plano: 'inicial',
-        userId: newUser.id
-      };
-      saloes.push(novoSalao);
-      localStorage.setItem('saloes', JSON.stringify(saloes));
-
-      // Fazer login automático
-      const userToSave = { ...newUser };
-      delete userToSave.password;
-      userToSave.salaoAtualId = novoSalao.id;
-      
-      setCurrentUser(userToSave);
-      localStorage.setItem('currentUser', JSON.stringify(userToSave));
-
-      return { success: true, user: userToSave };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  };
-
-  const login = async (email, password) => {
-    try {
-      const users = JSON.parse(localStorage.getItem('users') || '[]');
-      const user = users.find(u => u.email === email && u.password === password);
-
-      if (!user) {
-        throw new Error('Email ou senha incorretos');
+      if (!authData.user) {
+        throw new Error('Erro ao criar usuário');
       }
 
-      // Obter salão do usuário
-      const saloes = JSON.parse(localStorage.getItem('saloes') || '[]');
-      const salaoUser = saloes.find(s => s.userId === user.id);
+      // 2. Criar salão inicial para o usuário
+      const { data: salaoData, error: salaoError } = await supabase
+        .from('saloes')
+        .insert([
+          {
+            user_id: authData.user.id,
+            nome: userData.nomeSalao,
+            telefone: userData.telefone,
+            email: userData.email,
+            plano: 'inicial'
+          }
+        ])
+        .select()
+        .single();
 
-      const userToSave = { ...user };
-      delete userToSave.password;
-      userToSave.salaoAtualId = salaoUser?.id || null;
+      if (salaoError) throw salaoError;
 
-      setCurrentUser(userToSave);
-      localStorage.setItem('currentUser', JSON.stringify(userToSave));
+      // 3. Atualizar estado do usuário
+      const user = {
+        id: authData.user.id,
+        nome: userData.nome,
+        email: userData.email,
+        telefone: userData.telefone,
+        salaoAtualId: salaoData.id
+      };
 
-      return { success: true, user: userToSave };
+      setCurrentUser(user);
+
+      return { 
+        success: true, 
+        user,
+        message: 'Conta criada com sucesso! Verifique seu email para confirmar.' 
+      };
+
     } catch (error) {
-      return { success: false, error: error.message };
+      console.error('Erro no registro:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Erro ao criar conta' 
+      };
     }
   };
 
-  const logout = () => {
-    setCurrentUser(null);
-    localStorage.removeItem('currentUser');
+  // Função de LOGIN
+  const login = async (email, password) => {
+    try {
+      // 1. Fazer login no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (authError) throw authError;
+
+      if (!authData.user) {
+        throw new Error('Credenciais inválidas');
+      }
+
+      // 2. Buscar salão do usuário
+      const { data: saloesData, error: saloesError } = await supabase
+        .from('saloes')
+        .select('*')
+        .eq('user_id', authData.user.id)
+        .limit(1);
+
+      if (saloesError) throw saloesError;
+
+      // 3. Atualizar estado do usuário
+      const user = {
+        id: authData.user.id,
+        email: authData.user.email,
+        nome: authData.user.user_metadata?.nome || '',
+        telefone: authData.user.user_metadata?.telefone || '',
+        salaoAtualId: saloesData?.[0]?.id || null
+      };
+
+      setCurrentUser(user);
+
+      return { 
+        success: true, 
+        user,
+        message: 'Login realizado com sucesso!' 
+      };
+
+    } catch (error) {
+      console.error('Erro no login:', error);
+      
+      let errorMessage = 'Email ou senha incorretos';
+      
+      if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'Por favor, confirme seu email antes de fazer login';
+      } else if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou senha incorretos';
+      }
+
+      return { 
+        success: false, 
+        error: errorMessage 
+      };
+    }
+  };
+
+  // Função de LOGOUT
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+
+      setCurrentUser(null);
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Erro no logout:', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
+    }
+  };
+
+  // Função para ATUALIZAR PERFIL
+  const updateProfile = async (updates) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: updates
+      });
+
+      if (error) throw error;
+
+      setCurrentUser(prev => ({
+        ...prev,
+        ...updates
+      }));
+
+      return { success: true };
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
+    }
+  };
+
+  // Função para RECUPERAR SENHA
+  const resetPassword = async (email) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`
+      });
+
+      if (error) throw error;
+
+      return { 
+        success: true,
+        message: 'Email de recuperação enviado! Verifique sua caixa de entrada.'
+      };
+    } catch (error) {
+      console.error('Erro ao recuperar senha:', error);
+      return { 
+        success: false, 
+        error: error.message 
+      };
+    }
   };
 
   const value = {
@@ -107,7 +231,9 @@ export const AuthProvider = ({ children }) => {
     loading,
     register,
     login,
-    logout
+    logout,
+    updateProfile,
+    resetPassword
   };
 
   return (
